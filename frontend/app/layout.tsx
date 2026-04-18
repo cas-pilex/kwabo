@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { Toaster } from "@/components/toaster";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <footer className="border-t border-[var(--kwabo-border)] bg-white py-3 text-center text-xs text-[var(--kwabo-muted)]">
           © Kwabo Techniek B.V. · Order Intake AI
         </footer>
+        <Toaster />
       </body>
     </html>
   );

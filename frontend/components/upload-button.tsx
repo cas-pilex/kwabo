@@ -1,17 +1,16 @@
 "use client";
 import { useState, useRef } from "react";
+import { toast } from "sonner";
 
 const API = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
 export function UploadButton({ onDone }: { onDone?: () => void }) {
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
-  const [error, setError] = useState<string | null>(null);
 
   async function handle(files: FileList | null) {
     if (!files || files.length === 0) return;
     setBusy(true);
-    setError(null);
     try {
       for (const f of Array.from(files)) {
         const fd = new FormData();
@@ -26,9 +25,10 @@ export function UploadButton({ onDone }: { onDone?: () => void }) {
           throw new Error(`${f.name}: ${msg}`);
         }
       }
+      toast.success(`${files.length} bestand(en) geüpload`);
       onDone?.();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
+      toast.error(`Upload mislukt: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setBusy(false);
       if (ref.current) ref.current.value = "";
@@ -50,11 +50,22 @@ export function UploadButton({ onDone }: { onDone?: () => void }) {
         onClick={() => ref.current?.click()}
         disabled={busy}
         data-testid="eml-upload-button"
-        className="px-4 py-2 rounded-md bg-[#0b2545] text-white hover:bg-[#13345e] disabled:opacity-50 transition"
+        className="px-4 py-2 rounded-md bg-[#0b2545] text-white hover:bg-[#13345e] disabled:opacity-50 transition inline-flex items-center gap-2"
       >
+        {busy && (
+          <svg
+            className="animate-spin h-4 w-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.25" strokeWidth="4" />
+            <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+          </svg>
+        )}
         {busy ? "Bezig…" : "Upload .eml"}
       </button>
-      {error && <span className="text-rose-600 text-sm">{error}</span>}
     </div>
   );
 }

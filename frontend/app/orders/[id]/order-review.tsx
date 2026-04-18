@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { api, type FieldMeta, type Item, type OrderDetail } from "@/lib/api";
 import { FieldInput } from "@/components/field-input";
 import { NavisionPreview } from "@/components/navision-preview";
@@ -90,7 +91,9 @@ export function OrderReview({ order, items }: Props) {
       setMissing(r.needs_review_fields);
       setPreviewKey((k) => k + 1);
     } catch (e) {
-      setMsg(`Patch-fout: ${e instanceof Error ? e.message : String(e)}`);
+      const errMsg = `Patch-fout: ${e instanceof Error ? e.message : String(e)}`;
+      setMsg(errMsg);
+      toast.error(errMsg);
     }
   }
 
@@ -99,10 +102,14 @@ export function OrderReview({ order, items }: Props) {
     setMsg(null);
     try {
       const r = await api.approve(order.id, { reviewer: "dashboard" }, { force: forceArmed });
-      setMsg(`✓ Gepusht naar Navision: ${r.navision_order_nr}${r.forced ? " (force)" : ""}`);
+      const successMsg = `✓ Gepusht naar Navision: ${r.navision_order_nr}${r.forced ? " (force)" : ""}`;
+      setMsg(successMsg);
+      toast.success(`Gepusht als ${r.navision_order_nr || "Navision order"}${r.forced ? " (force)" : ""}`);
       router.refresh();
     } catch (e) {
-      setMsg(`Fout: ${e instanceof Error ? e.message : String(e)}`);
+      const errMsg = `Fout: ${e instanceof Error ? e.message : String(e)}`;
+      setMsg(errMsg);
+      toast.error(`Goedkeuren mislukt: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setSaving(false);
     }
@@ -113,9 +120,12 @@ export function OrderReview({ order, items }: Props) {
     try {
       await api.reject(order.id, { reviewer: "dashboard", reason: "Manual reject" });
       setMsg("Afgewezen");
+      toast.success("Order afgewezen");
       router.refresh();
     } catch (e) {
-      setMsg(`Fout: ${e instanceof Error ? e.message : String(e)}`);
+      const errMsg = `Fout: ${e instanceof Error ? e.message : String(e)}`;
+      setMsg(errMsg);
+      toast.error(`Afwijzen mislukt: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setSaving(false);
     }
@@ -355,9 +365,21 @@ export function OrderReview({ order, items }: Props) {
               onClick={approve}
               disabled={saving || !canAct || blocked}
               title={blocked ? `Vul ${missing.length} velden in of activeer Force` : ""}
-              className="rounded-md bg-[var(--kwabo-navy)] px-4 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-[var(--kwabo-navy-500)] disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-md bg-[var(--kwabo-navy)] px-4 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-[var(--kwabo-navy-500)] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Goedkeuren &amp; Push Navision
+              {saving && (
+                <svg
+                  className="animate-spin h-4 w-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.25" strokeWidth="4" />
+                  <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+                </svg>
+              )}
+              {saving ? "Bezig…" : "Goedkeuren & Push Navision"}
             </button>
             <button
               onClick={reject}
