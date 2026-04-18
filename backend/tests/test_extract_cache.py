@@ -1,13 +1,12 @@
 """extract_from_email cachet per (prompt, blocks) hash."""
 from __future__ import annotations
 
-import base64
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from kwabo.integrations.email_client import RawEmail, Attachment
+from kwabo.integrations.email_client import RawEmail
 from kwabo.integrations.llm_extractor import extract_from_email
 
 
@@ -31,3 +30,6 @@ async def test_extract_cache_hit(tmp_path, monkeypatch):
 
     assert r1 == r2 == {"taal": "NL", "orderregels": []}
     assert mock_create.call_count == 1
+
+    cache_files = list(tmp_path.glob("*.json"))
+    assert len(cache_files) == 1

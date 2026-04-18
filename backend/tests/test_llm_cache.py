@@ -57,3 +57,16 @@ def test_mode_readonly_does_not_write(tmp_path, monkeypatch):
     key = cache_key("m", "s", "u", extras={})
     cache_put(key, {"response": "should not persist"})
     assert cache_get(key) is None
+
+
+def test_cache_put_swallows_os_errors(tmp_path, monkeypatch):
+    """cache_put must never raise — cache failures can't break the caller."""
+    monkeypatch.setenv("LLM_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("LLM_CACHE_MODE", "on")
+    key = cache_key("m", "s", "u", extras={})
+
+    # Simulate a write failure by patching Path.replace to raise
+    from unittest.mock import patch
+    with patch("pathlib.Path.replace", side_effect=OSError("simulated")):
+        # Should NOT raise
+        cache_put(key, {"response": "x"})

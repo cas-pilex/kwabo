@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -52,6 +53,14 @@ def cache_put(key: str, payload: dict[str, Any]) -> None:
         return
     path = _dir() / f"{key}.json"
     payload = {**payload, "ts": datetime.now(tz=timezone.utc).isoformat()}
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(payload, default=str), encoding="utf-8")
-    tmp.replace(path)
+    tmp = path.with_suffix(f".tmp.{os.getpid()}.{uuid.uuid4().hex}")
+    try:
+        tmp.write_text(json.dumps(payload, default=str), encoding="utf-8")
+        tmp.replace(path)
+    except OSError:
+        # Cache write failures should never break the caller — just skip.
+        try:
+            if tmp.exists():
+                tmp.unlink()
+        except OSError:
+            pass

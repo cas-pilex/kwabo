@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -29,3 +30,7 @@ async def test_cache_hit_on_second_call(tmp_path, monkeypatch):
     assert out1["is_order"] is True
     assert out2["is_order"] is True
     assert mock_ainvoke.call_count == 1, "2e call moet uit cache komen"
+
+    # Verify cache file was actually created on disk
+    cache_files = list(Path(tmp_path).glob("*.json"))
+    assert len(cache_files) == 1, f"expected 1 cache file, got {len(cache_files)}"
