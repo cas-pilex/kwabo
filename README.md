@@ -52,6 +52,17 @@ cd frontend
 pnpm dev                                  # http://localhost:3000 (of 3001)
 ```
 
+### Dev-mode op Windows
+
+`pnpm dev` draait met `next dev --webpack`. Next.js 16 gebruikt standaard Turbopack, maar op Windows 11 geeft dat hydration-failures waardoor `useEffect` niet vuurt en knoppen dood blijven. Met de webpack-dev-server werkt alle interactiviteit (HMR, React state, event handlers) direct.
+
+Alternatieven:
+
+- `pnpm dev:turbo` — stock `next dev` met Turbopack (experimenteel op Windows; werkt wel op macOS/Linux).
+- `pnpm build && pnpm start` — productie-build, 100% reproducible (dit is wat Playwright ook gebruikt).
+
+Upstream te volgen: https://github.com/vercel/next.js/issues (zoek naar "turbopack windows hydration").
+
 ### Verwerkings­flow testen
 
 ```bash
