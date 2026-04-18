@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { api, type OrderSummary } from "@/lib/api";
 import { QueueFilters } from "./queue-filters";
+import { ReloadOnDone } from "@/components/reload-on-done";
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +95,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             AI-verwerkte orders. Klik op een regel om te reviewen en te pushen naar Navision.
           </p>
         </div>
+        <ReloadOnDone />
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
