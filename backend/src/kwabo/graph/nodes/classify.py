@@ -8,7 +8,9 @@ from pathlib import Path
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from kwabo.config import settings
 from kwabo.graph.llm import get_llm
+from kwabo.graph.llm_cache import cache_get, cache_key, cache_put
 from kwabo.graph.state import OrderState
 from kwabo.utils.json_parser import parse_json_loose
 from kwabo.utils.logging import log
@@ -31,10 +33,22 @@ async def classify_node(state: OrderState) -> OrderState:
         f"Eerste 600 chars van elke bijlage:\n{bijl_preview[:3000]}"
     )
 
-    llm = get_llm()
-    resp = await llm.ainvoke([SystemMessage(content=system), HumanMessage(content=human)])
+    key = cache_key(
+        settings.anthropic_model,
+        system,
+        human,
+        extras={"max_tokens": 16000, "temperature": 0, "node": "classify"},
+    )
+    cached = cache_get(key)
+    if cached is not None:
+        content = cached.get("response", "")
+    else:
+        llm = get_llm()
+        resp = await llm.ainvoke([SystemMessage(content=system), HumanMessage(content=human)])
+        content = resp.content
+        cache_put(key, {"model": settings.anthropic_model, "response": content})
     try:
-        parsed = parse_json_loose(resp.content)
+        parsed = parse_json_loose(content)
     except Exception as e:  # noqa: BLE001
         parsed = {"is_order": True, "reden": f"parse-fallback: {e}", "confidence": 0.3}
 
