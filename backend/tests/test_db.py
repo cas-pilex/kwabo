@@ -54,3 +54,10 @@ def test_order_log_status_not_order(session):
     review_only = repo.list_by_status("review")
     assert all(r.status == "review" for r in review_only)
     assert row.id not in {r.id for r in review_only}
+
+
+def test_seed_count_meets_minimum(session):
+    from kwabo.db.models import KlantenkaartArtikel
+    from sqlmodel import select
+    rows = session.exec(select(KlantenkaartArtikel)).all()
+    assert len(rows) >= 25, f"Seed te klein: {len(rows)} < 25"

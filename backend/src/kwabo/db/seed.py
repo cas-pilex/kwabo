@@ -31,20 +31,58 @@ KLANTEN_SEED = [
 
 # klant_nr, klant_artikelnr, kwabo_artikelnr, omschrijving
 ARTIKEL_MAPPING_SEED = [
-    ("10001", "23532", "1515155", "Ferney product 23532"),
-    ("10002", "K700100007", "228321", "TABS K700100007"),
-    ("10003", "24300", "2597768", "Isero product"),
-    ("10004", "17040", "201291", "BMN product 17040"),
-    ("10004", "19831", "83461", "BMN product 19831"),
-    ("10005", "9339895", "DUMMY-OMTZIGT", "Omtzigt product"),
-    ("10006", "23559", "DUMMY-DRIESSEN", "Driessen Verf"),
-    ("10011", "238534", "DUMMY-KIRCHNER-238534", "Kirchner FÖRCH editie"),
-    ("10013", "1672", "DUMMY-BUGEL", "Bugel Zwitserse klant"),
-    ("10014", "GLN-122338", "122338", "BAUHAUS via GLN"),
-    ("10015", "24462", "47323", "Tectis Proshield"),
-    ("10016", "24245", "975097", "L. De Vos Greenboard"),
-    ("10012", "24196", "CICS-100-25", "Werkzeuge Dietrich"),
-    ("10012", "24197", "CICS-100-25", "Werkzeuge Dietrich variant"),
+    # Ferney (10001) — uit Ferney inkooporder 4200056148.pdf
+    ("10001", "23532", "1515155", "Ferney STUCLOPER WIT 1.30m 60m2"),
+    ("10001", "24230", "1515158", "Ferney BESCHERMFOL.ZELFKL.TR. 60MX70CM 75MU"),
+    ("10001", "23552", "1515178", "Ferney AFDEKVLIES 1.00m 25m2"),
+    # TABS / PontMeyer (10002) — uit Bestelling 4506782407 157.pdf
+    ("10002", "K700100007", "228321", "TABS stucloper/protectiekarton 950-1050mm rol 50m2"),
+    # Isero (10003) — uit INKOOPORDER IO2029003
+    ("10003", "24300", "2597768", "Isero Stucloper 65cm 30m2 wit"),
+    # BMN (10004) — uit Inkoopopdracht 403602451
+    ("10004", "17040", "201291", "BMN KOOFLIJST KW-007 150cm"),
+    ("10004", "19831", "83461", "BMN KWABO STATIEGELD KIST"),
+    # Omtzigt (10005) — uit Inkooporder 00176482
+    ("10005", "9339895", "DUMMY-OMTZIGT-501", "Omtzigt Gipsperklijst KW-501"),
+    # Driessen Verf (10006) — uit XO089385
+    ("10006", "23559", "DUMMY-DRIESSEN-ETP25", "Driessen ProGold Afdekvlies ETP 25m2"),
+    ("10006", "804600", "DUMMY-DRIESSEN-804600", "Driessen interne code 804600"),
+    # Stukbouw (10007) — uit Verkoop - Bevestiging Stukbouw.pdf
+    ("10007", "17810", "KW-502", "Stukbouw Perklijst 150cm KW-502"),
+    ("10007", "17950", "KW-520", "Stukbouw Perklijst 150cm KW-520"),
+    ("10007", "20081", "KW-539", "Stukbouw Perklijst 150cm KW-539"),
+    ("10007", "20093", "DUMMY-STUKBOUW-TRANS", "Stukbouw Transport/verzendkosten"),
+    ("10007", "19832", "DUMMY-STUKBOUW-STAT", "Stukbouw Statiegeld transportkisten"),
+    # Enka Bouwmaterialen (10008) — uit Fwd_ Nieuwe order (vrije-tekst bestelling)
+    ("10008", "ENK-STU-120", "DUMMY-ENKA-STU120", "Enka stucloper 120cm (vrije tekst)"),
+    ("10008", "ENK-HKN-260", "DUMMY-ENKA-HKN260", "Enka hoeknaald 260cm"),
+    ("10008", "ENK-HKN-300", "DUMMY-ENKA-HKN300", "Enka hoeknaald 300cm"),
+    # Connect Products (10009) — uit PO16260462
+    ("10009", "24196", "CICS-100-25", "Connect Products Cover-it Classic Soft 100cm-25m2"),
+    ("10009", "24197", "CICS-100-50", "Connect Products Cover-it Classic Soft 100cm-50m2"),
+    # Storch-Ciret (10010) — uit Bestellung BD26200984
+    ("10010", "49 61 50", "DUMMY-STORCH-496150", "Storch Milchtuetenpapier weiss 50qm PE"),
+    ("10010", "496150", "DUMMY-STORCH-496150", "Storch art. 49 61 50 (zonder spaties)"),
+    # Kirchner (10011) — uit Bestellung BE60013380 + BE60013417
+    ("10011", "238534", "DUMMY-KIRCHNER-238534", "Kirchner OHL25-1P FÖRCH Edition"),
+    ("10011", "24497", "DUMMY-KIRCHNER-OHL50-1B", "Kirchner OHL50-1B OHL-BLUE vlies"),
+    ("10011", "23909", "DUMMY-KIRCHNER-JV5010", "Kirchner JV5010 Abdeckvlies 50x1m 180g/m2"),
+    ("10011", "24209", "DUMMY-KIRCHNER-MP50", "Kirchner MP50-10WW TFC Board 50m2"),
+    ("10011", "23992", "DUMMY-KIRCHNER-OHL50-1P", "Kirchner OHL50-1P vlies 160g/m2"),
+    # Werkzeuge Dietrich (10012) — uit Bestellung Werkzeuge Dietrich GmbH
+    ("10012", "4086-019309", "23733", "WD Abdeckvlies TFC 220g/qm 1x50m"),
+    ("10012", "23733", "23733", "WD Abdeckvlies TFC 220g/qm (Ihre Material-Nr.)"),
+    # Bugel (10013) — uit Bestellung KWABO Monat April/Mai 26
+    ("10013", "1672", "DUMMY-BUGEL-1672", "Bugel Abdeckvlies 160 gr"),
+    # BAUHAUS (10014) — uit 2026-03-14_NL_122338 (GLN)
+    ("10014", "GLN-122338", "122338", "BAUHAUS via GLN leverancier 122338"),
+    ("10014", "31383686", "242191", "BAUHAUS SCHILDERSVLIES 10M2 absorberende toplaag"),
+    # Tectis (10015) — uit Purchase Order OT3478
+    ("10015", "24462", "47323", "Tectis FLOORCOVER SOFT 1x25m"),
+    ("10015", "24463", "47324", "Tectis FLOORCOVER SOFT 1x50m"),
+    ("10015", "24461", "47325", "Tectis FLOORCOVER SOFT 0,65x25m"),
+    # L. De Vos (10016) — uit Order IOR26/00083
+    ("10016", "24245", "975097", "L. De Vos PK Greenboard B1 B/W 75m2 Proshield"),
 ]
 
 # klant_nr, kwabo_artikelnr, prijs
