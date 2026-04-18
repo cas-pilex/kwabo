@@ -14,6 +14,7 @@ from kwabo.api.logs import router as logs_router
 from kwabo.api.orders import router as orders_router
 from kwabo.api.preview import router as preview_router
 from kwabo.api.prijsafspraken import router as prijs_router
+from kwabo.config import settings
 from kwabo.utils.logging import log, setup_logging
 from kwabo.db.session import engine, init_db
 from kwabo.db.seed import seed
@@ -49,6 +50,11 @@ def create_app() -> FastAPI:
     app.include_router(logs_router)
     app.include_router(preview_router)
     app.include_router(prijs_router)
+
+    if getattr(settings, "test_mode", "off") == "on":
+        from kwabo.api import testing as testing_api
+
+        app.include_router(testing_api.router)
 
     @app.on_event("startup")
     def _startup() -> None:

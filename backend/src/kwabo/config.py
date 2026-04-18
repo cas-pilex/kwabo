@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,6 +24,11 @@ class Settings(BaseSettings):
     mail_mode: str = "log"  # log | smtp | graph
     llm_cache_mode: str = "on"
     llm_cache_dir: str = "../data/llm_cache"
+    # "on" to mount /api/testing/* routes. Accepts KWABO_TEST_MODE or TEST_MODE.
+    test_mode: str = Field(
+        default="off",
+        validation_alias=AliasChoices("KWABO_TEST_MODE", "TEST_MODE", "test_mode"),
+    )
 
     @property
     def inbox_path(self) -> Path:

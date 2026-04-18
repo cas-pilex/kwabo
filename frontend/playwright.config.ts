@@ -32,6 +32,7 @@ export default defineConfig({
         LLM_CACHE_MODE: "on",
         LLM_CACHE_DIR: "../data/llm_cache",
         KWABO_CORS_EXTRA: `http://localhost:${FRONTEND_PORT},http://127.0.0.1:${FRONTEND_PORT}`,
+        KWABO_TEST_MODE: "on",
       },
     },
     {

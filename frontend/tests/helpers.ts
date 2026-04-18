@@ -12,17 +12,30 @@ async function rmrf(p: string) {
   try { await fs.rm(p, { recursive: true, force: true }); } catch {}
 }
 
+export const BACKEND = `http://localhost:${process.env.BACKEND_PORT ?? 8100}`;
+
 export async function resetEnv() {
+  // Filesystem: inbox + processed + navision mock
   await rmrf(INBOX);   await fs.mkdir(INBOX, { recursive: true });
   await rmrf(PROCESSED); await fs.mkdir(PROCESSED, { recursive: true });
   await rmrf(NAV_MOCK); await fs.mkdir(NAV_MOCK, { recursive: true });
+  // DB: via backend endpoint (avoids Windows SQLite file-lock issue)
+  try {
+    const r = await fetch(`${BACKEND}/api/testing/reset`, { method: "POST" });
+    if (!r.ok) {
+      // Endpoint may not be mounted on first call (backend still starting); swallow
+      console.warn(`reset endpoint returned HTTP ${r.status}`);
+    }
+  } catch (e) {
+    // Backend may not be ready yet on very first run — tolerable
+    console.warn("reset endpoint unreachable:", e);
+  }
+  // Also drop the SQLite file if possible (best-effort for fully-clean runs)
   await rmrf(DB);
 }
 
 export async function dropEml(name: string) {
   await fs.copyFile(path.join(FIX, name), path.join(INBOX, name));
 }
-
-export const BACKEND = `http://localhost:${process.env.BACKEND_PORT ?? 8100}`;
 
 export const test = base.extend({});
