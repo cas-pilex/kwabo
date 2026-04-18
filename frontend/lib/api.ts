@@ -76,6 +76,48 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
+export type Prijsafspraak = {
+  id: number;
+  klant_nr: string;
+  kwabo_artikelnr: string;
+  prijs: number;
+  korting_pct: number;
+  type: string;
+  min_hoeveelheid: number | null;
+  geldig_van: string | null;
+  geldig_tot: string | null;
+};
+
+export async function listPrijsafspraken(nr: string): Promise<Prijsafspraak[]> {
+  const r = await fetch(`${API_BASE}/api/klanten/${nr}/prijsafspraken`, { cache: "no-store" });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+export async function addPrijsafspraak(nr: string, body: Partial<Prijsafspraak>) {
+  const r = await fetch(`${API_BASE}/api/klanten/${nr}/prijsafspraken`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    let detail = `HTTP ${r.status}`;
+    try {
+      const j = await r.json();
+      detail = j.detail || detail;
+    } catch {}
+    throw new Error(detail);
+  }
+  return r.json();
+}
+
+export async function deletePrijsafspraak(nr: string, id: number) {
+  const r = await fetch(`${API_BASE}/api/klanten/${nr}/prijsafspraken/${id}`, {
+    method: "DELETE",
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+}
+
 export const api = {
   listOrders: (status?: string) =>
     req<OrderSummary[]>(`/api/orders${status ? `?status=${status}` : ""}`),
