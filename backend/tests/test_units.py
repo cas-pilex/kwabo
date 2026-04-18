@@ -48,6 +48,22 @@ class TestJsonParser:
         assert len(result) == 2
         assert result[0]["a"] == 1
 
+    def test_unescaped_inner_quote_repaired(self):
+        # LLM sometimes emits unescaped inner double-quotes in string values
+        text = '{"desc":"Vlies "OHL-BLUE" mit Folie","n":2}'
+        result = parse_json_loose(text)
+        assert result["n"] == 2
+        assert "OHL-BLUE" in result["desc"]
+
+    def test_unescaped_inner_quote_in_array(self):
+        # Realistic multi-order LLM response with inner quote in one element
+        text = '```json\n[{"a":"ok"},{"b":"has "inner" quote","c":3}]\n```'
+        result = parse_json_loose(text)
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert result[0]["a"] == "ok"
+        assert result[1]["c"] == 3
+
 
 class TestPathUtils:
     def test_split_simple(self):

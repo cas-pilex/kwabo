@@ -72,6 +72,15 @@ def _build_blocks(raw: RawEmail) -> list[dict[str, Any]]:
             # Unknown attachment types — include as text if any
             if b.inhoud_tekst:
                 blocks.append({"type": "text", "text": f"=== {b.naam} ===\n{b.inhoud_tekst[:6000]}"})
+    # Multi-PDF hint: if there are 2+ PDFs each may be a separate order
+    multi_pdf_hint = ""
+    if pdf_count >= 2:
+        multi_pdf_hint = (
+            f"LET OP: er zijn {pdf_count} PDF-bijlagen. Als elke PDF een afzonderlijke "
+            f"order bevat (verschillende Bestellnummer/Bestelnummer/Ordernummer per PDF), "
+            f"retourneer dan een JSON ARRAY met één element per order — niet één "
+            f"gecombineerde order.\n\n"
+        )
     # Always add the email envelope last so Claude sees PDFs first
     blocks.append(
         {
@@ -84,6 +93,7 @@ def _build_blocks(raw: RawEmail) -> list[dict[str, Any]]:
                 f"Body:\n{(raw.email_body or '')[:8000]}\n\n"
                 f"Bijlagen meegestuurd: {len(raw.bijlagen)} "
                 f"(waarvan {pdf_count} PDF als document-block)\n\n"
+                f"{multi_pdf_hint}"
                 f"Extraheer alle ordergegevens volgens het schema in de system-prompt. "
                 f"Output uitsluitend pure JSON."
             ),
