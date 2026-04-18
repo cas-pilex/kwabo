@@ -1,0 +1,12 @@
+{
+  "bestelnummer_klant": "4401054959",
+  "is_order": true,
+  "klant_match_bron": "email",
+  "klant_nr": "10012",
+  "n_matched": 0,
+  "n_regels": 1,
+  "needs_review_count": 1,
+  "sub_orders_count": 0,
+  "taal": "DE",
+  "warnings_count": 2
+}

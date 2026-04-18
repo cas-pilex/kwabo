@@ -13,6 +13,26 @@ SRC = ROOT / "src"
 sys.path.insert(0, str(SRC))
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--update-fixtures",
+        action="store_true",
+        default=False,
+        help="Overschrijf expected/*.json met de huidige run-output",
+    )
+    parser.addoption(
+        "--regression",
+        action="store_true",
+        default=False,
+        help="Run regressie-tests (vereist ANTHROPIC_API_KEY of gevulde cache)",
+    )
+
+
+@pytest.fixture
+def update_fixtures(request) -> bool:
+    return request.config.getoption("--update-fixtures")
+
+
 @pytest.fixture(scope="session")
 def test_db_url(tmp_path_factory) -> str:
     path = tmp_path_factory.mktemp("db") / "test.db"

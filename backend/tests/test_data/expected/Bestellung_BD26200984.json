@@ -1,0 +1,12 @@
+{
+  "bestelnummer_klant": "BD26200984",
+  "is_order": true,
+  "klant_match_bron": "email",
+  "klant_nr": "10010",
+  "n_matched": 0,
+  "n_regels": 1,
+  "needs_review_count": 2,
+  "sub_orders_count": 0,
+  "taal": "DE",
+  "warnings_count": 1
+}
