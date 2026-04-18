@@ -9,12 +9,14 @@ provenance object {value, source, source_detail, confidence, needs_review}.
 from __future__ import annotations
 
 import base64
+import json
 from pathlib import Path
 from typing import Any
 
 import anthropic
 
 from kwabo.config import settings
+from kwabo.graph.llm_cache import cache_get, cache_key, cache_put
 from kwabo.integrations.email_client import RawEmail
 from kwabo.utils.json_parser import parse_json_loose
 
@@ -100,18 +102,32 @@ async def extract_from_email(raw: RawEmail, model: str | None = None, max_retrie
 
     system = PROMPT_PATH.read_text(encoding="utf-8")
     blocks = _build_blocks(raw)
+    used_model = model or settings.anthropic_model
+
+    user_repr = json.dumps(blocks, default=str, sort_keys=True)
+    key = cache_key(
+        used_model,
+        system,
+        user_repr,
+        extras={"max_tokens": 16000, "node": "extract"},
+    )
+    cached = cache_get(key)
+    if cached is not None:
+        return parse_json_loose(cached.get("response", ""))
+
     client = _get_client()
 
     last_err: Exception | None = None
     for attempt in range(max_retries + 1):
         try:
             msg = await client.messages.create(
-                model=model or settings.anthropic_model,
+                model=used_model,
                 max_tokens=16000,
                 system=system,
                 messages=[{"role": "user", "content": blocks}],
             )
             text = "".join(block.text for block in msg.content if getattr(block, "type", None) == "text")
+            cache_put(key, {"model": used_model, "response": text})
             return parse_json_loose(text)
         except anthropic.RateLimitError as e:
             last_err = e
