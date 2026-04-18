@@ -114,6 +114,15 @@ def seed(session: Session) -> None:
             )
     session.commit()
 
+    # Demo kredietlimieten (ondersteuning voor kredietlimiet-warning)
+    DEMO_LIMITS = {"10001": 5000.0, "10011": 10000.0, "10012": 2000.0}
+    for nav, limit in DEMO_LIMITS.items():
+        k = session.exec(select(Klantenkaart).where(Klantenkaart.nav_klantnr == nav)).first()
+        if k and k.kredietlimiet is None:
+            k.kredietlimiet = limit
+            session.add(k)
+    session.commit()
+
     for klant_nr, klant_art, kwabo_art, oms in ARTIKEL_MAPPING_SEED:
         exists = session.exec(
             select(KlantenkaartArtikel).where(

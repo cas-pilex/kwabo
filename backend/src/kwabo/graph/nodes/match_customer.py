@@ -106,9 +106,20 @@ async def match_customer_node(state: OrderState) -> OrderState:
             warnings.append("⚠ KLANT IS GEEN 4+ LID — controleer aankoopvoorwaarden")
         krediet = match.get("kredietlimiet")
         if krediet and krediet > 0:
-            match["kredietlimiet_status"] = "ok"  # placeholder; echte Nav-check vereist openstaand-saldo API
-            # Wanneer echte Nav beschikbaar: GET /salesOrders?$filter=customerNumber eq 'X' and status eq 'Open'
-            # en tel openstaande bedragen op. Nu: toon kredietlimiet in UI als informatief.
+            # Bereken ordertotaal uit orderregels
+            total = 0.0
+            for r in (state.get("orderregels") or []):
+                try:
+                    total += float(r.get("hoeveelheid") or 0) * float(r.get("prijs_per_eenheid") or 0)
+                except (TypeError, ValueError):
+                    continue
+            if total > krediet:
+                warnings.append(
+                    f"⚠ KREDIETLIMIET OVERSCHREDEN: ordertotaal €{total:.2f} > limiet €{krediet:.2f}"
+                )
+                match["kredietlimiet_status"] = "overschreden"
+            else:
+                match["kredietlimiet_status"] = "ok"
         log.info("klant_checks", is_4plus=match.get("is_4plus"), kredietlimiet=krediet)
     log.info(
         "match_customer", email_id=state.get("email_id"),
