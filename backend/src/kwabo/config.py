@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     langchain_project: str = "kwabo-order-intake"
     log_level: str = "INFO"
     mail_mode: str = "log"  # log | smtp | graph
+    llm_cache_mode: str = "on"
+    llm_cache_dir: str = "../data/llm_cache"
 
     @property
     def inbox_path(self) -> Path:
