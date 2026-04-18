@@ -1,0 +1,137 @@
+"""Match articles: exact → history → klantenkaart → fuzzy → manual."""
+from __future__ import annotations
+
+from datetime import datetime
+
+from kwabo.utils import utcnow
+
+from rapidfuzz import fuzz, process
+from sqlmodel import Session
+
+from kwabo.db.repository import ArtikelRepo
+from kwabo.db.session import engine
+from kwabo.graph.state import OrderRegel, OrderState
+from kwabo.integrations.navision_api import NavisionClient, get_navision_client
+from kwabo.utils.logging import log
+
+
+async def _match_single(regel: dict, klant_nr: str | None, nav: NavisionClient) -> OrderRegel:
+    result: OrderRegel = dict(regel)
+
+    # 1) Exact Kwabo-nummer vermeld en bestaat in Nav
+    kw = regel.get("artikelnummer_kwabo")
+    if kw:
+        item = await nav.get_item(kw)
+        if item:
+            result["artikelnummer_kwabo_matched"] = kw
+            result["match_confidence"] = 1.0
+            result["match_methode"] = "exact"
+            return result
+
+    if klant_nr and regel.get("artikelnummer_klant"):
+        with Session(engine) as s:
+            repo = ArtikelRepo(s)
+            # 2) History
+            hist = repo.best_history(klant_nr, regel["artikelnummer_klant"])
+            if hist and await nav.get_item(hist.kwabo_artikelnr):
+                result["artikelnummer_kwabo_matched"] = hist.kwabo_artikelnr
+                result["match_confidence"] = 0.95
+                result["match_methode"] = "history"
+                return result
+            # 3) Klantenkaart mapping
+            mapping = repo.mapping(klant_nr, regel["artikelnummer_klant"])
+            if mapping and await nav.get_item(mapping.kwabo_artikelnr):
+                result["artikelnummer_kwabo_matched"] = mapping.kwabo_artikelnr
+                result["match_confidence"] = 0.9
+                result["match_methode"] = "klantenkaart"
+                return result
+
+    # 4) Fuzzy op omschrijving tegen Nav item search
+    oms = regel.get("omschrijving") or ""
+    if oms:
+        candidates = await nav.search_items(beschrijving=oms[:40])
+        if not candidates:
+            candidates = await nav.search_items()
+        if candidates:
+            names = {c["number"]: c.get("displayName", "") for c in candidates}
+            best = process.extractOne(oms, names, scorer=fuzz.WRatio)
+            if best and best[1] >= 70:
+                number = best[2]
+                result["artikelnummer_kwabo_matched"] = number
+                result["match_confidence"] = round(best[1] / 100.0, 2)
+                result["match_methode"] = "fuzzy"
+                return result
+
+    # 5) Manual
+    result["artikelnummer_kwabo_matched"] = None
+    result["match_confidence"] = 0.0
+    result["match_methode"] = "manual"
+    return result
+
+
+async def match_articles_node(state: OrderState) -> OrderState:
+    nav = get_navision_client()
+    klant_nr = (state.get("klant_match") or {}).get("navision_klantnr")
+
+    matched: list[OrderRegel] = []
+    for r in state.get("orderregels") or []:
+        matched.append(await _match_single(r, klant_nr, nav))
+
+    alle_gematcht = bool(matched) and all(r.get("artikelnummer_kwabo_matched") for r in matched)
+    log.info(
+        "match_articles", email_id=state.get("email_id"),
+        matched=sum(1 for r in matched if r.get("artikelnummer_kwabo_matched")),
+        total=len(matched),
+    )
+
+    stap = {
+        "stap": "match_articles",
+        "timestamp": utcnow().isoformat(),
+        "beslissing": f"{sum(1 for r in matched if r.get('artikelnummer_kwabo_matched'))}/{len(matched)} regels gematcht",
+        "details": {
+            "per_methode": {
+                m: sum(1 for r in matched if r.get("match_methode") == m)
+                for m in ("exact", "history", "klantenkaart", "fuzzy", "manual")
+            }
+        },
+    }
+    steps = list(state.get("stappen_log") or [])
+    steps.append(stap)
+
+    # Provenance per regel (artikelnummer_kwabo_matched)
+    meta = dict(state.get("_meta") or {})
+    regels_meta = list(meta.get("orderregels") or [])
+    while len(regels_meta) < len(matched):
+        regels_meta.append({})
+    needs_paths = list(state.get("needs_review_fields") or [])
+    for i, r in enumerate(matched):
+        rm = regels_meta[i] if isinstance(regels_meta[i], dict) else {}
+        methode = r.get("match_methode")
+        confidence = float(r.get("match_confidence") or 0)
+        rm["artikelnummer_kwabo_matched"] = {
+            "value": r.get("artikelnummer_kwabo_matched"),
+            "source": methode if methode else "missing",
+            "source_detail": f"match-methode={methode}",
+            "confidence": confidence,
+            "needs_review": (
+                not r.get("artikelnummer_kwabo_matched")
+                or methode in ("fuzzy", "manual")
+                or confidence < 0.85
+            ),
+        }
+        regels_meta[i] = rm
+        if rm["artikelnummer_kwabo_matched"]["needs_review"]:
+            path = f"orderregels[{i}].artikelnummer_kwabo_matched"
+            if path not in needs_paths:
+                needs_paths.append(path)
+    meta["orderregels"] = regels_meta
+
+    return {
+        **state,
+        "orderregels": matched,
+        "alle_artikelen_gematcht": alle_gematcht,
+        "stappen_log": steps,
+        "_meta": meta,
+        "needs_review_fields": needs_paths,
+        "needs_review_count": len(needs_paths),
+    }

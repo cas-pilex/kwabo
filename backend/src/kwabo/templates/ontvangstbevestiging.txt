@@ -1,0 +1,12 @@
+Geachte {klant_naam},
+
+Wij bevestigen de ontvangst van uw bestelling met referentie {bestelnr_klant}.
+
+Uw order is verwerkt en opgenomen in ons systeem onder Navision-ordernummer {navision_order_nr}.
+
+Heeft u vragen over deze bestelling? Neem dan contact met ons op via info@kwabo.nl.
+
+Met vriendelijke groet,
+
+Kwabo Techniek B.V.
+Volendam

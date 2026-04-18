@@ -1,0 +1,246 @@
+"""Repository layer — query helpers."""
+from __future__ import annotations
+
+import json
+from datetime import date, datetime
+from typing import Any, Optional
+
+from sqlmodel import Session, select
+
+from kwabo.utils import utcnow
+
+from kwabo.db.models import (
+    ArtikelMatchingHistory,
+    Klantenkaart,
+    KlantenkaartArtikel,
+    OrderLog,
+    Prijsafspraak,
+)
+
+
+class KlantRepo:
+    def __init__(self, session: Session) -> None:
+        self.s = session
+
+    def by_email(self, email: str) -> Optional[Klantenkaart]:
+        stmt = select(Klantenkaart).where(
+            (Klantenkaart.email == email) | (Klantenkaart.email_bestelling == email)
+        )
+        return self.s.exec(stmt).first()
+
+    def by_nav_nr(self, nav_klantnr: str) -> Optional[Klantenkaart]:
+        return self.s.exec(
+            select(Klantenkaart).where(Klantenkaart.nav_klantnr == nav_klantnr)
+        ).first()
+
+    def all(self) -> list[Klantenkaart]:
+        return list(self.s.exec(select(Klantenkaart)).all())
+
+    def upsert(self, klant: Klantenkaart) -> Klantenkaart:
+        existing = self.by_nav_nr(klant.nav_klantnr)
+        if existing:
+            for field in ("naam", "email", "email_bestelling", "telefoon", "taal"):
+                val = getattr(klant, field)
+                if val is not None:
+                    setattr(existing, field, val)
+            existing.updated_at = utcnow()
+            self.s.add(existing)
+            self.s.commit()
+            return existing
+        self.s.add(klant)
+        self.s.commit()
+        self.s.refresh(klant)
+        return klant
+
+
+class ArtikelRepo:
+    def __init__(self, session: Session) -> None:
+        self.s = session
+
+    def mapping(self, klant_nr: str, klant_artikelnr: str) -> Optional[KlantenkaartArtikel]:
+        return self.s.exec(
+            select(KlantenkaartArtikel).where(
+                (KlantenkaartArtikel.klant_nr == klant_nr)
+                & (KlantenkaartArtikel.klant_artikelnr == klant_artikelnr)
+            )
+        ).first()
+
+    def mappings_for(self, klant_nr: str) -> list[KlantenkaartArtikel]:
+        return list(
+            self.s.exec(
+                select(KlantenkaartArtikel).where(KlantenkaartArtikel.klant_nr == klant_nr)
+            ).all()
+        )
+
+    def upsert_mapping(
+        self,
+        klant_nr: str,
+        klant_artikelnr: str,
+        kwabo_artikelnr: str,
+        omschrijving: str | None = None,
+    ) -> KlantenkaartArtikel:
+        existing = self.mapping(klant_nr, klant_artikelnr)
+        if existing:
+            existing.kwabo_artikelnr = kwabo_artikelnr
+            if omschrijving:
+                existing.omschrijving = omschrijving
+            self.s.add(existing)
+            self.s.commit()
+            return existing
+        new = KlantenkaartArtikel(
+            klant_nr=klant_nr,
+            klant_artikelnr=klant_artikelnr,
+            kwabo_artikelnr=kwabo_artikelnr,
+            omschrijving=omschrijving,
+        )
+        self.s.add(new)
+        self.s.commit()
+        self.s.refresh(new)
+        return new
+
+    def best_history(
+        self, klant_nr: str, klant_artikelnr: str
+    ) -> Optional[ArtikelMatchingHistory]:
+        from sqlalchemy import func
+
+        stmt = (
+            select(
+                ArtikelMatchingHistory.kwabo_artikelnr,
+                func.count(ArtikelMatchingHistory.id).label("freq"),
+            )
+            .where(
+                (ArtikelMatchingHistory.klant_nr == klant_nr)
+                & (ArtikelMatchingHistory.klant_artikelnr == klant_artikelnr)
+            )
+            .group_by(ArtikelMatchingHistory.kwabo_artikelnr)
+            .order_by(func.count(ArtikelMatchingHistory.id).desc())
+            .limit(1)
+        )
+        row = self.s.exec(stmt).first()
+        if not row:
+            return None
+        kwabo_nr = row[0] if isinstance(row, tuple) else row.kwabo_artikelnr
+        return self.s.exec(
+            select(ArtikelMatchingHistory).where(
+                (ArtikelMatchingHistory.klant_nr == klant_nr)
+                & (ArtikelMatchingHistory.klant_artikelnr == klant_artikelnr)
+                & (ArtikelMatchingHistory.kwabo_artikelnr == kwabo_nr)
+            )
+        ).first()
+
+    def add_history(
+        self,
+        klant_nr: str,
+        klant_artikelnr: Optional[str],
+        klant_omschrijving: Optional[str],
+        kwabo_artikelnr: str,
+        match_methode: str,
+        was_correctie: bool = False,
+    ) -> ArtikelMatchingHistory:
+        row = ArtikelMatchingHistory(
+            klant_nr=klant_nr,
+            klant_artikelnr=klant_artikelnr,
+            klant_omschrijving=klant_omschrijving,
+            kwabo_artikelnr=kwabo_artikelnr,
+            match_methode=match_methode,
+            was_correctie=was_correctie,
+            order_datum=date.today(),
+        )
+        self.s.add(row)
+        self.s.commit()
+        self.s.refresh(row)
+        return row
+
+
+class PrijsRepo:
+    def __init__(self, session: Session) -> None:
+        self.s = session
+
+    def current(self, klant_nr: str, kwabo_artikelnr: str) -> Optional[Prijsafspraak]:
+        today = date.today()
+        stmt = (
+            select(Prijsafspraak)
+            .where(
+                (Prijsafspraak.klant_nr == klant_nr)
+                & (Prijsafspraak.kwabo_artikelnr == kwabo_artikelnr)
+                & ((Prijsafspraak.geldig_tot.is_(None)) | (Prijsafspraak.geldig_tot >= today))
+            )
+            .order_by(Prijsafspraak.geldig_tot.desc())
+            .limit(1)
+        )
+        return self.s.exec(stmt).first()
+
+    def best_match(
+        self, klant_nr: str, kwabo_artikelnr: str, hoeveelheid: float = 0
+    ) -> Optional[Prijsafspraak]:
+        """Cascade lookup: most specific price (pallet > mix > topcoat > standaard).
+
+        Pallet/mix alleen als hoeveelheid >= min_hoeveelheid.
+        """
+        today = date.today()
+        stmt = (
+            select(Prijsafspraak)
+            .where(
+                (Prijsafspraak.klant_nr == klant_nr)
+                & (Prijsafspraak.kwabo_artikelnr == kwabo_artikelnr)
+                & ((Prijsafspraak.geldig_tot.is_(None)) | (Prijsafspraak.geldig_tot >= today))
+            )
+        )
+        all_matches = list(self.s.exec(stmt).all())
+        if not all_matches:
+            return None
+        # Priority: pallet > mix > topcoat > standaard
+        type_priority = {"pallet": 0, "mix": 1, "topcoat": 2, "standaard": 3}
+        eligible = []
+        for pa in all_matches:
+            if pa.type in ("pallet", "mix") and pa.min_hoeveelheid:
+                if hoeveelheid < pa.min_hoeveelheid:
+                    continue
+            eligible.append(pa)
+        if not eligible:
+            # None match the hoeveelheid criteria — fall back to standaard
+            standaard = [p for p in all_matches if p.type == "standaard"]
+            return standaard[0] if standaard else all_matches[0]
+        eligible.sort(key=lambda p: type_priority.get(p.type, 99))
+        return eligible[0]
+
+
+class OrderLogRepo:
+    def __init__(self, session: Session) -> None:
+        self.s = session
+
+    def create(self, **kwargs: Any) -> OrderLog:
+        row = OrderLog(**kwargs)
+        self.s.add(row)
+        self.s.commit()
+        self.s.refresh(row)
+        return row
+
+    def get(self, order_id: int) -> Optional[OrderLog]:
+        return self.s.get(OrderLog, order_id)
+
+    def by_email(self, email_id: str) -> Optional[OrderLog]:
+        return self.s.exec(select(OrderLog).where(OrderLog.email_id == email_id)).first()
+
+    def list_by_status(self, status: str | None = None) -> list[OrderLog]:
+        stmt = select(OrderLog).order_by(OrderLog.created_at.desc())
+        if status:
+            stmt = stmt.where(OrderLog.status == status)
+        return list(self.s.exec(stmt).all())
+
+    def list_all(self) -> list[OrderLog]:
+        return list(self.s.exec(select(OrderLog).order_by(OrderLog.created_at.desc())).all())
+
+    def update(self, order_id: int, **fields: Any) -> Optional[OrderLog]:
+        row = self.s.get(OrderLog, order_id)
+        if not row:
+            return None
+        for k, v in fields.items():
+            if isinstance(v, (dict, list)):
+                v = json.dumps(v, default=str)
+            setattr(row, k, v)
+        row.updated_at = utcnow()
+        self.s.add(row)
+        self.s.commit()
+        self.s.refresh(row)
+        return row

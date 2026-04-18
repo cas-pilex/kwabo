@@ -1,0 +1,55 @@
+"""Pytest fixtures: in-memory DB + seed for fast isolated tests."""
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+import pytest
+from sqlmodel import Session, SQLModel, create_engine
+
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
+sys.path.insert(0, str(SRC))
+
+
+@pytest.fixture(scope="session")
+def test_db_url(tmp_path_factory) -> str:
+    path = tmp_path_factory.mktemp("db") / "test.db"
+    return f"sqlite:///{path}"
+
+
+@pytest.fixture(autouse=True)
+def _env(monkeypatch, test_db_url):
+    """Isolate each test: in-memory DB, mock Navision, no real API calls by default."""
+    monkeypatch.setenv("DATABASE_URL", test_db_url)
+    monkeypatch.setenv("NAVISION_MODE", "mock")
+    monkeypatch.setenv("EMAIL_MODE", "file_drop")
+    # Disable LangSmith for unit tests
+    monkeypatch.setenv("LANGCHAIN_TRACING_V2", "false")
+    # Keep real Anthropic key if present, else dummy (vision calls are mocked per-test)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", os.getenv("ANTHROPIC_API_KEY", "sk-test"))
+    yield
+
+
+@pytest.fixture
+def session(test_db_url):
+    # Re-initialize schema each test
+    engine = create_engine(test_db_url, connect_args={"check_same_thread": False})
+    SQLModel.metadata.drop_all(engine)
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as s:
+        from kwabo.db.seed import seed
+
+        seed(s)
+        yield s
+
+
+@pytest.fixture
+def eml_dir() -> Path:
+    return ROOT / "tests" / "test_data" / "emails"
+
+
+@pytest.fixture
+def fixtures_dir() -> Path:
+    return ROOT / "tests" / "fixtures"

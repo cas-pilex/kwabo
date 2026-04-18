@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+:root {
+  /* Kwabo huisstijl — navy primary uit logo */
+  --kwabo-navy: #0a1330;
+  --kwabo-navy-700: #111a42;
+  --kwabo-navy-500: #1e2a5e;
+  --kwabo-navy-300: #5b6699;
+  --kwabo-gold: #c9a35b;
+  --kwabo-bg: #f6f7fb;
+  --kwabo-surface: #ffffff;
+  --kwabo-border: #e1e5ee;
+  --kwabo-text: #0a1330;
+  --kwabo-muted: #475168;
+}
+
+@theme inline {
+  --color-background: var(--kwabo-bg);
+  --color-foreground: var(--kwabo-text);
+  --color-kwabo-navy: var(--kwabo-navy);
+  --color-kwabo-navy-700: var(--kwabo-navy-700);
+  --color-kwabo-navy-500: var(--kwabo-navy-500);
+  --color-kwabo-navy-300: var(--kwabo-navy-300);
+  --color-kwabo-gold: var(--kwabo-gold);
+  --color-kwabo-surface: var(--kwabo-surface);
+  --color-kwabo-border: var(--kwabo-border);
+  --color-kwabo-muted: var(--kwabo-muted);
+}
+
+body {
+  background: var(--kwabo-bg);
+  color: var(--kwabo-text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Witte pixels in het logo transparant maken zodat het op navy balk staat.
+   Logo = navy design op witte achtergrond → `mix-blend-mode: multiply` op een
+   witte container laat alleen de donkere delen zien. We plaatsen het logo
+   in een witte pil zodat het origineel op elke achtergrond werkt. */
+.logo-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* Subtiele goud-accent onderaan de header */
+.kwabo-header-accent {
+  background: linear-gradient(to right, transparent, var(--kwabo-gold) 40%, var(--kwabo-gold) 60%, transparent);
+  height: 2px;
+}

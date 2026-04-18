@@ -1,0 +1,32 @@
+{
+  "customers": [
+    {"number": "10001", "displayName": "Ferney Diabolo B.V.", "email": "purchaseorders@ferney.nl"},
+    {"number": "10002", "displayName": "TABS / PontMeyer", "email": "supplychain@tabsholland.nl"},
+    {"number": "10003", "displayName": "Isero Ijzerwaren B.V.", "email": "fransvanvliet@isero.nl"},
+    {"number": "10004", "displayName": "BMN Bouwmaterialen", "email": "jeroen.vanschooten@bmn.nl"},
+    {"number": "10005", "displayName": "Omtzigt Bouw", "email": "kg@omtzigt-bouwmaterialen.nl"},
+    {"number": "10006", "displayName": "Driessen Verf b.v.", "email": "bestellenhelmond@driessenverf.nl"},
+    {"number": "10007", "displayName": "Stukbouw B.V.", "email": "willy@stukbouw.nl"},
+    {"number": "10008", "displayName": "Enka Bouwmaterialen", "email": "e.sun@enkabouwmarkt.nl"},
+    {"number": "10009", "displayName": "Connect Products GmbH", "email": "patricia@connectproducts.nl"},
+    {"number": "10010", "displayName": "Storch-Ciret GmbH", "email": "s.wilke@storch-ciret.com"},
+    {"number": "10011", "displayName": "Kirchner GmbH", "email": "tobias.leyhausen@kirchner-online.com"},
+    {"number": "10012", "displayName": "Werkzeuge Dietrich GmbH & Co. KG", "email": "malte.klippstein@werkzeuge-dietrich.de"},
+    {"number": "10013", "displayName": "Bugel AG", "email": "r.carvalho@bugel.ch"},
+    {"number": "10014", "displayName": "BAUHAUS", "email": "supplier@bahag.com"},
+    {"number": "10015", "displayName": "Tectis OU", "email": "maarjaliisa.nomm@tectis.ee"},
+    {"number": "10016", "displayName": "L. De Vos sa/nv", "email": "anja@lucdevos.be"}
+  ],
+  "items": [
+    {"number": "1515155", "displayName": "Ferney stucloper 120cm"},
+    {"number": "228321", "displayName": "TABS hoeknaald 260cm"},
+    {"number": "2597768", "displayName": "Isero topcoat 20kg"},
+    {"number": "201291", "displayName": "BMN pallet 1"},
+    {"number": "83461", "displayName": "BMN kist statiegeld"},
+    {"number": "122338", "displayName": "BAUHAUS product"},
+    {"number": "47323", "displayName": "Tectis Proshield private label"},
+    {"number": "975097", "displayName": "L. De Vos Greenboard B1 75m2"},
+    {"number": "CICS-100-25", "displayName": "Werkzeuge Dietrich coating"},
+    {"number": "SOFTBREATH-PALLET", "displayName": "Softbreath pallet"}
+  ]
+}

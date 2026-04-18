@@ -1,0 +1,29 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    ports:
+      - "8000:8000"
+    env_file: backend/.env
+    volumes:
+      - ./data:/app/data
+      - backend-db:/app/db
+    environment:
+      DATABASE_URL: "sqlite:///./db/kwabo.db"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+      args:
+        NEXT_PUBLIC_API_BASE: "http://backend:8000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  backend-db:

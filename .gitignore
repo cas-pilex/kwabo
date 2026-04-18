@@ -1,0 +1,43 @@
+.env
+.env.local
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+node_modules/
+.next/
+out/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# runtime data
+data/inbox/*.eml
+data/inbox_e2e/
+data/processed/*.eml
+data/processed_e2e/
+data/navision_mock/orders/*.json
+data/navision_mock_e2e/
+data/llm_cache/
+
+# logs
+*.log
+
+# playwright
+frontend/test-results/
+frontend/playwright-report/
+frontend/tests/fixtures/*.eml.backup
+
+# OS / editor
+.DS_Store
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+.vscode/
+*.swp
