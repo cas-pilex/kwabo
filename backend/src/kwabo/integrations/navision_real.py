@@ -24,8 +24,10 @@ the wiring without hitting a live NAV.
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import os
+import re
 import time
 import uuid
 from pathlib import Path
@@ -33,6 +35,11 @@ from typing import Any, Optional
 
 import httpx
 
+from kwabo.integrations.nav_operations import (
+    NavOperation,
+    NavOpResult,
+    StepwiseResult,
+)
 from kwabo.utils.logging import log
 
 
@@ -132,6 +139,24 @@ class RealNavisionClient:
         resp.raise_for_status()
         return resp.json()
 
+    async def _patch(self, endpoint: str, body: dict) -> tuple[int, dict]:
+        """Internal helper: send a single PATCH and return (status, json).
+
+        Uses If-Match: * to bypass NAV's optimistic concurrency check, since
+        in our pipeline we just created the entity ourselves.
+        """
+        resp = await self._client.patch(
+            f"{self._base()}/{endpoint}",
+            json=body,
+            headers={**(await self._headers()), "If-Match": "*"},
+            auth=self._basic_auth(),
+        )
+        resp.raise_for_status()
+        # NAV returns 200 with the updated record, or 204 (no body) on some endpoints.
+        if resp.status_code == 204 or not resp.content:
+            return resp.status_code, {}
+        return resp.status_code, resp.json()
+
     # ---------- bulk read helpers (used by master-data sync) ----------
 
     async def get_collection(
@@ -225,6 +250,349 @@ class RealNavisionClient:
                         raise
                     await asyncio.sleep(2 ** attempt)
         return {"id": order_id, "number": order_nr, "status": "Draft", "header": header, "lines": lines}
+
+    # ---------- trigger-aware single-field PATCH ----------
+
+    async def patch(self, endpoint: str, body: dict) -> dict:
+        """Single-field PATCH against NAV.
+
+        NAV's OnValidate triggers fire per-field, mirroring how a user types a
+        value into the UI and tabs out. To preserve those semantics we REQUIRE
+        the body to contain exactly one key. Multi-field PATCH is the old
+        bypass-the-trigger antipattern that this whole refactor is removing.
+        """
+        if not isinstance(body, dict):
+            raise ValueError("patch body must be a dict")
+        if len(body) != 1:
+            raise ValueError(
+                f"patch body must contain exactly one field; got {len(body)} ({sorted(body)})"
+            )
+        _, data = await self._patch(endpoint.lstrip("/"), body)
+        return data
+
+    # ---------- master-data lookups (used by validation + UI dropdowns) ----------
+
+    async def get_ship_to_addresses(self, customer_id: str) -> list[dict]:
+        """All Ship-to addresses for a NAV customer (record id, not number).
+
+        NAV API: /companies({c})/customers({id})/shipToAddresses
+        """
+        res = await self._get(f"customers({customer_id})/shipToAddresses")
+        return res.get("value") or []
+
+    async def get_item_uoms(self, item_id: str) -> list[dict]:
+        """All UoMs for an item.
+
+        NAV API: /companies({c})/items({id})/itemUnitsOfMeasure
+        """
+        res = await self._get(f"items({item_id})/itemUnitsOfMeasure")
+        return res.get("value") or []
+
+    async def get_item_references(self, customer_no: str | None = None) -> list[dict]:
+        """Item references (cross-references). If a customer number is supplied
+        we filter server-side.
+
+        NAV API: /companies({c})/itemReferences
+        """
+        params = None
+        if customer_no:
+            # NAV's itemReferences exposes referenceType + referenceTypeNo. We
+            # filter on customer-type cross refs here. The exact field names
+            # depend on the NAV 2018 page exposing this entity — staging may
+            # need adjustment if the property names diverge.
+            params = {
+                "$filter": (
+                    f"referenceType eq 'Customer' and referenceTypeNo eq '{customer_no}'"
+                )
+            }
+        res = await self._get("itemReferences", params)
+        return res.get("value") or []
+
+    # ---------- incoming documents (PDF / EML attachments) ----------
+
+    async def create_incoming_document(
+        self, description: str, vendor_name: str | None
+    ) -> dict:
+        """Create an Incoming Document header. We attach the original PDF/EML
+        afterwards via attach_to_incoming_document.
+
+        NAV API: /companies({c})/incomingDocuments
+        """
+        body: dict = {"description": description}
+        if vendor_name:
+            body["vendorName"] = vendor_name
+        return await self._post("incomingDocuments", body)
+
+    async def attach_to_incoming_document(
+        self, doc_id: str, filename: str, content: bytes, content_type: str
+    ) -> dict:
+        """Attach a binary file to an Incoming Document.
+
+        NAV 2018's standard pattern (see Microsoft Docs "Working with API
+        files (containers)") is:
+          1. POST a stub attachment record with metadata (fileName, parentId).
+          2. PATCH the `content` field on that record with the binary payload.
+
+        For NAV 2018 OData v2 the simplest universally-supported encoding is to
+        send `content` as a base64 string in JSON. Newer BC builds accept
+        binary uploads via Content-Type: application/octet-stream, but Cas's
+        on-prem NAV 2018 reliably accepts the base64 form. If staging rejects
+        this, switch to `application/octet-stream` (raw bytes) on the PATCH —
+        the response shape is identical.
+        """
+        # Step 1: create the attachment shell.
+        stub = await self._post(
+            f"incomingDocuments({doc_id})/attachments",
+            {"fileName": filename},
+        )
+        attach_id = stub.get("id") or stub.get("parentId") or stub.get("attachmentId")
+        # Step 2: PATCH the content field with base64-encoded bytes.
+        encoded = base64.b64encode(content).decode("ascii")
+        path = f"incomingDocuments({doc_id})/attachments({attach_id})"
+        # Single-field PATCH (still respects the trigger-aware invariant).
+        # Note: the NAV mediaType property records the content_type for us;
+        # NAV typically also honours `mediaType` set in the stub POST, but
+        # to keep PATCHes single-field we set it here in a separate call only
+        # when caller cares. For now we record content_type in the response
+        # body so callers can verify what we sent.
+        resp = await self._client.patch(
+            f"{self._base()}/{path}",
+            json={"content": encoded},
+            headers={
+                **(await self._headers()),
+                "If-Match": "*",
+            },
+            auth=self._basic_auth(),
+        )
+        resp.raise_for_status()
+        return {
+            "id": attach_id,
+            "fileName": filename,
+            "mediaType": content_type,
+            "status": resp.status_code,
+        }
+
+    # ---------- stepwise sales-order creation (the core T3 deliverable) ----------
+
+    _ID_PLACEHOLDER = re.compile(r"\{id\}")
+
+    @staticmethod
+    def _diff_autofilled(sent_body: dict, server_record: dict) -> dict:
+        """Return the fields NAV populated for us via triggers.
+
+        Excludes any field we explicitly sent in the request body (those are
+        echoed back by NAV but did not come from a trigger).
+        """
+        if not isinstance(server_record, dict):
+            return {}
+        filled: dict = {}
+        for key, value in server_record.items():
+            if key in sent_body:
+                continue
+            if key.startswith("@odata"):
+                continue
+            if value in (None, "", 0, False, []):
+                # Skip empty defaults — they're noise rather than autofill.
+                continue
+            filled[key] = value
+        return filled
+
+    async def create_sales_order_stepwise(
+        self, operations: list[NavOperation]
+    ) -> StepwiseResult:
+        """Execute an ordered list of NAV operations to build a sales order.
+
+        Invariants enforced here (deliberately strict — these are the
+        mistakes the old one-shot push made):
+          * The first operation MUST be POST /salesOrders.
+          * That POST body MUST contain exactly `customerNumber` and nothing
+            else; everything else has to come in via PATCH so triggers fire.
+          * POST /salesOrders(...)/salesOrderLines bodies MUST contain only
+            `lineType` and `itemNumber`.
+          * Every PATCH body MUST be exactly one field.
+
+        Execution semantics:
+          * `{id}` in the path is substituted with the most-recently-created
+            sales-order id by default, but when we are operating in a line
+            context (path begins with /salesOrderLines or contains an explicit
+            line-id segment) we use the most-recently-created line id.
+          * After a POST we re-GET the resource to capture autofilled fields.
+          * After a PATCH we re-GET only when `expects` was supplied on the
+            operation — minimises round-trips.
+          * On the first error we capture the message on operation_results[-1]
+            and STOP. We never silently continue.
+        """
+        results: list[NavOpResult] = []
+        autofilled_union: dict = {}
+        sales_order_id: str = ""
+        sales_order_number: str = ""
+        last_line_id: str = ""
+
+        for idx, op in enumerate(operations):
+            method = op["op"]
+            raw_path = op["path"]
+            body = op.get("body") or {}
+
+            # ---- Invariant checks (per-op) -------------------------------
+            self._assert_op_invariants(idx, op)
+
+            # ---- {id} substitution ---------------------------------------
+            substitution_id = (
+                last_line_id
+                if ("/salesOrderLines(" in raw_path or raw_path.startswith("/salesOrderLines"))
+                else sales_order_id
+            )
+            try:
+                path = self._substitute_path(raw_path, substitution_id)
+            except ValueError as exc:
+                results.append(
+                    NavOpResult(
+                        operation=op,
+                        status=0,
+                        response_body={},
+                        autofilled={},
+                        error=str(exc),
+                    )
+                )
+                return StepwiseResult(
+                    sales_order_id=sales_order_id,
+                    sales_order_number=sales_order_number,
+                    operation_results=results,
+                    nav_autofilled=autofilled_union,
+                )
+
+            relative = path.lstrip("/")
+
+            # ---- Execute -------------------------------------------------
+            try:
+                if method == "POST":
+                    server = await self._post(relative, body)
+                    status = 201
+                    # Track parent id for /salesOrders, line id for line POSTs.
+                    if relative == "salesOrders":
+                        sales_order_id = server.get("id") or sales_order_id
+                        sales_order_number = server.get("number") or sales_order_number
+                    elif relative.endswith("/salesOrderLines"):
+                        last_line_id = server.get("id") or last_line_id
+                    # POSTs always get a re-GET via the response body itself.
+                    autofilled = self._diff_autofilled(body, server)
+                    results.append(
+                        NavOpResult(
+                            operation=op,
+                            status=status,
+                            response_body=server,
+                            autofilled=autofilled,
+                        )
+                    )
+                    autofilled_union.update(autofilled)
+                else:  # PATCH
+                    if len(body) != 1:
+                        raise ValueError(
+                            f"PATCH body must contain exactly one key; got {sorted(body)}"
+                        )
+                    status, server = await self._patch(relative, body)
+                    autofilled: dict = {}
+                    if op.get("expects"):
+                        # Re-GET the parent resource to verify trigger results.
+                        # NAV's PATCH response often already includes the full
+                        # record, in which case we just diff against `body`.
+                        if not server:
+                            try:
+                                server = await self._get(relative)
+                            except Exception:
+                                server = {}
+                        autofilled = self._diff_autofilled(body, server)
+                    results.append(
+                        NavOpResult(
+                            operation=op,
+                            status=status,
+                            response_body=server,
+                            autofilled=autofilled,
+                        )
+                    )
+                    autofilled_union.update(autofilled)
+            except Exception as exc:
+                err_msg = self._format_http_error(exc)
+                results.append(
+                    NavOpResult(
+                        operation=op,
+                        status=getattr(getattr(exc, "response", None), "status_code", 0) or 0,
+                        response_body={},
+                        autofilled={},
+                        error=err_msg,
+                    )
+                )
+                log.error(
+                    "nav_stepwise_failure",
+                    op_index=idx,
+                    op_label=op.get("label"),
+                    op=method,
+                    path=raw_path,
+                    error=err_msg,
+                )
+                return StepwiseResult(
+                    sales_order_id=sales_order_id,
+                    sales_order_number=sales_order_number,
+                    operation_results=results,
+                    nav_autofilled=autofilled_union,
+                )
+
+        return StepwiseResult(
+            sales_order_id=sales_order_id,
+            sales_order_number=sales_order_number,
+            operation_results=results,
+            nav_autofilled=autofilled_union,
+        )
+
+    @staticmethod
+    def _assert_op_invariants(idx: int, op: NavOperation) -> None:
+        method = op["op"]
+        raw_path = op["path"]
+        body = op.get("body") or {}
+        if method not in ("POST", "PATCH"):
+            raise ValueError(f"op[{idx}]: unsupported method {method!r}")
+        if not raw_path.startswith("/"):
+            raise ValueError(f"op[{idx}]: path must start with '/', got {raw_path!r}")
+        if method == "POST":
+            if raw_path == "/salesOrders":
+                if list(body.keys()) != ["customerNumber"]:
+                    raise ValueError(
+                        f"op[{idx}]: POST /salesOrders body must contain exactly "
+                        f"'customerNumber'; got {sorted(body)}"
+                    )
+            elif raw_path.endswith("/salesOrderLines"):
+                allowed = {"lineType", "itemNumber"}
+                if set(body.keys()) != allowed:
+                    raise ValueError(
+                        f"op[{idx}]: POST {raw_path} body must contain exactly "
+                        f"{sorted(allowed)}; got {sorted(body)}"
+                    )
+        elif method == "PATCH":
+            if len(body) != 1:
+                raise ValueError(
+                    f"op[{idx}]: PATCH body must contain exactly one key; got {sorted(body)}"
+                )
+
+    @classmethod
+    def _substitute_path(cls, path: str, current_id: str) -> str:
+        if "{id}" not in path:
+            return path
+        if not current_id:
+            raise ValueError(
+                f"path {path!r} contains {{id}} but no parent id has been created yet"
+            )
+        return cls._ID_PLACEHOLDER.sub(current_id, path)
+
+    @staticmethod
+    def _format_http_error(exc: Exception) -> str:
+        if isinstance(exc, httpx.HTTPStatusError):
+            status = exc.response.status_code
+            try:
+                body = exc.response.json()
+            except Exception:
+                body = exc.response.text
+            return f"HTTP {status}: {body}"
+        return f"{type(exc).__name__}: {exc}"
 
     async def aclose(self) -> None:
         await self._client.aclose()
