@@ -66,6 +66,42 @@ export type FieldMeta = {
   validated?: boolean | null;
 };
 
+// ---- T11: trigger-aware NAV preview shapes ----
+
+export type NavOperation = {
+  op: "POST" | "PATCH";
+  path: string;
+  body: Record<string, unknown>;
+  label: string;
+  expects?: Record<string, unknown>;
+};
+
+export type NavPreviewResponse = {
+  operations: NavOperation[];
+  expected_post_count: number;
+  expected_patch_count: number;
+  status: string;
+  missing_count: number;
+};
+
+export type ShipToKandidaat = {
+  klant_nr: string;
+  ship_to_code: string;
+  naam: string;
+  straat: string;
+  postcode: string;
+  plaats: string;
+  land: string;
+  is_default: boolean;
+};
+
+export type EuropalletRegel = {
+  kwabo_artikelnr: string;
+  hoeveelheid: number;
+  eenheid: string;
+  positie?: number;
+};
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
@@ -130,14 +166,20 @@ export const api = {
       { method: "POST", body: JSON.stringify(body) },
     ),
   navisionPreview: (id: number) =>
-    req<{
-      method: string;
-      url: string;
-      headers: Record<string, string>;
-      body: { header: Record<string, unknown>; lines: Array<Record<string, unknown>> };
-      status: "ready" | "missing" | "no_customer";
-      missing_count: number;
-    }>(`/api/orders/${id}/navision-preview`),
+    req<NavPreviewResponse>(`/api/orders/${id}/navision-preview`),
+  uploadIncomingDoc: async (
+    id: number,
+    file: File,
+  ): Promise<{ saved_path: string; file_size: number; content_type: string }> => {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`${API_BASE}/api/orders/${id}/incoming-doc`, {
+      method: "POST",
+      body: fd,
+    });
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+    return res.json();
+  },
   patchField: (id: number, path: string, value: unknown, reviewer = "dashboard") =>
     req<{ ok: boolean; needs_review_count: number; needs_review_fields: string[] }>(
       `/api/orders/${id}/patch-field`,

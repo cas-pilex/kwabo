@@ -3,14 +3,25 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { api, type FieldMeta, type Item, type OrderDetail } from "@/lib/api";
+import {
+  api,
+  type EuropalletRegel,
+  type FieldMeta,
+  type Item,
+  type OrderDetail,
+  type ShipToKandidaat,
+} from "@/lib/api";
 import { EmailSourceViewer } from "@/components/email-source-viewer";
 import { ExtractSummary } from "@/components/extract-summary";
 import { FieldInput } from "@/components/field-input";
-import { NavisionPreview } from "@/components/navision-preview";
 import { NeedsReviewBanner } from "@/components/needs-review-banner";
 import { OrderLinesTable } from "@/components/order-lines-table";
 import { ProvenanceBadge } from "@/components/provenance-badge";
+import { EuropalletEditor } from "./components/EuropalletEditor";
+import { IncomingDocumentPanel } from "./components/IncomingDocumentPanel";
+import { MixprijzenBadge } from "./components/MixprijzenBadge";
+import { NavOperationsPreview } from "./components/NavOperationsPreview";
+import { ShipToPicker } from "./components/ShipToPicker";
 
 type Props = { order: OrderDetail; items: Item[] };
 
@@ -29,6 +40,8 @@ type Regel = {
   opmerkingen: string | null;
   match_methode?: string | null;
   match_confidence?: number | null;
+  mix_uom_kandidaat?: string[] | null;
+  mix_uom_gekozen?: string | null;
 };
 
 type Address = {
@@ -61,6 +74,11 @@ type State = {
     orderregels?: Array<Record<string, FieldMeta>>;
   };
   needs_review_fields?: string[];
+  ship_to_kandidaten?: ShipToKandidaat[];
+  ship_to_gekozen?: string | null;
+  mixprijzen_actief?: boolean;
+  europallet_regel?: EuropalletRegel | null;
+  incoming_document_path?: string | null;
 };
 
 export function OrderReview({ order, items }: Props) {
@@ -165,6 +183,14 @@ export function OrderReview({ order, items }: Props) {
             emailBody={initialState.email_body ?? ""}
             bijlagen={initialState.bijlagen || []}
           />
+
+          <div className="mt-3">
+            <IncomingDocumentPanel
+              orderId={order.id}
+              incomingPath={initialState.incoming_document_path ?? null}
+              onChanged={refresh}
+            />
+          </div>
         </section>
 
         {/* COL 2 — Extract + Klantkaart (editable) */}
@@ -172,6 +198,17 @@ export function OrderReview({ order, items }: Props) {
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[var(--kwabo-navy)]">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--kwabo-gold)]" /> Extract + Klantkaart
           </h2>
+
+          {/* Ship-to picker (T11) — only renders when state has candidates */}
+          <div className="mb-3">
+            <ShipToPicker
+              orderId={order.id}
+              kandidaten={initialState.ship_to_kandidaten || []}
+              gekozen={initialState.ship_to_gekozen ?? null}
+              needsReviewFields={missing}
+              onChanged={refresh}
+            />
+          </div>
 
           {/* Klant */}
           <div className="mb-4 rounded-lg border border-[var(--kwabo-border)] bg-slate-50 p-3">
@@ -270,6 +307,31 @@ export function OrderReview({ order, items }: Props) {
               items={items}
               onPatch={patch}
             />
+            {/* Mix-UOM badges — appear next to lines when mixprijzen is active */}
+            {initialState.mixprijzen_actief && regels.length > 0 && (
+              <div
+                className="mt-2 flex flex-wrap items-center gap-2"
+                data-testid="mix-badges-row"
+              >
+                <span className="text-[11px] text-[var(--kwabo-muted)]">
+                  Mixprijzen actief:
+                </span>
+                {regels.map((r, i) => (
+                  <MixprijzenBadge
+                    key={i}
+                    orderId={order.id}
+                    regel={r}
+                    idx={i}
+                    onChanged={refresh}
+                  />
+                ))}
+              </div>
+            )}
+            <EuropalletEditor
+              orderId={order.id}
+              regel={initialState.europallet_regel ?? null}
+              onChanged={refresh}
+            />
           </div>
 
           <FieldInput
@@ -328,10 +390,9 @@ export function OrderReview({ order, items }: Props) {
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[var(--kwabo-navy)]">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--kwabo-gold)]" /> Navision request
           </h2>
-          <NavisionPreview
+          <NavOperationsPreview
             orderId={order.id}
             refreshKey={previewKey}
-            orderState={initialState as unknown as Record<string, unknown>}
           />
         </section>
       </div>
