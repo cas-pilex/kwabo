@@ -25,6 +25,8 @@ from kwabo.integrations.nav_operations import (
     StepwiseResult,
     _assert_op_invariants,
     _diff_autofilled,
+    _strip_marker_keys,
+    _substitute_body_values,
     _substitute_path,
 )
 
@@ -198,6 +200,7 @@ class MockNavisionClient:
         sales_order_id: str = ""
         sales_order_number: str = ""
         last_line_id: str = ""
+        last_incoming_doc_id: str = ""
 
         for idx, op in enumerate(operations):
             method = op["op"]
@@ -228,7 +231,7 @@ class MockNavisionClient:
                 else sales_order_id
             )
             try:
-                path = _substitute_path(raw_path, substitution_id)
+                path = _substitute_path(raw_path, substitution_id, last_incoming_doc_id)
             except ValueError as exc:
                 results.append({
                     "operation": op,
@@ -262,15 +265,37 @@ class MockNavisionClient:
                         "nav_autofilled": autofilled_union,
                     }
 
+            # Resolve placeholder body values + strip composer-side marker keys
+            # (`_attachment_path`, etc.) before handing to the in-memory router.
+            try:
+                resolved_body = _substitute_body_values(body, last_incoming_doc_id)
+            except ValueError as exc:
+                results.append({
+                    "operation": op,
+                    "status": 0,
+                    "response_body": {},
+                    "autofilled": {},
+                    "error": str(exc),
+                })
+                return {
+                    "sales_order_id": sales_order_id,
+                    "sales_order_number": sales_order_number,
+                    "operation_results": results,
+                    "nav_autofilled": autofilled_union,
+                }
+            wire_body = _strip_marker_keys(resolved_body)
+
             try:
                 if method == "POST":
-                    server, status = self._apply_post(path, body)
+                    server, status = self._apply_post(path, wire_body, body)
                     if path == "/salesOrders":
                         sales_order_id = server["id"]
                         sales_order_number = server["number"]
                     elif path.endswith("/salesOrderLines"):
                         last_line_id = server["id"]
-                    autofilled = _diff_autofilled(body, server)
+                    elif path == "/incomingDocuments":
+                        last_incoming_doc_id = server["id"]
+                    autofilled = _diff_autofilled(wire_body, server)
                     results.append({
                         "operation": op,
                         "status": status,
@@ -279,10 +304,10 @@ class MockNavisionClient:
                     })
                     autofilled_union.update(autofilled)
                 else:  # PATCH
-                    server = self._apply_patch(path.lstrip("/"), body)
+                    server = self._apply_patch(path.lstrip("/"), wire_body)
                     patch_autofilled: dict = {}
                     if op.get("expects"):
-                        patch_autofilled = _diff_autofilled(body, server)
+                        patch_autofilled = _diff_autofilled(wire_body, server)
                     results.append({
                         "operation": op,
                         "status": 200,
@@ -321,14 +346,69 @@ class MockNavisionClient:
 
     # ---------- internal: per-endpoint trigger emulation ----------
 
-    def _apply_post(self, path: str, body: dict) -> tuple[dict, int]:
+    def _apply_post(
+        self, path: str, body: dict, raw_body: dict | None = None
+    ) -> tuple[dict, int]:
+        # `body` is what we'd send to NAV (markers stripped, placeholders
+        # resolved). `raw_body` retains composer-side markers like
+        # `_attachment_path` so endpoints that need them (attachment upload)
+        # can read them. For ordinary endpoints raw_body is unused.
+        raw_body = raw_body if raw_body is not None else body
         if path == "/salesOrders":
             return self._post_sales_order(body), 201
         if path.endswith("/salesOrderLines"):
             # path looks like /salesOrders({id})/salesOrderLines
             order_id = _extract_id(path, "salesOrders")
             return self._post_sales_order_line(order_id, body), 201
+        if path == "/incomingDocuments":
+            return self._post_incoming_document(body), 201
+        if path.endswith("/attachments") and "/incomingDocuments(" in path:
+            doc_id = _extract_id(path, "incomingDocuments")
+            return self._post_incoming_document_attachment(doc_id, body, raw_body), 201
         raise ValueError(f"mock POST not implemented for path {path!r}")
+
+    def _post_incoming_document(self, body: dict) -> dict:
+        """In-memory mirror of `create_incoming_document` for the stepwise path."""
+        doc_id = str(uuid.uuid4())
+        rec = {
+            "id": doc_id,
+            "description": body.get("description", ""),
+            "vendorName": body.get("vendorName", ""),
+            "attachments": [],
+        }
+        self._incoming_documents[doc_id] = rec
+        return rec
+
+    def _post_incoming_document_attachment(
+        self, doc_id: str, body: dict, raw_body: dict
+    ) -> dict:
+        """Attach a file to an incoming document via the stepwise path.
+
+        The composer hides the file path in `_attachment_path` (a marker
+        key stripped before the wire body reaches NAV). When that marker
+        is present we read the file from disk; otherwise we fall back to
+        the explicit `content_base64` field if the caller has already
+        encoded the bytes.
+        """
+        doc = self._incoming_documents.get(doc_id)
+        if doc is None:
+            raise ValueError(f"unknown incoming document {doc_id!r}")
+        filename = body.get("fileName", "")
+        attachment_path = raw_body.get("_attachment_path")
+        if attachment_path:
+            content_bytes = Path(attachment_path).read_bytes()
+        elif body.get("content_base64"):
+            content_bytes = base64.b64decode(body["content_base64"])
+        else:
+            content_bytes = b""
+        attachment = {
+            "id": str(uuid.uuid4()),
+            "fileName": filename,
+            "content": base64.b64encode(content_bytes).decode("ascii"),
+            "status": 201,
+        }
+        doc["attachments"].append(attachment)
+        return attachment
 
     def _post_sales_order(self, body: dict) -> dict:
         cust_no = body["customerNumber"]

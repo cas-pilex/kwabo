@@ -82,56 +82,130 @@ class StepwiseResult(TypedDict):
 # without forcing a base class on either.
 
 _ID_PLACEHOLDER = re.compile(r"\{id\}")
+_INCOMING_DOC_ID_PLACEHOLDER = re.compile(r"\{incoming_document_id\}")
+
+
+# Body-key convention for the stepwise clients:
+# Keys whose name begins with an underscore are "markers" — directives the
+# composer leaves in the body for the stepwise client to interpret (e.g.
+# `_attachment_path` in an /attachments POST tells the client to read the
+# named file from disk and substitute it for the actual upload payload).
+# These keys are NEVER sent to NAV; both the mock and real clients strip
+# them before transport, and the per-op invariant checks below ignore them
+# entirely. This mirrors how the mock already strips `_customer_mixprijzen`
+# / `_item_mixprijzen` flags from response bodies.
+def _public_keys(body: dict) -> list[str]:
+    return [k for k in body.keys() if not k.startswith("_")]
 
 
 def _assert_op_invariants(idx: int, op: NavOperation) -> None:
     """Strict per-operation contract checks. Raises ValueError on violation.
 
-    Enforced rules:
+    Enforced rules (counts ignore keys whose name begins with `_`):
       * method must be POST or PATCH
       * path must start with '/'
       * POST /salesOrders body must contain exactly {'customerNumber'}
       * POST .../salesOrderLines body must contain exactly
         {'lineType', 'itemNumber'}
-      * PATCH body must contain exactly one key
+      * PATCH body must contain exactly one (non-underscore) key
     """
     method = op["op"]
     raw_path = op["path"]
     body = op.get("body") or {}
+    public_keys = _public_keys(body)
     if method not in ("POST", "PATCH"):
         raise ValueError(f"op[{idx}]: unsupported method {method!r}")
     if not raw_path.startswith("/"):
         raise ValueError(f"op[{idx}]: path must start with '/', got {raw_path!r}")
     if method == "POST":
         if raw_path == "/salesOrders":
-            if list(body.keys()) != ["customerNumber"]:
+            if public_keys != ["customerNumber"]:
                 raise ValueError(
                     f"op[{idx}]: POST /salesOrders body must contain exactly "
-                    f"'customerNumber'; got {sorted(body)}"
+                    f"'customerNumber'; got {sorted(public_keys)}"
                 )
         elif raw_path.endswith("/salesOrderLines"):
             allowed = {"lineType", "itemNumber"}
-            if set(body.keys()) != allowed:
+            if set(public_keys) != allowed:
                 raise ValueError(
                     f"op[{idx}]: POST {raw_path} body must contain exactly "
-                    f"{sorted(allowed)}; got {sorted(body)}"
+                    f"{sorted(allowed)}; got {sorted(public_keys)}"
                 )
     elif method == "PATCH":
-        if len(body) != 1:
+        if len(public_keys) != 1:
             raise ValueError(
-                f"op[{idx}]: PATCH body must contain exactly one key; got {sorted(body)}"
+                f"op[{idx}]: PATCH body must contain exactly one key; got {sorted(public_keys)}"
             )
 
 
-def _substitute_path(path: str, current_id: str) -> str:
-    """Replace `{id}` in `path` with `current_id`. Raises if no parent exists."""
-    if "{id}" not in path:
-        return path
-    if not current_id:
-        raise ValueError(
-            f"path {path!r} contains {{id}} but no parent id has been created yet"
-        )
-    return _ID_PLACEHOLDER.sub(current_id, path)
+def _substitute_path(
+    path: str,
+    current_id: str,
+    incoming_document_id: str = "",
+) -> str:
+    """Replace path placeholders. Raises if a required parent is missing.
+
+    Supported placeholders:
+      * `{id}` — substituted with `current_id`. Caller decides whether that
+        is the most-recently-POSTed sales-order id or sales-order-line id
+        based on the path being executed.
+      * `{incoming_document_id}` — substituted with the id captured from the
+        most-recently-POSTed `/incomingDocuments` response. Only the
+        attachment-upload step needs this; if the placeholder appears but
+        no incoming-document POST has run we raise ValueError, same as `{id}`.
+    """
+    out = path
+    if "{id}" in out:
+        if not current_id:
+            raise ValueError(
+                f"path {path!r} contains {{id}} but no parent id has been created yet"
+            )
+        out = _ID_PLACEHOLDER.sub(current_id, out)
+    if "{incoming_document_id}" in out:
+        if not incoming_document_id:
+            raise ValueError(
+                f"path {path!r} contains {{incoming_document_id}} but no "
+                f"/incomingDocuments POST has run yet"
+            )
+        out = _INCOMING_DOC_ID_PLACEHOLDER.sub(incoming_document_id, out)
+    return out
+
+
+def _substitute_body_values(body: dict, incoming_document_id: str = "") -> dict:
+    """Return a copy of `body` with placeholder string values resolved.
+
+    Today the only supported placeholder is the literal string
+    `"{incoming_document_id}"`, which is replaced with the id captured from
+    the most-recently-POSTed `/incomingDocuments` response. The composer
+    emits this for the `incomingDocumentNumber` PATCH because the id is
+    not known at compose time.
+
+    If the placeholder appears but no incoming-document POST has run, we
+    raise ValueError so the caller surfaces a clear error rather than
+    sending the literal placeholder over the wire.
+    """
+    out: dict = {}
+    for k, v in body.items():
+        if isinstance(v, str) and v == "{incoming_document_id}":
+            if not incoming_document_id:
+                raise ValueError(
+                    f"body field {k!r} contains {{incoming_document_id}} but no "
+                    f"/incomingDocuments POST has run yet"
+                )
+            out[k] = incoming_document_id
+        else:
+            out[k] = v
+    return out
+
+
+def _strip_marker_keys(body: dict) -> dict:
+    """Drop keys whose name begins with `_` (composer-side directives).
+
+    Marker keys travel with the operation so the stepwise client can act
+    on them (e.g. `_attachment_path` -> read file from disk) but they are
+    NEVER serialized to NAV.
+    """
+    return {k: v for k, v in body.items() if not k.startswith("_")}
 
 
 def _diff_autofilled(sent_body: dict, server_record: dict) -> dict:

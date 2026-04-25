@@ -40,6 +40,8 @@ from kwabo.integrations.nav_operations import (
     StepwiseResult,
     _assert_op_invariants,
     _diff_autofilled,
+    _strip_marker_keys,
+    _substitute_body_values,
     _substitute_path,
 )
 from kwabo.utils.logging import log
@@ -406,6 +408,7 @@ class RealNavisionClient:
         sales_order_id: str = ""
         sales_order_number: str = ""
         last_line_id: str = ""
+        last_incoming_doc_id: str = ""
 
         for idx, op in enumerate(operations):
             method = op["op"]
@@ -415,14 +418,14 @@ class RealNavisionClient:
             # ---- Invariant checks (per-op) -------------------------------
             _assert_op_invariants(idx, op)
 
-            # ---- {id} substitution ---------------------------------------
+            # ---- placeholder substitution (path) -------------------------
             substitution_id = (
                 last_line_id
                 if ("/salesOrderLines(" in raw_path or raw_path.startswith("/salesOrderLines"))
                 else sales_order_id
             )
             try:
-                path = _substitute_path(raw_path, substitution_id)
+                path = _substitute_path(raw_path, substitution_id, last_incoming_doc_id)
             except ValueError as exc:
                 results.append(
                     NavOpResult(
@@ -442,19 +445,84 @@ class RealNavisionClient:
 
             relative = path.lstrip("/")
 
+            # ---- placeholder substitution (body) + strip marker keys -----
+            # `_attachment_path` and similar composer-side directives never
+            # cross the wire — they're stripped here. `{incoming_document_id}`
+            # in body string values is resolved against the most-recently-POSTed
+            # /incomingDocuments response.
+            try:
+                resolved_body = _substitute_body_values(body, last_incoming_doc_id)
+            except ValueError as exc:
+                results.append(
+                    NavOpResult(
+                        operation=op,
+                        status=0,
+                        response_body={},
+                        autofilled={},
+                        error=str(exc),
+                    )
+                )
+                return StepwiseResult(
+                    sales_order_id=sales_order_id,
+                    sales_order_number=sales_order_number,
+                    operation_results=results,
+                    nav_autofilled=autofilled_union,
+                )
+            wire_body = _strip_marker_keys(resolved_body)
+
             # ---- Execute -------------------------------------------------
             try:
-                if method == "POST":
-                    server = await self._post(relative, body)
+                # Special case: /attachments POST — the composer left the file
+                # path in `_attachment_path`; we materialise it into the
+                # base64-encoded NAV upload via `attach_to_incoming_document`.
+                is_attachment_upload = (
+                    method == "POST"
+                    and relative.endswith("/attachments")
+                    and "/incomingDocuments(" in relative
+                )
+                if is_attachment_upload:
+                    # Extract the parent doc id from the substituted path.
+                    import re as _re
+                    m = _re.search(r"/incomingDocuments\(([^)]+)\)", relative)
+                    if not m:
+                        raise ValueError(f"could not parse incoming doc id from {relative!r}")
+                    doc_id = m.group(1)
+                    raw_attach_path = body.get("_attachment_path")
+                    filename = wire_body.get("fileName", "")
+                    if not raw_attach_path:
+                        raise ValueError(
+                            f"op[{idx}]: /attachments POST missing _attachment_path marker"
+                        )
+                    content_bytes = Path(raw_attach_path).read_bytes()
+                    server = await self.attach_to_incoming_document(
+                        doc_id, filename, content_bytes,
+                        wire_body.get("mediaType", "application/octet-stream"),
+                    )
                     status = 201
-                    # Track parent id for /salesOrders, line id for line POSTs.
+                    autofilled = _diff_autofilled(wire_body, server)
+                    results.append(
+                        NavOpResult(
+                            operation=op,
+                            status=status,
+                            response_body=server,
+                            autofilled=autofilled,
+                        )
+                    )
+                    autofilled_union.update(autofilled)
+                elif method == "POST":
+                    server = await self._post(relative, wire_body)
+                    status = 201
+                    # Track parent id for /salesOrders, line id for line POSTs,
+                    # and incoming-doc id for attachment-id substitution.
                     if relative == "salesOrders":
                         sales_order_id = server.get("id") or sales_order_id
                         sales_order_number = server.get("number") or sales_order_number
                     elif relative.endswith("/salesOrderLines"):
                         last_line_id = server.get("id") or last_line_id
+                    elif relative == "incomingDocuments":
+                        last_incoming_doc_id = server.get("id") or last_incoming_doc_id
                     # POSTs always get a re-GET via the response body itself.
-                    autofilled = _diff_autofilled(body, server)
+                    autofilled = _diff_autofilled(wire_body, server)
                     results.append(
                         NavOpResult(
                             operation=op,
@@ -467,7 +535,7 @@ class RealNavisionClient:
                 else:  # PATCH
                     # Single-field invariant is already enforced upstream by
                     # _assert_op_invariants; no need to re-check here.
-                    status, server = await self._patch(relative, body)
+                    status, server = await self._patch(relative, wire_body)
                     patch_autofilled: dict = {}
                     if op.get("expects"):
                         # Re-GET the parent resource to verify trigger results.
@@ -478,7 +546,7 @@ class RealNavisionClient:
                                 server = await self._get(relative)
                             except Exception:
                                 server = {}
-                        patch_autofilled = _diff_autofilled(body, server)
+                        patch_autofilled = _diff_autofilled(wire_body, server)
                     results.append(
                         NavOpResult(
                             operation=op,
