@@ -16,32 +16,52 @@ const ICON: Record<string, string> = {
 };
 
 const LABEL: Record<string, string> = {
-  pdf: "Uit PDF",
-  email_body: "Uit e-mail body",
-  email_header: "Uit e-mail header",
-  klantenkaart: "Uit klantkaart",
-  history: "Uit eerdere correctie",
+  pdf: "PDF",
+  email_body: "AI uit e-mail",
+  email_header: "E-mail header",
+  klantenkaart: "Klantkaart",
+  history: "Eerdere correctie",
   fuzzy: "AI fuzzy match",
-  manual: "Handmatig ingevoerd",
+  manual: "Handmatig",
   default: "Default",
-  missing: "Ontbreekt — vul aan",
-  navision: "Uit Navision-zoekopdracht",
+  missing: "ONTBREEKT",
+  navision: "Navision",
 };
 
-export function ProvenanceBadge({ meta, size = "sm" }: { meta?: FieldMeta; size?: "xs" | "sm" }) {
+const TONE: Record<string, string> = {
+  pdf: "bg-amber-50 text-amber-800 ring-amber-300",
+  email_body: "bg-amber-50 text-amber-800 ring-amber-300",
+  email_header: "bg-amber-50 text-amber-800 ring-amber-300",
+  fuzzy: "bg-amber-50 text-amber-800 ring-amber-300",
+  klantenkaart: "bg-emerald-50 text-emerald-800 ring-emerald-300",
+  history: "bg-violet-50 text-violet-800 ring-violet-300",
+  navision: "bg-emerald-50 text-emerald-800 ring-emerald-300",
+  manual: "bg-sky-50 text-sky-800 ring-sky-300",
+  default: "bg-slate-50 text-slate-700 ring-slate-200",
+  missing: "bg-rose-100 text-rose-900 ring-rose-300",
+};
+
+export function ProvenanceBadge({
+  meta,
+  size = "sm",
+  showLabel = false,
+}: {
+  meta?: FieldMeta;
+  size?: "xs" | "sm" | "md";
+  showLabel?: boolean;
+}) {
   if (!meta) return null;
-  const icon = ICON[meta.source] ?? "?";
-  const label = LABEL[meta.source] ?? meta.source;
+  const src = meta.needs_review ? "missing" : meta.source;
+  const icon = ICON[src] ?? "?";
+  const label = LABEL[src] ?? src;
   const conf = meta.confidence != null ? Math.round(meta.confidence * 100) : null;
-  const tone =
-    meta.needs_review
-      ? "bg-rose-50 text-rose-700 ring-rose-200"
-      : (conf ?? 100) >= 90
-        ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-        : (conf ?? 100) >= 70
-          ? "bg-amber-50 text-amber-700 ring-amber-200"
-          : "bg-slate-50 text-slate-700 ring-slate-200";
-  const sizeCls = size === "xs" ? "text-[10px] px-1 py-0" : "text-[11px] px-1.5 py-0.5";
+  const tone = TONE[src] ?? TONE.default;
+  const sizeCls =
+    size === "xs"
+      ? "text-[10px] px-1 py-0"
+      : size === "md"
+        ? "text-xs px-2 py-0.5 font-medium"
+        : "text-[11px] px-1.5 py-0.5";
   const title = `${label}${meta.source_detail ? ` — ${meta.source_detail}` : ""}${conf != null ? ` (conf ${conf}%)` : ""}`;
   return (
     <span
@@ -49,7 +69,8 @@ export function ProvenanceBadge({ meta, size = "sm" }: { meta?: FieldMeta; size?
       className={`inline-flex items-center gap-1 rounded ring-1 ring-inset ${sizeCls} ${tone}`}
     >
       <span aria-hidden>{icon}</span>
-      {conf != null && <span className="font-mono">{conf}%</span>}
+      {showLabel && <span>{label}</span>}
+      {conf != null && <span className="font-mono opacity-70">{conf}%</span>}
     </span>
   );
 }

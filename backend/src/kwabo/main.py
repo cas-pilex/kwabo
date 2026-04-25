@@ -11,6 +11,7 @@ from kwabo.api.audit import router as audit_router
 from kwabo.api.intake_trigger import router as intake_router
 from kwabo.api.klanten import router as klanten_router
 from kwabo.api.logs import router as logs_router
+from kwabo.api.mailbox import router as mailbox_router
 from kwabo.api.orders import router as orders_router
 from kwabo.api.preview import router as preview_router
 from kwabo.api.prijsafspraken import router as prijs_router
@@ -48,6 +49,7 @@ def create_app() -> FastAPI:
     app.include_router(audit_router)
     app.include_router(intake_router)
     app.include_router(logs_router)
+    app.include_router(mailbox_router)
     app.include_router(preview_router)
     app.include_router(prijs_router)
 

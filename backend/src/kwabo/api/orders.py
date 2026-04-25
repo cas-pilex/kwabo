@@ -1,13 +1,19 @@
 """Order review REST endpoints."""
 from __future__ import annotations
 
+import email
+import email.policy
+import io
 import json
+import mimetypes
+import zipfile
 from datetime import datetime
-
-from kwabo.utils import utcnow
+from pathlib import Path
 from typing import Optional
+from urllib.parse import quote
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import Response, StreamingResponse
 from sqlmodel import Session
 
 from kwabo.api.schemas import (
@@ -17,11 +23,79 @@ from kwabo.api.schemas import (
     PatchOrderRequest,
     RejectRequest,
 )
+from kwabo.config import settings
 from kwabo.db.repository import ArtikelRepo, OrderLogRepo
 from kwabo.db.session import engine
 from kwabo.graph.runner import finalize
+from kwabo.utils import utcnow
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
+
+
+def _find_eml_path(order_state: dict, email_id: str | None) -> Path | None:
+    """Locate the original .eml file for an order: check stored source_path, then scan inbox + processed."""
+    sp = order_state.get("source_path") if isinstance(order_state, dict) else None
+    if sp:
+        p = Path(sp)
+        if p.exists():
+            return p
+    for root in (settings.inbox_path, settings.processed_path):
+        if not root.exists():
+            continue
+        for candidate in root.glob("*.eml"):
+            try:
+                raw = candidate.read_bytes()
+            except OSError:
+                continue
+            if email_id and email_id in _short_hash(raw):
+                return candidate
+    return None
+
+
+def _short_hash(b: bytes) -> str:
+    import hashlib
+
+    return hashlib.sha256(b).hexdigest()[:16]
+
+
+def _extract_attachment_bytes(eml_path: Path, wanted_name: str) -> tuple[bytes, str] | None:
+    """Walk the .eml and return (bytes, content_type) matching `wanted_name`.
+
+    Handles direct attachments and files inside ZIP attachments (name "archive.zip:inner.pdf").
+    """
+    raw = eml_path.read_bytes()
+    msg = email.message_from_bytes(raw, policy=email.policy.default)
+
+    zip_outer = None
+    zip_inner = None
+    if ":" in wanted_name:
+        zip_outer, zip_inner = wanted_name.split(":", 1)
+
+    for part in msg.walk():
+        fname = part.get_filename()
+        if not fname:
+            continue
+        try:
+            content = part.get_payload(decode=True)
+        except Exception:  # noqa: BLE001
+            content = None
+        if not content:
+            continue
+
+        if zip_outer and fname == zip_outer and fname.lower().endswith(".zip"):
+            try:
+                with zipfile.ZipFile(io.BytesIO(content)) as zf:
+                    for zn in zf.namelist():
+                        if zn == zip_inner:
+                            inner_bytes = zf.read(zn)
+                            ctype, _ = mimetypes.guess_type(zn)
+                            return inner_bytes, ctype or "application/octet-stream"
+            except zipfile.BadZipFile:
+                return None
+        elif fname == wanted_name:
+            ctype = part.get_content_type() or "application/octet-stream"
+            return content, ctype
+    return None
 
 
 def _to_summary(row) -> OrderSummary:
@@ -196,6 +270,41 @@ def reject_order(order_id: int, body: RejectRequest) -> dict:
         s.add(row)
         s.commit()
         return {"ok": True}
+
+
+@router.get("/{order_id}/bijlagen")
+def download_attachment(
+    order_id: int,
+    naam: str = Query(..., description="Filename of the attachment to fetch"),
+    disposition: str = Query("inline", pattern="^(inline|attachment)$"),
+) -> Response:
+    with Session(engine) as s:
+        row = OrderLogRepo(s).get(order_id)
+        if not row:
+            raise HTTPException(404, "Order not found")
+        state = json.loads(row.order_state or "{}") if row.order_state else {}
+        email_id = row.email_id
+
+    eml = _find_eml_path(state, email_id)
+    if not eml:
+        raise HTTPException(
+            404,
+            "Originele .eml niet gevonden — bestand verwijderd uit inbox/processed?",
+        )
+
+    result = _extract_attachment_bytes(eml, naam)
+    if not result:
+        raise HTTPException(404, f"Bijlage '{naam}' niet gevonden in e-mail")
+
+    data, ctype = result
+    # Voor veilige Content-Disposition headers met non-ASCII filenames: RFC5987
+    display_name = naam.split(":")[-1] if ":" in naam else naam
+    disp = f'{disposition}; filename="{display_name}"; filename*=UTF-8\'\'{quote(display_name)}'
+    return Response(
+        content=data,
+        media_type=ctype,
+        headers={"Content-Disposition": disp, "Cache-Control": "no-cache"},
+    )
 
 
 def _save_corrections(session: Session, state: dict, corrections: dict) -> None:

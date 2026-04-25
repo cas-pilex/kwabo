@@ -63,6 +63,34 @@ class ItemOut(BaseModel):
     displayName: str
 
 
+class AliasOut(BaseModel):
+    id: int
+    klant_nr: str
+    email: str
+    label: Optional[str] = None
+
+
+class AliasIn(BaseModel):
+    email: str
+    label: Optional[str] = None
+
+
+class KlantDocumentOut(BaseModel):
+    id: int
+    klant_nr: str
+    filename: str
+    doc_type: str
+    mime_type: Optional[str] = None
+    size_bytes: int
+    notes: Optional[str] = None
+    created_at: datetime
+    text_preview: str  # first ~500 chars
+
+
+class KlantDocumentDetail(KlantDocumentOut):
+    text_content: str
+
+
 class ApproveRequest(BaseModel):
     corrections: Optional[dict[str, Any]] = None
     reviewer: Optional[str] = None

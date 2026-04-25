@@ -12,6 +12,7 @@ from kwabo.utils import utcnow
 from kwabo.db.models import (
     ArtikelMatchingHistory,
     Klantenkaart,
+    KlantEmailAlias,
     KlantenkaartArtikel,
     OrderLog,
     Prijsafspraak,
@@ -23,10 +24,56 @@ class KlantRepo:
         self.s = session
 
     def by_email(self, email: str) -> Optional[Klantenkaart]:
+        if not email:
+            return None
+        normalized = email.strip().lower()
         stmt = select(Klantenkaart).where(
-            (Klantenkaart.email == email) | (Klantenkaart.email_bestelling == email)
+            (Klantenkaart.email == normalized) | (Klantenkaart.email_bestelling == normalized)
         )
-        return self.s.exec(stmt).first()
+        hit = self.s.exec(stmt).first()
+        if hit:
+            return hit
+        alias = self.s.exec(
+            select(KlantEmailAlias).where(KlantEmailAlias.email == normalized)
+        ).first()
+        if alias:
+            return self.by_nav_nr(alias.klant_nr)
+        return None
+
+    def list_aliases(self, nav_klantnr: str) -> list[KlantEmailAlias]:
+        return list(
+            self.s.exec(
+                select(KlantEmailAlias).where(KlantEmailAlias.klant_nr == nav_klantnr)
+            ).all()
+        )
+
+    def add_alias(self, nav_klantnr: str, email: str, label: Optional[str] = None) -> KlantEmailAlias:
+        normalized = email.strip().lower()
+        existing = self.s.exec(
+            select(KlantEmailAlias).where(
+                (KlantEmailAlias.klant_nr == nav_klantnr)
+                & (KlantEmailAlias.email == normalized)
+            )
+        ).first()
+        if existing:
+            if label is not None:
+                existing.label = label
+                self.s.add(existing)
+                self.s.commit()
+            return existing
+        row = KlantEmailAlias(klant_nr=nav_klantnr, email=normalized, label=label)
+        self.s.add(row)
+        self.s.commit()
+        self.s.refresh(row)
+        return row
+
+    def delete_alias(self, alias_id: int) -> bool:
+        row = self.s.get(KlantEmailAlias, alias_id)
+        if not row:
+            return False
+        self.s.delete(row)
+        self.s.commit()
+        return True
 
     def by_nav_nr(self, nav_klantnr: str) -> Optional[Klantenkaart]:
         return self.s.exec(

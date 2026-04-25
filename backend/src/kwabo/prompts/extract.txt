@@ -14,6 +14,10 @@ CRUCIALE REGELS:
 - Afleverinstructies: "Lossen 7-15u", "afhaalorder", "pro-forma vooraf", statiegeld, private label noteringen.
 - Forwarded mails: gebruik de ORIGINELE afzender als klant-indicator, niet een Kwabo-medewerker.
 - Datums: formatteer als YYYY-MM-DD. Onbekend = null.
+- Statiegeld, emballage, kist-retour, pallet-statiegeld: maak hier EEN EXTRA orderregel voor met de juiste hoeveelheid en eenheid (bv. BMN kist statiegeld).
+- Multi-levering: als één inkoop-e-mail meerdere leverdatums bevat die duidelijk aparte leveringen zijn (bv. Bugel "April" én "Mei"), splits dit in meerdere order-objecten in de JSON-array.
+- Toevoeg-orders: als de mail een bestaand ordernummer vermeldt met een aanvulling ("doe er een pallet X bij"), extraheer de toevoeging gewoon als normale orderregels en noteer het bestaande ordernummer in `bestelnummer_klant` en de reden in `opmerkingen`.
+- Private-label aanduidingen (FÖRCH editie, Proshield, etc.): noteer in regel-opmerkingen + in `afleverinstructies` indien algemeen.
 
 Antwoord UITSLUITEND als pure JSON (geen code-fences, geen uitleg):
 {

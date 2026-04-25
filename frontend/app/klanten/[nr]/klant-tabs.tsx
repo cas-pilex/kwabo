@@ -2,9 +2,11 @@
 
 import { useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { AfzendersTab } from "@/components/afzenders-tab";
+import { DocumentenTab } from "@/components/documenten-tab";
 import { PrijsafsprakenTab } from "@/components/prijsafspraken-tab";
 
-type Tab = "algemeen" | "mappings" | "prijzen" | "import";
+type Tab = "algemeen" | "afzenders" | "mappings" | "prijzen" | "documenten" | "import";
 
 export function KlantTabs({
   nr,
@@ -50,8 +52,10 @@ export function KlantTabs({
     <div>
       <div className="flex gap-1 border-b border-[var(--kwabo-border)]">
         {tabBtn("algemeen", "Algemeen")}
+        {tabBtn("afzenders", "Afzenders / aliases")}
         {tabBtn("mappings", `Artikelmappings (${mappings.length})`)}
         {tabBtn("prijzen", "Prijsafspraken")}
+        {tabBtn("documenten", "Documenten")}
         {tabBtn("import", "Import Excel")}
       </div>
 
@@ -92,7 +96,17 @@ export function KlantTabs({
           </div>
         )}
 
+        {tab === "afzenders" && (
+          <AfzendersTab
+            klantNr={nr}
+            primaryEmail={klant.email}
+            primaryOrderEmail={klant.email_bestelling}
+          />
+        )}
+
         {tab === "prijzen" && <PrijsafsprakenTab klantNr={nr} />}
+
+        {tab === "documenten" && <DocumentenTab klantNr={nr} />}
 
         {tab === "import" && (
           <div className="space-y-3 text-sm">

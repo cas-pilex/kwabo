@@ -164,6 +164,64 @@ export const api = {
     req(`/api/orders/${id}/reject`, { method: "POST", body: JSON.stringify(body) }),
   listKlanten: () => req<Klant[]>("/api/klanten"),
   getKlant: (nr: string) => req<Klant>(`/api/klanten/${nr}`),
+  listAliases: (nr: string) =>
+    req<Array<{ id: number; klant_nr: string; email: string; label: string | null }>>(
+      `/api/klanten/${nr}/aliases`,
+    ),
+  addAlias: (nr: string, body: { email: string; label?: string | null }) =>
+    req<{ id: number; klant_nr: string; email: string; label: string | null }>(
+      `/api/klanten/${nr}/aliases`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  deleteAlias: (nr: string, aliasId: number) =>
+    req<{ ok: boolean }>(`/api/klanten/${nr}/aliases/${aliasId}`, { method: "DELETE" }),
+  listDocuments: (nr: string) =>
+    req<Array<{
+      id: number;
+      klant_nr: string;
+      filename: string;
+      doc_type: string;
+      mime_type: string | null;
+      size_bytes: number;
+      notes: string | null;
+      created_at: string;
+      text_preview: string;
+    }>>(`/api/klanten/${nr}/documenten`),
+  getDocument: (nr: string, docId: number) =>
+    req<{
+      id: number;
+      klant_nr: string;
+      filename: string;
+      doc_type: string;
+      mime_type: string | null;
+      size_bytes: number;
+      notes: string | null;
+      created_at: string;
+      text_preview: string;
+      text_content: string;
+    }>(`/api/klanten/${nr}/documenten/${docId}`),
+  uploadDocument: async (nr: string, file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`${API_BASE}/api/klanten/${nr}/documenten`, {
+      method: "POST",
+      body: fd,
+    });
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+    return res.json() as Promise<{
+      id: number;
+      klant_nr: string;
+      filename: string;
+      doc_type: string;
+      mime_type: string | null;
+      size_bytes: number;
+      notes: string | null;
+      created_at: string;
+      text_preview: string;
+    }>;
+  },
+  deleteDocument: (nr: string, docId: number) =>
+    req<{ ok: boolean }>(`/api/klanten/${nr}/documenten/${docId}`, { method: "DELETE" }),
   listMappings: (nr: string) =>
     req<Array<{ id: number; klant_nr: string; klant_artikelnr: string; kwabo_artikelnr: string; omschrijving: string | null }>>(
       `/api/klanten/${nr}/artikelen`
@@ -180,4 +238,39 @@ export const api = {
     req<{ email_id: string; log_id: number }>(`/api/intake/run-file?path=${encodeURIComponent(path)}`, {
       method: "POST",
     }),
+  attachmentUrl: (orderId: number, naam: string, disposition: "inline" | "attachment" = "inline") =>
+    `${API_BASE}/api/orders/${orderId}/bijlagen?naam=${encodeURIComponent(naam)}&disposition=${disposition}`,
+  mailboxStatus: () =>
+    req<{
+      mode: string;
+      connected: boolean;
+      state: string;
+      message: string;
+      inbox_dir: string | null;
+      inbox_pending: number;
+      last_error: string | null;
+      account_email?: string | null;
+      expires_at?: string | null;
+    }>("/api/mailbox/status"),
+  oauthConfig: () =>
+    req<{
+      configured: boolean;
+      tenant_id: string;
+      client_id: string;
+      has_secret: boolean;
+      redirect_uri: string;
+      scopes: string;
+    }>("/api/mailbox/oauth/config"),
+  saveOauthConfig: (body: { tenant_id: string; client_id: string; client_secret?: string; redirect_uri?: string }) =>
+    req<{
+      configured: boolean;
+      tenant_id: string;
+      client_id: string;
+      has_secret: boolean;
+      redirect_uri: string;
+      scopes: string;
+    }>("/api/mailbox/oauth/config", { method: "PUT", body: JSON.stringify(body) }),
+  oauthStartUrl: () => `${API_BASE}/api/mailbox/oauth/start`,
+  oauthDisconnect: () =>
+    req<{ ok: boolean }>("/api/mailbox/oauth/disconnect", { method: "POST" }),
 };

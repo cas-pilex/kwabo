@@ -141,16 +141,19 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             )}
             {shown.map((o) => {
               const dimNotOrder = o.status === "not_order";
+              const href = `/orders/${o.id}`;
+              const linkCellCls = "px-4 py-2 align-middle";
+              const cellInner = "block w-full h-full py-0.5";
               return (
-                <tr key={o.id} className={`transition hover:bg-slate-50 ${dimNotOrder ? "opacity-60" : ""}`}>
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-1.5">
-                      <Link
-                        className="font-semibold text-[var(--kwabo-navy)] underline-offset-2 hover:underline"
-                        href={`/orders/${o.id}`}
-                      >
-                        {o.id}
-                      </Link>
+                <tr
+                  key={o.id}
+                  className={`group cursor-pointer transition hover:bg-slate-100 ${dimNotOrder ? "opacity-60" : ""}`}
+                >
+                  <td className={linkCellCls}>
+                    <Link href={href} className={`${cellInner} flex items-center gap-1.5`}>
+                      <span className="font-semibold text-[var(--kwabo-navy)] underline-offset-2 group-hover:underline">
+                        #{o.id}
+                      </span>
                       {o.parent_log_id && (
                         <span
                           title={`Sub-order ${o.sub_order_index} van #${o.parent_log_id}`}
@@ -159,33 +162,57 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
                           sub·{o.sub_order_index}
                         </span>
                       )}
-                    </div>
+                    </Link>
                   </td>
-                  <td className="px-4 py-2 text-[var(--kwabo-muted)]">{o.email_from?.slice(0, 40)}</td>
-                  <td className="px-4 py-2">{o.email_subject?.slice(0, 50)}</td>
-                  <td className="px-4 py-2 font-mono text-xs">{o.klant_nr || <span className="text-slate-400">—</span>}</td>
-                  <td className="px-4 py-2"><ConfidencePill value={o.klant_match_confidence} /></td>
-                  <td className="px-4 py-2 text-right tabular-nums">{o.aantal_regels ?? 0}</td>
-                  <td className="px-4 py-2 text-right">
-                    {o.needs_review_count > 0 ? (
-                      <span className="inline-flex rounded bg-rose-50 px-1.5 py-0.5 text-xs font-medium text-rose-800 ring-1 ring-rose-200">
-                        {o.needs_review_count}
-                      </span>
-                    ) : (
-                      <span className="text-slate-400">—</span>
-                    )}
+                  <td className={`${linkCellCls} text-[var(--kwabo-muted)]`}>
+                    <Link href={href} className={cellInner}>{o.email_from?.slice(0, 40)}</Link>
                   </td>
-                  <td className="px-4 py-2 text-right">
-                    {o.warnings_count > 0 ? (
-                      <span className="inline-flex rounded bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-800 ring-1 ring-amber-200">
-                        {o.warnings_count}
-                      </span>
-                    ) : (
-                      <span className="text-slate-400">—</span>
-                    )}
+                  <td className={linkCellCls}>
+                    <Link href={href} className={cellInner}>{o.email_subject?.slice(0, 50)}</Link>
                   </td>
-                  <td className="px-4 py-2"><StatusBadge status={o.status} /></td>
-                  <td className="px-4 py-2 font-mono text-xs text-[var(--kwabo-muted)]">{o.navision_order_nr ?? ""}</td>
+                  <td className={`${linkCellCls} font-mono text-xs`}>
+                    <Link href={href} className={cellInner}>
+                      {o.klant_nr || <span className="text-slate-400">—</span>}
+                    </Link>
+                  </td>
+                  <td className={linkCellCls}>
+                    <Link href={href} className={cellInner}>
+                      <ConfidencePill value={o.klant_match_confidence} />
+                    </Link>
+                  </td>
+                  <td className={`${linkCellCls} text-right tabular-nums`}>
+                    <Link href={href} className={cellInner}>{o.aantal_regels ?? 0}</Link>
+                  </td>
+                  <td className={`${linkCellCls} text-right`}>
+                    <Link href={href} className={cellInner}>
+                      {o.needs_review_count > 0 ? (
+                        <span className="inline-flex rounded bg-rose-50 px-1.5 py-0.5 text-xs font-medium text-rose-800 ring-1 ring-rose-200">
+                          {o.needs_review_count}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </Link>
+                  </td>
+                  <td className={`${linkCellCls} text-right`}>
+                    <Link href={href} className={cellInner}>
+                      {o.warnings_count > 0 ? (
+                        <span className="inline-flex rounded bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-800 ring-1 ring-amber-200">
+                          {o.warnings_count}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </Link>
+                  </td>
+                  <td className={linkCellCls}>
+                    <Link href={href} className={cellInner}>
+                      <StatusBadge status={o.status} />
+                    </Link>
+                  </td>
+                  <td className={`${linkCellCls} font-mono text-xs text-[var(--kwabo-muted)]`}>
+                    <Link href={href} className={cellInner}>{o.navision_order_nr ?? ""}</Link>
+                  </td>
                 </tr>
               );
             })}

@@ -54,7 +54,7 @@ export const FieldInput = forwardRef<HTMLInputElement, Props>(function FieldInpu
         <label className="text-xs font-medium text-[var(--kwabo-muted)]" htmlFor={path}>
           {label}
         </label>
-        <ProvenanceBadge meta={meta} size="xs" />
+        <ProvenanceBadge meta={meta} size="xs" showLabel />
       </div>
       <input
         ref={ref}

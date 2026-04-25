@@ -4,9 +4,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api, type FieldMeta, type Item, type OrderDetail } from "@/lib/api";
+import { EmailSourceViewer } from "@/components/email-source-viewer";
+import { ExtractSummary } from "@/components/extract-summary";
 import { FieldInput } from "@/components/field-input";
 import { NavisionPreview } from "@/components/navision-preview";
 import { NeedsReviewBanner } from "@/components/needs-review-banner";
+import { OrderLinesTable } from "@/components/order-lines-table";
 import { ProvenanceBadge } from "@/components/provenance-badge";
 
 type Props = { order: OrderDetail; items: Item[] };
@@ -141,33 +144,27 @@ export function OrderReview({ order, items }: Props) {
         <NeedsReviewBanner fields={missing} forceArmed={forceArmed} onToggleForce={setForceArmed} />
       )}
 
+      {!isNotOrder && (
+        <ExtractSummary
+          emailFrom={order.email_from}
+          emailSubject={order.email_subject}
+          state={initialState}
+        />
+      )}
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        {/* COL 1 — E-mail & PDF */}
+        {/* COL 1 — E-mail & bijlagen */}
         <section className="lg:col-span-4 rounded-lg bg-white p-4 ring-1 ring-[var(--kwabo-border)]">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[var(--kwabo-navy)]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[var(--kwabo-gold)]" /> E-mail &amp; PDF
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--kwabo-gold)]" /> Bron: e-mail &amp; bijlagen ({(initialState.bijlagen || []).length})
           </h2>
-          <div className="text-xs text-[var(--kwabo-muted)]">
-            van <span className="font-medium text-[var(--kwabo-text)]">{order.email_from}</span>
-            <br />
-            {order.email_date}
-          </div>
-          <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded bg-slate-50 p-2 text-[11px] text-slate-800 ring-1 ring-slate-200">
-            {initialState.email_body || "(geen body)"}
-          </pre>
-          <div className="mt-3 space-y-2">
-            {(initialState.bijlagen || []).map((b, i) => (
-              <details key={i} className="rounded border border-[var(--kwabo-border)]" open={i === 0}>
-                <summary className="cursor-pointer bg-slate-50 px-2 py-1 text-xs">
-                  <span className="font-medium">{b.naam}</span>
-                  <span className="ml-2 rounded bg-slate-200 px-1 py-0.5 text-[10px] uppercase">{b.type}</span>
-                </summary>
-                <pre className="max-h-72 overflow-auto whitespace-pre-wrap p-2 text-[10px] leading-relaxed text-slate-700">
-                  {b.inhoud_tekst?.slice(0, 12000)}
-                </pre>
-              </details>
-            ))}
-          </div>
+          <EmailSourceViewer
+            orderId={order.id}
+            emailFrom={order.email_from}
+            emailDate={order.email_date}
+            emailBody={initialState.email_body ?? ""}
+            bijlagen={initialState.bijlagen || []}
+          />
         </section>
 
         {/* COL 2 — Extract + Klantkaart (editable) */}
@@ -267,88 +264,12 @@ export function OrderReview({ order, items }: Props) {
 
           {/* Regels */}
           <div className="mb-3">
-            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--kwabo-muted)]">
-              Orderregels ({regels.length})
-            </div>
-            <div className="space-y-2">
-              {regels.map((r, i) => {
-                const rm = regelsMeta[i] || {};
-                const matchedMeta = rm.artikelnummer_kwabo_matched as FieldMeta | undefined;
-                const prijsMeta = rm.prijs_per_eenheid as FieldMeta | undefined;
-                const validated = r.prijs_validated;
-                return (
-                  <div key={i} className="rounded border border-[var(--kwabo-border)] bg-white p-2">
-                    <div className="mb-1 flex items-center justify-between">
-                      <span className="text-xs font-semibold text-[var(--kwabo-navy)]">Regel {r.positie}</span>
-                      <ProvenanceBadge meta={matchedMeta} size="xs" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <FieldInput
-                        label="Klant artnr"
-                        path={`orderregels[${i}].artikelnummer_klant`}
-                        value={r.artikelnummer_klant ?? ""}
-                        meta={(rm.artikelnummer_klant as FieldMeta) || undefined}
-                        onChange={(v) => patch(`orderregels[${i}].artikelnummer_klant`, v)}
-                        monospace
-                      />
-                      <FieldInput
-                        label="Kwabo artnr (matched)"
-                        path={`orderregels[${i}].artikelnummer_kwabo_matched`}
-                        value={r.artikelnummer_kwabo_matched ?? ""}
-                        meta={matchedMeta}
-                        list="kwabo-items"
-                        onChange={(v) => patch(`orderregels[${i}].artikelnummer_kwabo_matched`, v)}
-                        monospace
-                      />
-                      <div className="col-span-2">
-                        <FieldInput
-                          label="Omschrijving"
-                          path={`orderregels[${i}].omschrijving`}
-                          value={r.omschrijving ?? ""}
-                          meta={(rm.omschrijving as FieldMeta) || undefined}
-                          onChange={(v) => patch(`orderregels[${i}].omschrijving`, v)}
-                        />
-                      </div>
-                      <FieldInput
-                        label="Hoeveelheid"
-                        type="number"
-                        path={`orderregels[${i}].hoeveelheid`}
-                        value={r.hoeveelheid ?? ""}
-                        meta={(rm.hoeveelheid as FieldMeta) || undefined}
-                        onChange={(v) => patch(`orderregels[${i}].hoeveelheid`, v)}
-                      />
-                      <FieldInput
-                        label="Eenheid"
-                        path={`orderregels[${i}].eenheid`}
-                        value={r.eenheid ?? ""}
-                        meta={(rm.eenheid as FieldMeta) || undefined}
-                        onChange={(v) => patch(`orderregels[${i}].eenheid`, v)}
-                      />
-                      <div>
-                        <FieldInput
-                          label="Prijs/eenheid"
-                          type="number"
-                          path={`orderregels[${i}].prijs_per_eenheid`}
-                          value={r.prijs_per_eenheid ?? ""}
-                          meta={prijsMeta}
-                          onChange={(v) => patch(`orderregels[${i}].prijs_per_eenheid`, v)}
-                        />
-                        <div className="mt-1 text-[10px]">
-                          {validated === true && <span className="text-emerald-700">✓ Valide</span>}
-                          {validated === false && <span className="text-rose-700">✗ {prijsMeta?.source_detail || "afwijking"}</span>}
-                          {validated === null && <span className="text-slate-400">— geen afspraak</span>}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <datalist id="kwabo-items">
-              {items.map((it) => (
-                <option key={it.number} value={it.number}>{it.displayName}</option>
-              ))}
-            </datalist>
+            <OrderLinesTable
+              regels={regels as unknown as import("@/components/order-lines-table").Regel[]}
+              regelsMeta={regelsMeta}
+              items={items}
+              onPatch={patch}
+            />
           </div>
 
           <FieldInput
@@ -407,7 +328,11 @@ export function OrderReview({ order, items }: Props) {
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[var(--kwabo-navy)]">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--kwabo-gold)]" /> Navision request
           </h2>
-          <NavisionPreview orderId={order.id} refreshKey={previewKey} />
+          <NavisionPreview
+            orderId={order.id}
+            refreshKey={previewKey}
+            orderState={initialState as unknown as Record<string, unknown>}
+          />
         </section>
       </div>
 

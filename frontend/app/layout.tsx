@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { MailboxNavItem } from "@/components/mailbox-nav-item";
 import { Toaster } from "@/components/toaster";
 import "./globals.css";
 
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <nav className="flex gap-6 text-sm font-medium text-white/80">
               <Link href="/" className="hover:text-white">Queue</Link>
               <Link href="/klanten" className="hover:text-white">Klanten</Link>
+              <MailboxNavItem />
               <Link href="/audit" className="hover:text-white">Audit</Link>
               <Link href="/logs" className="hover:text-white">Logs</Link>
             </nav>

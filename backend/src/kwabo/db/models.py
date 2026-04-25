@@ -28,6 +28,60 @@ class Klantenkaart(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=utcnow)
 
 
+class KlantEmailAlias(SQLModel, table=True):
+    __tablename__ = "klant_email_aliases"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    klant_nr: str = Field(index=True)
+    email: str = Field(index=True)
+    label: Optional[str] = None  # e.g. "Vestiging Utrecht", "Inkoop algemeen"
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class KlantDocument(SQLModel, table=True):
+    __tablename__ = "klant_documenten"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    klant_nr: str = Field(index=True)
+    filename: str
+    doc_type: str  # pdf | excel | docx | csv | txt | other
+    mime_type: Optional[str] = None
+    size_bytes: int = 0
+    text_content: str = ""  # geëxtraheerde platte tekst
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class OAuthConfig(SQLModel, table=True):
+    """Singleton (id=1) config for Microsoft Graph OAuth2."""
+
+    __tablename__ = "oauth_config"
+
+    id: Optional[int] = Field(default=1, primary_key=True)
+    provider: str = "microsoft"  # microsoft | google (future)
+    tenant_id: str = ""
+    client_id: str = ""
+    client_secret: str = ""
+    redirect_uri: str = "http://localhost:8000/api/mailbox/oauth/callback"
+    scopes: str = "offline_access Mail.Read User.Read"
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
+class OAuthToken(SQLModel, table=True):
+    """Stored tokens for the Graph mailbox. Singleton (id=1) for now."""
+
+    __tablename__ = "oauth_tokens"
+
+    id: Optional[int] = Field(default=1, primary_key=True)
+    provider: str = "microsoft"
+    account_email: Optional[str] = None
+    access_token: str = ""
+    refresh_token: str = ""
+    expires_at: Optional[datetime] = None
+    scope: Optional[str] = None
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
 class KlantenkaartArtikel(SQLModel, table=True):
     __tablename__ = "klantenkaart_artikelen"
 
