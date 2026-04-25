@@ -211,6 +211,8 @@ class NavMasterSync:
                         mixprijzen=mixprijzen,
                     )
                 )
+        # Direct session.add() for both insert and update paths above — no repo
+        # involvement, so this is the only commit and is required.
         self.session.commit()
         self._commit_state("customers")
         return len(records)
@@ -274,6 +276,10 @@ class NavMasterSync:
                     )
                 )
                 total += 1
+        # ShipToRepo.upsert() commits internally per row; this trailing commit
+        # is a no-op safety net so all five sync_* methods share the same
+        # explicit-commit shape.
+        self.session.commit()
         self._commit_state("ship_to")
         return total
 
@@ -304,13 +310,15 @@ class NavMasterSync:
                     mixprijzen=_nav_bool(
                         r, "mixprijzen", "kwaboMixprijzen", "isMixItem"
                     ),
-                    palletable=(
-                        bool(r["palletable"])
-                        if r.get("palletable") is not None
-                        else None
-                    ),
+                    # NAV returns "true"/"false" as strings — both are truthy
+                    # in Python str-cast land. Route through _nav_bool for
+                    # the same handling as mixprijzen.
+                    palletable=_nav_bool(r, "palletable", "kwaboPalletable"),
                 )
             )
+        # ArtikelkaartRepo.upsert() commits internally per row; this trailing
+        # commit keeps the same explicit-commit shape as the other domains.
+        self.session.commit()
         self._commit_state("items")
         return len(records)
 
@@ -367,6 +375,8 @@ class NavMasterSync:
                     existing.is_mix_uom = _is_mix_uom(u)
                     self.session.add(existing)
                 total += 1
+        # Direct session.add() for both insert and update paths above — no repo
+        # involvement, so this is the only commit and is required.
         self.session.commit()
         self._commit_state("item_uoms")
         return total
@@ -413,6 +423,9 @@ class NavMasterSync:
                 )
             )
             total += 1
+        # KruisverwijzingRepo.upsert() commits internally per row; this trailing
+        # commit keeps the same explicit-commit shape as the other domains.
+        self.session.commit()
         self._commit_state("cross_ref")
         return total
 
@@ -428,6 +441,7 @@ async def run_sync(
     full: bool,
     dry_run: bool,
     domains: set[str],
+    on_domain_done: Optional[Callable[[str], None]] = None,
 ) -> dict[str, int]:
     syncer = NavMasterSync(
         client=client, session=session, state=state, full=full, dry_run=dry_run
@@ -445,6 +459,8 @@ async def run_sync(
             continue
         counts[d] = await table[d]()
         log.info("nav_sync_domain_done", domain=d, count=counts[d], dry_run=dry_run)
+        if on_domain_done is not None:
+            on_domain_done(d)
     return counts
 
 
@@ -511,6 +527,14 @@ async def main(argv: list[str] | None = None) -> int:
     init_db()
     state = load_state()
 
+    # Persist per-domain cursor advances to disk as soon as each domain
+    # finishes — so a later domain raising doesn't lose earlier progress.
+    # In dry-run we skip disk writes entirely.
+    def _persist(_domain: str) -> None:
+        if dry_run:
+            return
+        save_state(state)
+
     client = RealNavisionClient()
     try:
         with Session(engine) as session:
@@ -521,6 +545,7 @@ async def main(argv: list[str] | None = None) -> int:
                 full=full,
                 dry_run=dry_run,
                 domains=domains,
+                on_domain_done=_persist,
             )
     finally:
         await client.aclose()

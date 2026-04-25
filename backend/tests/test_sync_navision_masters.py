@@ -385,7 +385,9 @@ async def test_items_and_uoms_sync(session, nav_client):
     assert by_nr["1515155"].mixprijzen is True
     assert by_nr["1515155"].palletable is True
     assert by_nr["228321"].mixprijzen is False
-    assert by_nr["228321"].palletable is None
+    # NAV emitted palletable=None — _nav_bool maps that to False (same
+    # missing-/null-value behaviour as mixprijzen).
+    assert by_nr["228321"].palletable is False
 
     n_uoms = await syncer.sync_item_uoms()
     assert n_uoms == 4  # 3 + 1
@@ -398,6 +400,48 @@ async def test_items_and_uoms_sync(session, nav_client):
     assert by_code["MIX-DOOS"].qty_per_base == 12.0
     assert by_code["ROL"].is_mix_uom is False
     assert by_code["PAL"].is_mix_uom is False
+
+
+async def test_items_palletable_string_false_becomes_python_false(
+    session, nav_client, fake_server
+):
+    """Regression: NAV emits booleans as the strings "true"/"false". A naive
+    bool() cast made "false" truthy. We must funnel palletable through
+    _nav_bool just like mixprijzen, so the string "false" lands as Python
+    False (not True) in the artikelkaarten mirror."""
+    fake_server.items[:] = [
+        {
+            "id": "item-str-false",
+            "number": "STR-FALSE",
+            "displayName": "String-false palletable",
+            "baseUnitOfMeasureCode": "STUK",
+            "mixprijzen": "false",
+            "palletable": "false",
+            "lastModifiedDateTime": "2024-08-01T00:00:00Z",
+        },
+        {
+            "id": "item-str-true",
+            "number": "STR-TRUE",
+            "displayName": "String-true palletable",
+            "baseUnitOfMeasureCode": "STUK",
+            "mixprijzen": "true",
+            "palletable": "true",
+            "lastModifiedDateTime": "2024-08-01T00:00:00Z",
+        },
+    ]
+    syncer = _make_syncer(nav_client, session, full=True)
+    n = await syncer.sync_items()
+    assert n == 2
+
+    by_nr = {
+        a.kwabo_artikelnr: a for a in session.exec(select(Artikelkaart)).all()
+    }
+    # The bug: bool("false") is True. With _nav_bool we land on False.
+    assert by_nr["STR-FALSE"].palletable is False
+    assert by_nr["STR-FALSE"].mixprijzen is False
+    # Sanity-check the truthy direction also still works.
+    assert by_nr["STR-TRUE"].palletable is True
+    assert by_nr["STR-TRUE"].mixprijzen is True
 
 
 async def test_cross_ref_sync(session, nav_client):
@@ -525,13 +569,10 @@ async def test_idempotent_double_run(session, nav_client):
 
 def test_main_exits_1_when_navision_mode_not_real(monkeypatch, capsys):
     # conftest sets NAVISION_MODE=mock — but settings has already been read.
-    # Reload settings module then the script's reference to it.
-    import importlib
-
+    # Patch the cached settings then ensure the script sees the patched value.
     import kwabo.config as cfg
 
     monkeypatch.setattr(cfg.settings, "navision_mode", "mock")
-    importlib.reload(sync_mod) if False else None  # no-op: keep reference
     sync_mod.settings = cfg.settings  # ensure script sees the patched value
 
     import asyncio as _asyncio
