@@ -309,10 +309,11 @@ class ArtikelkaartRepo:
     def upsert(self, record: Artikelkaart) -> Artikelkaart:
         existing = self.get(record.kwabo_artikelnr)
         if existing:
+            # NAV-mirror semantics: unconditional overwrite. If NAV reports
+            # False / None, that is the new truth — do NOT preserve prior
+            # values the way KlantRepo does for user-edited fields.
             for field in ("naam", "basis_eenheid", "mixprijzen", "palletable"):
-                val = getattr(record, field)
-                if val is not None or field == "palletable":
-                    setattr(existing, field, val)
+                setattr(existing, field, getattr(record, field))
             existing.updated_at = utcnow()
             self.s.add(existing)
             self.s.commit()
