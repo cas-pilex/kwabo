@@ -16,6 +16,7 @@ from kwabo.graph.nodes.intake import intake_node
 from kwabo.graph.nodes.match_articles import match_articles_node
 from kwabo.graph.nodes.match_customer import match_customer_node
 from kwabo.graph.nodes.push_navision import push_navision_node, send_confirmation_node
+from kwabo.graph.nodes.select_ship_to import select_ship_to_node
 from kwabo.graph.nodes.validate_prices import validate_prices_node
 from kwabo.graph.state import OrderState
 
@@ -30,6 +31,7 @@ def build_ingest_graph():
     wf.add_node("classify", classify_node)
     wf.add_node("extract", extract_node)
     wf.add_node("match_customer", match_customer_node)
+    wf.add_node("select_ship_to", select_ship_to_node)
     wf.add_node("match_articles", match_articles_node)
     wf.add_node("validate_prices", validate_prices_node)
     wf.add_node("compose", compose_order_node)
@@ -38,7 +40,8 @@ def build_ingest_graph():
     wf.add_edge("intake", "classify")
     wf.add_conditional_edges("classify", _route_after_classify, {"extract": "extract", "compose": "compose"})
     wf.add_edge("extract", "match_customer")
-    wf.add_edge("match_customer", "match_articles")
+    wf.add_edge("match_customer", "select_ship_to")
+    wf.add_edge("select_ship_to", "match_articles")
     wf.add_edge("match_articles", "validate_prices")
     wf.add_edge("validate_prices", "compose")
     wf.add_edge("compose", END)
@@ -54,11 +57,13 @@ def build_sub_order_graph():
     """
     wf = StateGraph(OrderState)
     wf.add_node("match_customer", match_customer_node)
+    wf.add_node("select_ship_to", select_ship_to_node)
     wf.add_node("match_articles", match_articles_node)
     wf.add_node("validate_prices", validate_prices_node)
     wf.add_node("compose", compose_order_node)
     wf.set_entry_point("match_customer")
-    wf.add_edge("match_customer", "match_articles")
+    wf.add_edge("match_customer", "select_ship_to")
+    wf.add_edge("select_ship_to", "match_articles")
     wf.add_edge("match_articles", "validate_prices")
     wf.add_edge("validate_prices", "compose")
     wf.add_edge("compose", END)
