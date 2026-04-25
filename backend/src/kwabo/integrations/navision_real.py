@@ -27,7 +27,6 @@ import asyncio
 import base64
 import json
 import os
-import re
 import time
 import uuid
 from pathlib import Path
@@ -39,6 +38,9 @@ from kwabo.integrations.nav_operations import (
     NavOperation,
     NavOpResult,
     StepwiseResult,
+    _assert_op_invariants,
+    _diff_autofilled,
+    _substitute_path,
 )
 from kwabo.utils.logging import log
 
@@ -374,29 +376,6 @@ class RealNavisionClient:
 
     # ---------- stepwise sales-order creation (the core T3 deliverable) ----------
 
-    _ID_PLACEHOLDER = re.compile(r"\{id\}")
-
-    @staticmethod
-    def _diff_autofilled(sent_body: dict, server_record: dict) -> dict:
-        """Return the fields NAV populated for us via triggers.
-
-        Excludes any field we explicitly sent in the request body (those are
-        echoed back by NAV but did not come from a trigger).
-        """
-        if not isinstance(server_record, dict):
-            return {}
-        filled: dict = {}
-        for key, value in server_record.items():
-            if key in sent_body:
-                continue
-            if key.startswith("@odata"):
-                continue
-            if value in (None, "", 0, False, []):
-                # Skip empty defaults — they're noise rather than autofill.
-                continue
-            filled[key] = value
-        return filled
-
     async def create_sales_order_stepwise(
         self, operations: list[NavOperation]
     ) -> StepwiseResult:
@@ -434,7 +413,7 @@ class RealNavisionClient:
             body = op.get("body") or {}
 
             # ---- Invariant checks (per-op) -------------------------------
-            self._assert_op_invariants(idx, op)
+            _assert_op_invariants(idx, op)
 
             # ---- {id} substitution ---------------------------------------
             substitution_id = (
@@ -443,7 +422,7 @@ class RealNavisionClient:
                 else sales_order_id
             )
             try:
-                path = self._substitute_path(raw_path, substitution_id)
+                path = _substitute_path(raw_path, substitution_id)
             except ValueError as exc:
                 results.append(
                     NavOpResult(
@@ -475,7 +454,7 @@ class RealNavisionClient:
                     elif relative.endswith("/salesOrderLines"):
                         last_line_id = server.get("id") or last_line_id
                     # POSTs always get a re-GET via the response body itself.
-                    autofilled = self._diff_autofilled(body, server)
+                    autofilled = _diff_autofilled(body, server)
                     results.append(
                         NavOpResult(
                             operation=op,
@@ -486,12 +465,10 @@ class RealNavisionClient:
                     )
                     autofilled_union.update(autofilled)
                 else:  # PATCH
-                    if len(body) != 1:
-                        raise ValueError(
-                            f"PATCH body must contain exactly one key; got {sorted(body)}"
-                        )
+                    # Single-field invariant is already enforced upstream by
+                    # _assert_op_invariants; no need to re-check here.
                     status, server = await self._patch(relative, body)
-                    autofilled: dict = {}
+                    patch_autofilled: dict = {}
                     if op.get("expects"):
                         # Re-GET the parent resource to verify trigger results.
                         # NAV's PATCH response often already includes the full
@@ -501,16 +478,16 @@ class RealNavisionClient:
                                 server = await self._get(relative)
                             except Exception:
                                 server = {}
-                        autofilled = self._diff_autofilled(body, server)
+                        patch_autofilled = _diff_autofilled(body, server)
                     results.append(
                         NavOpResult(
                             operation=op,
                             status=status,
                             response_body=server,
-                            autofilled=autofilled,
+                            autofilled=patch_autofilled,
                         )
                     )
-                    autofilled_union.update(autofilled)
+                    autofilled_union.update(patch_autofilled)
             except Exception as exc:
                 err_msg = self._format_http_error(exc)
                 results.append(
@@ -543,45 +520,6 @@ class RealNavisionClient:
             operation_results=results,
             nav_autofilled=autofilled_union,
         )
-
-    @staticmethod
-    def _assert_op_invariants(idx: int, op: NavOperation) -> None:
-        method = op["op"]
-        raw_path = op["path"]
-        body = op.get("body") or {}
-        if method not in ("POST", "PATCH"):
-            raise ValueError(f"op[{idx}]: unsupported method {method!r}")
-        if not raw_path.startswith("/"):
-            raise ValueError(f"op[{idx}]: path must start with '/', got {raw_path!r}")
-        if method == "POST":
-            if raw_path == "/salesOrders":
-                if list(body.keys()) != ["customerNumber"]:
-                    raise ValueError(
-                        f"op[{idx}]: POST /salesOrders body must contain exactly "
-                        f"'customerNumber'; got {sorted(body)}"
-                    )
-            elif raw_path.endswith("/salesOrderLines"):
-                allowed = {"lineType", "itemNumber"}
-                if set(body.keys()) != allowed:
-                    raise ValueError(
-                        f"op[{idx}]: POST {raw_path} body must contain exactly "
-                        f"{sorted(allowed)}; got {sorted(body)}"
-                    )
-        elif method == "PATCH":
-            if len(body) != 1:
-                raise ValueError(
-                    f"op[{idx}]: PATCH body must contain exactly one key; got {sorted(body)}"
-                )
-
-    @classmethod
-    def _substitute_path(cls, path: str, current_id: str) -> str:
-        if "{id}" not in path:
-            return path
-        if not current_id:
-            raise ValueError(
-                f"path {path!r} contains {{id}} but no parent id has been created yet"
-            )
-        return cls._ID_PLACEHOLDER.sub(current_id, path)
 
     @staticmethod
     def _format_http_error(exc: Exception) -> str:

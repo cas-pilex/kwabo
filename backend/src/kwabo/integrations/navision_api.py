@@ -3,15 +3,29 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 import uuid
 from pathlib import Path
 from typing import Callable, Optional, Protocol
 
 from kwabo.config import settings
+from kwabo.integrations.nav_mock_fixtures import (
+    MOCK_CUSTOMERS,
+    MOCK_ITEM_REFERENCES,
+    MOCK_ITEM_UOMS,
+    MOCK_ITEMS,
+    MOCK_MIX_DISCOUNT_FACTOR,
+    MOCK_MIX_THRESHOLD,
+    MOCK_PRICES,
+    MOCK_SHIP_TOS,
+)
 from kwabo.integrations.nav_operations import (
     NavOperation,
     NavOpResult,
     StepwiseResult,
+    _assert_op_invariants,
+    _diff_autofilled,
+    _substitute_path,
 )
 
 
@@ -25,234 +39,18 @@ class NavisionClient(Protocol):
     async def create_sales_order(self, header: dict, lines: list[dict]) -> dict: ...
 
 
-# Seed gebaseerd op de 17 voorbeelden. Mock = in-memory + persist naar json.
-# `mixprijzen` flags drive the trigger-aware mock pricing rule (see
-# MockNavisionClient.create_sales_order_stepwise): mix-discount applies only
-# when BOTH the customer and the item carry the mixprijzen flag AND the line
-# quantity reaches the pallet-staffel threshold.
-MOCK_CUSTOMERS: list[dict] = [
-    {"number": "10001", "displayName": "Ferney Diabolo B.V.", "email": "purchaseorders@ferney.nl",
-     "paymentTermsCode": "30D", "currencyCode": "EUR", "languageCode": "NLD",
-     "shipToCode": "MAIN", "mixprijzen": True},
-    {"number": "10002", "displayName": "TABS / PontMeyer", "email": "supplychain@tabsholland.nl",
-     "paymentTermsCode": "14D", "currencyCode": "EUR", "languageCode": "NLD",
-     "shipToCode": "MAIN", "mixprijzen": False},
-    {"number": "10003", "displayName": "Isero Ijzerwaren B.V.", "email": "fransvanvliet@isero.nl",
-     "paymentTermsCode": "30D", "currencyCode": "EUR", "languageCode": "NLD",
-     "shipToCode": "MAIN", "mixprijzen": True},
-    {"number": "10004", "displayName": "BMN Bouwmaterialen", "email": "jeroen.vanschooten@bmn.nl",
-     "paymentTermsCode": "30D", "currencyCode": "EUR", "languageCode": "NLD",
-     "shipToCode": "MAIN", "mixprijzen": False},
-    {"number": "10005", "displayName": "Omtzigt Bouw", "email": "kg@omtzigt-bouwmaterialen.nl",
-     "paymentTermsCode": "30D", "currencyCode": "EUR", "languageCode": "NLD",
-     "shipToCode": "MAIN", "mixprijzen": False},
-    {"number": "10006", "displayName": "Driessen Verf b.v.", "email": "bestellenhelmond@driessenverf.nl",
-     "paymentTermsCode": "30D", "currencyCode": "EUR", "languageCode": "NLD",
-     "shipToCode": "MAIN", "mixprijzen": False},
-    {"number": "10007", "displayName": "Stukbouw B.V.", "email": "willy@stukbouw.nl",
-     "paymentTermsCode": "30D", "currencyCode": "EUR", "languageCode": "NLD",
-     "shipToCode": "MAIN", "mixprijzen": False},
-    {"number": "10008", "displayName": "Enka Bouwmaterialen", "email": "e.sun@enkabouwmarkt.nl",
-     "paymentTermsCode": "30D", "currencyCode": "EUR", "languageCode": "NLD",
-     "shipToCode": "MAIN", "mixprijzen": False},
-    {"number": "10009", "displayName": "Connect Products GmbH", "email": "patricia@connectproducts.nl",
-     "paymentTermsCode": "30D", "currencyCode": "EUR", "languageCode": "DEU",
-     "shipToCode": "MAIN", "mixprijzen": False},
-    {"number": "10010", "displayName": "Storch-Ciret GmbH", "email": "s.wilke@storch-ciret.com",
-     "paymentTermsCode": "30D", "currencyCode": "EUR", "languageCode": "DEU",
-     "shipToCode": "MAIN", "mixprijzen": False},
-    {"number": "10011", "displayName": "Kirchner GmbH", "email": "tobias.leyhausen@kirchner-online.com",
-     "paymentTermsCode": "30D", "currencyCode": "EUR", "languageCode": "DEU",
-     "shipToCode": "MAIN", "mixprijzen": False},
-    {"number": "10012", "displayName": "Werkzeuge Dietrich GmbH & Co. KG", "email": "malte.klippstein@werkzeuge-dietrich.de",
-     "paymentTermsCode": "30D", "currencyCode": "EUR", "languageCode": "DEU",
-     "shipToCode": "MAIN", "mixprijzen": False},
-    {"number": "10013", "displayName": "Bugel AG", "email": "r.carvalho@bugel.ch",
-     "paymentTermsCode": "30D", "currencyCode": "CHF", "languageCode": "DEU",
-     "shipToCode": "MAIN", "mixprijzen": False},
-    {"number": "10014", "displayName": "BAUHAUS", "email": "supplier@bahag.com",
-     "paymentTermsCode": "30D", "currencyCode": "EUR", "languageCode": "DEU",
-     "shipToCode": "MAIN", "mixprijzen": False},
-    {"number": "10015", "displayName": "Tectis OU", "email": "maarjaliisa.nomm@tectis.ee",
-     "paymentTermsCode": "30D", "currencyCode": "EUR", "languageCode": "ENU",
-     "shipToCode": "MAIN", "mixprijzen": False},
-    {"number": "10016", "displayName": "L. De Vos sa/nv", "email": "anja@lucdevos.be",
-     "paymentTermsCode": "30D", "currencyCode": "EUR", "languageCode": "NLB",
-     "shipToCode": "MAIN", "mixprijzen": False},
-]
-
-MOCK_ITEMS: list[dict] = [
-    {"number": "1515155", "displayName": "Ferney stucloper 120cm",
-     "baseUnitOfMeasureCode": "ROL", "mixprijzen": True},
-    {"number": "228321", "displayName": "TABS hoeknaald 260cm",
-     "baseUnitOfMeasureCode": "STUK", "mixprijzen": False},
-    {"number": "2597768", "displayName": "Isero topcoat 20kg",
-     "baseUnitOfMeasureCode": "EMMER", "mixprijzen": True},
-    {"number": "201291", "displayName": "BMN pallet 1",
-     "baseUnitOfMeasureCode": "PAL", "mixprijzen": False},
-    {"number": "83461", "displayName": "BMN kist statiegeld",
-     "baseUnitOfMeasureCode": "STUK", "mixprijzen": False},
-    {"number": "122338", "displayName": "BAUHAUS product",
-     "baseUnitOfMeasureCode": "STUK", "mixprijzen": False},
-    {"number": "47323", "displayName": "Tectis Proshield private label",
-     "baseUnitOfMeasureCode": "STUK", "mixprijzen": False},
-    {"number": "975097", "displayName": "L. De Vos Greenboard B1 75m2",
-     "baseUnitOfMeasureCode": "M2", "mixprijzen": False},
-    {"number": "CICS-100-25", "displayName": "Werkzeuge Dietrich coating",
-     "baseUnitOfMeasureCode": "STUK", "mixprijzen": False},
-    {"number": "DUMMY-OMTZIGT", "displayName": "Omtzigt product",
-     "baseUnitOfMeasureCode": "STUK", "mixprijzen": False},
-    {"number": "DUMMY-DRIESSEN", "displayName": "Driessen Verf product",
-     "baseUnitOfMeasureCode": "STUK", "mixprijzen": False},
-    {"number": "DUMMY-KIRCHNER-238534", "displayName": "Kirchner FORCH editie",
-     "baseUnitOfMeasureCode": "STUK", "mixprijzen": False},
-    {"number": "DUMMY-BUGEL", "displayName": "Bugel Zwitserse editie",
-     "baseUnitOfMeasureCode": "STUK", "mixprijzen": False},
-    {"number": "SOFTBREATH-PALLET", "displayName": "Softbreath pallet",
-     "baseUnitOfMeasureCode": "PAL", "mixprijzen": True},
-]
-
-
-# Default unit price per item, used by the mock's POST /salesOrderLines trigger
-# emulation. Keep small — only items that the new tests touch need entries.
-MOCK_PRICES: dict[str, float] = {
-    "1515155": 100.0,
-    "228321": 12.5,
-    "2597768": 80.0,
-    "201291": 250.0,
-    "975097": 35.0,
-    "SOFTBREATH-PALLET": 500.0,
-}
-
-
-# Pallet-staffel mix discount kicks in once a single line reaches this
-# quantity AND both customer + item are mixprijzen=True.
-MOCK_MIX_THRESHOLD: int = 24
-MOCK_MIX_DISCOUNT_FACTOR: float = 0.9
-
-
-# Ship-to addresses keyed by customer number. Each customer has at least
-# the implicit "MAIN" address; some have extras to exercise the dropdown.
-MOCK_SHIP_TOS: dict[str, list[dict]] = {
-    "10001": [
-        {"code": "MAIN", "name": "Ferney Diabolo B.V.",
-         "address": "Industrieweg 1", "city": "Amsterdam",
-         "postCode": "1000 AA", "country": "NL"},
-        {"code": "DC-EAST", "name": "Ferney DC Oost",
-         "address": "Logistiekpark 12", "city": "Apeldoorn",
-         "postCode": "7300 BB", "country": "NL"},
-    ],
-    "10003": [
-        {"code": "MAIN", "name": "Isero HQ",
-         "address": "IJzerstraat 5", "city": "Rotterdam",
-         "postCode": "3000 CC", "country": "NL"},
-    ],
-    "10013": [
-        {"code": "MAIN", "name": "Bugel AG",
-         "address": "Hauptstrasse 9", "city": "Zürich",
-         "postCode": "8000", "country": "CH"},
-    ],
-}
-
-
-# Item UoMs keyed by item number. The base UoM is repeated here with
-# qtyPerUnitOfMeasure=1.0; alternates carry their conversion factor.
-MOCK_ITEM_UOMS: dict[str, list[dict]] = {
-    "1515155": [
-        {"code": "ROL", "qtyPerUnitOfMeasure": 1.0},
-        {"code": "PAL", "qtyPerUnitOfMeasure": 24.0},
-    ],
-    "228321": [
-        {"code": "STUK", "qtyPerUnitOfMeasure": 1.0},
-        {"code": "DOOS", "qtyPerUnitOfMeasure": 50.0},
-    ],
-    "2597768": [
-        {"code": "EMMER", "qtyPerUnitOfMeasure": 1.0},
-        {"code": "PAL", "qtyPerUnitOfMeasure": 33.0},
-    ],
-}
-
-
-# Item references (cross-references): customer-specific item codes that map
-# to a Kwabo item number. Used by the order-review UI to suggest a match
-# when the email shows the customer's own SKU.
-MOCK_ITEM_REFERENCES: list[dict] = [
-    {"itemNumber": "1515155", "referenceType": "Customer",
-     "referenceTypeNo": "10001", "referenceNo": "FER-STUC-120"},
-    {"itemNumber": "2597768", "referenceType": "Customer",
-     "referenceTypeNo": "10003", "referenceNo": "ISE-TC-20"},
-]
-
-
-# --------- shared helpers (used by both mock and real stepwise paths) ----------
-import re as _re  # noqa: E402
-
-_ID_PLACEHOLDER = _re.compile(r"\{id\}")
-
-
-def _assert_op_invariants(idx: int, op: NavOperation) -> None:
-    """Strict per-operation contract checks. Raises ValueError on violation."""
-    method = op["op"]
-    raw_path = op["path"]
-    body = op.get("body") or {}
-    if method not in ("POST", "PATCH"):
-        raise ValueError(f"op[{idx}]: unsupported method {method!r}")
-    if not raw_path.startswith("/"):
-        raise ValueError(f"op[{idx}]: path must start with '/', got {raw_path!r}")
-    if method == "POST":
-        if raw_path == "/salesOrders":
-            if list(body.keys()) != ["customerNumber"]:
-                raise ValueError(
-                    f"op[{idx}]: POST /salesOrders body must contain exactly "
-                    f"'customerNumber'; got {sorted(body)}"
-                )
-        elif raw_path.endswith("/salesOrderLines"):
-            allowed = {"lineType", "itemNumber"}
-            if set(body.keys()) != allowed:
-                raise ValueError(
-                    f"op[{idx}]: POST {raw_path} body must contain exactly "
-                    f"{sorted(allowed)}; got {sorted(body)}"
-                )
-    elif method == "PATCH":
-        if len(body) != 1:
-            raise ValueError(
-                f"op[{idx}]: PATCH body must contain exactly one key; got {sorted(body)}"
-            )
-
-
-def _substitute_path(path: str, current_id: str) -> str:
-    if "{id}" not in path:
-        return path
-    if not current_id:
-        raise ValueError(
-            f"path {path!r} contains {{id}} but no parent id has been created yet"
-        )
-    return _ID_PLACEHOLDER.sub(current_id, path)
-
-
-def _diff_autofilled(sent_body: dict, server_record: dict) -> dict:
-    if not isinstance(server_record, dict):
-        return {}
-    out: dict = {}
-    for k, v in server_record.items():
-        if k in sent_body or k.startswith("@odata") or k.startswith("_"):
-            continue
-        if v in (None, "", 0, False, []):
-            continue
-        out[k] = v
-    return out
-
+# --------- mock-only helpers (URL parsing for the in-memory PATCH/POST routing) -
 
 def _extract_id(path: str, segment: str) -> str:
     """Extract the id from a path like /salesOrders({id})/salesOrderLines."""
-    m = _re.search(rf"/{segment}\(([^)]+)\)", path)
+    m = re.search(rf"/{segment}\(([^)]+)\)", path)
     if not m:
         raise ValueError(f"could not extract {segment} id from {path!r}")
     return m.group(1)
 
 
 def _extract_id_simple(endpoint: str, segment: str) -> str:
-    m = _re.match(rf"^{segment}\(([^)]+)\)$", endpoint)
+    m = re.match(rf"^{segment}\(([^)]+)\)$", endpoint)
     if not m:
         raise ValueError(f"endpoint {endpoint!r} did not match {segment}({{id}})")
     return m.group(1)
@@ -482,16 +280,16 @@ class MockNavisionClient:
                     autofilled_union.update(autofilled)
                 else:  # PATCH
                     server = self._apply_patch(path.lstrip("/"), body)
-                    autofilled: dict = {}
+                    patch_autofilled: dict = {}
                     if op.get("expects"):
-                        autofilled = _diff_autofilled(body, server)
+                        patch_autofilled = _diff_autofilled(body, server)
                     results.append({
                         "operation": op,
                         "status": 200,
                         "response_body": server,
-                        "autofilled": autofilled,
+                        "autofilled": patch_autofilled,
                     })
-                    autofilled_union.update(autofilled)
+                    autofilled_union.update(patch_autofilled)
             except Exception as exc:
                 results.append({
                     "operation": op,
