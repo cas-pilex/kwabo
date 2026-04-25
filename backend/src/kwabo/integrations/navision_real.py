@@ -132,6 +132,36 @@ class RealNavisionClient:
         resp.raise_for_status()
         return resp.json()
 
+    # ---------- bulk read helpers (used by master-data sync) ----------
+
+    async def get_collection(
+        self,
+        endpoint: str,
+        params: dict | None = None,
+    ) -> list[dict]:
+        """Fetch a full OData collection, transparently following @odata.nextLink.
+
+        Use for master-data sync (customers, items, itemReferences, …). Returns
+        the concatenated `value` arrays from every page. Pass server-side
+        filters via `params` (e.g. `$filter`, `$top`).
+        """
+        out: list[dict] = []
+        first = await self._get(endpoint, params)
+        out.extend(first.get("value") or [])
+        next_link = first.get("@odata.nextLink") or first.get("odata.nextLink")
+        while next_link:
+            # nextLink is an absolute URL; bypass _base() to avoid double-prefix.
+            resp = await self._client.get(
+                next_link,
+                headers=await self._headers(),
+                auth=self._basic_auth(),
+            )
+            resp.raise_for_status()
+            page = resp.json()
+            out.extend(page.get("value") or [])
+            next_link = page.get("@odata.nextLink") or page.get("odata.nextLink")
+        return out
+
     # ---------- NavisionClient protocol ----------
 
     async def get_customer(self, nr: str) -> Optional[dict]:
