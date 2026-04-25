@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     inbox_dir: str = "../data/inbox"
     processed_dir: str = "../data/processed"
     navision_mock_dir: str = "../data/navision_mock"
+    incoming_documents_dir: str = "../data/incoming_documents"
     langchain_tracing_v2: bool = False
     langchain_project: str = "kwabo-order-intake"
     log_level: str = "INFO"
@@ -41,6 +42,10 @@ class Settings(BaseSettings):
     @property
     def navision_mock_path(self) -> Path:
         return Path(self.navision_mock_dir).resolve()
+
+    @property
+    def incoming_documents_path(self) -> Path:
+        return Path(self.incoming_documents_dir).resolve()
 
 
 settings = Settings()

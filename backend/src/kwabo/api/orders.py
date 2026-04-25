@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import quote
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response, StreamingResponse
 from sqlmodel import Session
 
@@ -24,10 +24,12 @@ from kwabo.api.schemas import (
     RejectRequest,
 )
 from kwabo.config import settings
-from kwabo.db.repository import ArtikelRepo, OrderLogRepo
+from kwabo.db.models import ArtikelPalletKennis
+from kwabo.db.repository import ArtikelRepo, OrderLogRepo, PalletKennisRepo
 from kwabo.db.session import engine
 from kwabo.graph.runner import finalize
 from kwabo.utils import utcnow
+from kwabo.utils.pallet_logic import PALLET_ARTIKELNR, compute_europallet
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 
@@ -236,6 +238,10 @@ async def approve_order(order_id: int, body: ApproveRequest, force: bool = False
                 "approve_forced", order_id=order_id, reviewer=body.reviewer,
                 missing_fields=missing,
             )
+        # T10: persist europallet feedback to artikel_pallet_kennis. The
+        # approval is a single human signal — we record it with confidence
+        # 0.6 so the next dashboard pass can override.
+        _persist_pallet_feedback(s, state, reviewer=body.reviewer)
         row.order_state = json.dumps(state, default=str)
         row.status = "approved"
         row.reviewer = body.reviewer
@@ -325,3 +331,187 @@ def _save_corrections(session: Session, state: dict, corrections: dict) -> None:
                 match_methode="manual",
                 was_correctie=True,
             )
+
+
+# ---------------------------------------------------------------------------
+# T10: incoming-document upload + pallet-feedback persistence
+# ---------------------------------------------------------------------------
+
+# 10 MB max for an incoming document (email/PDF/image). Anything bigger is
+# almost certainly noise — and we don't want to balloon the data dir.
+MAX_INCOMING_DOC_SIZE = 10 * 1024 * 1024
+ALLOWED_INCOMING_DOC_TYPES = {
+    "application/pdf",
+    "message/rfc822",
+    "text/plain",
+    "image/png",
+    "image/jpeg",
+}
+
+
+def _pallet_contributors(regels: list[dict]) -> list[tuple[str, str]]:
+    """Return the (kwabo_artikelnr, eenheid_upper) pairs from the regels that
+    a europallet-compute would consider as candidates.
+
+    Used by approve to decide which artikel_pallet_kennis rows to upsert.
+    Mirrors the filter in ``compute_europallet``: matched artikelnr present,
+    not the pallet artikel itself, qty > 0.
+    """
+    pairs: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for regel in regels or []:
+        kwabo_nr = regel.get("artikelnummer_kwabo_matched")
+        if not kwabo_nr or kwabo_nr == PALLET_ARTIKELNR:
+            continue
+        eenheid = (regel.get("eenheid") or "").upper()
+        if not eenheid:
+            continue
+        try:
+            qty = float(regel.get("hoeveelheid") or 0)
+        except (TypeError, ValueError):
+            qty = 0.0
+        if qty <= 0:
+            continue
+        key = (kwabo_nr, eenheid)
+        if key in seen:
+            continue
+        seen.add(key)
+        pairs.append(key)
+    return pairs
+
+
+def _persist_pallet_feedback(
+    session: Session, state: dict, *, reviewer: Optional[str] = None
+) -> None:
+    """Persist europallet feedback to artikel_pallet_kennis on approval (T10).
+
+    Two cases:
+      - ``state["europallet_regel"]`` is present: the approver agreed a
+        pallet line is correct. Mark each contributing item with
+        ``pallet_required=True``. Preserve ``per_pallet`` if a kennis row
+        exists; otherwise default to 24 (matches the heuristic).
+      - ``state["europallet_regel"]`` is None *but* re-running the compute
+        on the saved regels would have produced one: the human (or the
+        review UI) explicitly removed it. Record ``pallet_required=False``
+        so the next time around we don't re-suggest a pallet for those
+        items.
+
+    confidence = 0.6 in both cases — this is one human signal, not the
+    final word. ``bevestigd_door`` falls back to "dashboard-approve" when
+    the request didn't carry a reviewer.
+    """
+    regels = state.get("orderregels") or []
+    contributors = _pallet_contributors(regels)
+    if not contributors:
+        return
+
+    repo = PalletKennisRepo(session)
+    europallet = state.get("europallet_regel")
+    bevestigd_door = reviewer or "dashboard-approve"
+    now = utcnow()
+
+    if europallet:
+        for kwabo_nr, eenheid in contributors:
+            existing = repo.lookup(kwabo_nr, eenheid)
+            per_pallet = existing.per_pallet if existing else 24
+            repo.upsert(
+                ArtikelPalletKennis(
+                    kwabo_artikelnr=kwabo_nr,
+                    eenheid=eenheid,
+                    pallet_required=True,
+                    per_pallet=per_pallet,
+                    confidence=0.6,
+                    laatst_bevestigd_op=now,
+                    bevestigd_door=bevestigd_door,
+                )
+            )
+        return
+
+    # europallet_regel is None — only record explicit "no pallet" feedback
+    # when compute_europallet WOULD have produced one for this state. That
+    # signals the human deliberately suppressed it (vs. the order simply
+    # not needing a pallet). We re-run compute against the same repo so
+    # any existing kennis is honoured.
+    would_have_added = compute_europallet(state, repo=repo)
+    if not would_have_added:
+        return
+
+    for kwabo_nr, eenheid in contributors:
+        existing = repo.lookup(kwabo_nr, eenheid)
+        per_pallet = existing.per_pallet if existing else 24
+        repo.upsert(
+            ArtikelPalletKennis(
+                kwabo_artikelnr=kwabo_nr,
+                eenheid=eenheid,
+                pallet_required=False,
+                per_pallet=per_pallet,
+                confidence=0.6,
+                laatst_bevestigd_op=now,
+                bevestigd_door=bevestigd_door,
+            )
+        )
+
+
+@router.post("/{order_id}/incoming-doc")
+async def upload_incoming_document(
+    order_id: int, file: UploadFile = File(...)
+) -> dict:
+    """Upload the original email/PDF/image as an incoming document for an order.
+
+    Stores under ``data/incoming_documents/{order_id}/<sanitized_filename>``
+    and writes the absolute path to ``state["incoming_document_path"]`` —
+    matching how ``state["source_path"]`` is stored. The push_navision
+    pipeline (T9) reads this slot when composing /incomingDocuments ops.
+    """
+    with Session(engine) as s:
+        repo = OrderLogRepo(s)
+        row = repo.get(order_id)
+        if not row:
+            raise HTTPException(404, "Order not found")
+        state = json.loads(row.order_state or "{}") if row.order_state else {}
+
+    content_type = (file.content_type or "").lower()
+    if content_type not in ALLOWED_INCOMING_DOC_TYPES:
+        raise HTTPException(
+            400,
+            f"Content-type '{content_type or 'unknown'}' niet toegestaan. "
+            f"Toegestaan: {', '.join(sorted(ALLOWED_INCOMING_DOC_TYPES))}",
+        )
+
+    content = await file.read()
+    if len(content) > MAX_INCOMING_DOC_SIZE:
+        raise HTTPException(
+            413,
+            f"Bestand te groot (max {MAX_INCOMING_DOC_SIZE // (1024 * 1024)} MB)",
+        )
+
+    # Sanitize filename — `Path(...).name` strips any directory components,
+    # so "../etc/passwd" collapses to "passwd". Fall back to a generic name
+    # if the upload didn't include one.
+    safe_name = Path(file.filename or "document").name or "document"
+
+    target_dir = settings.incoming_documents_path / str(order_id)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target_path = target_dir / safe_name
+    target_path.write_bytes(content)
+
+    saved_path = str(target_path.resolve())
+    with Session(engine) as s:
+        repo = OrderLogRepo(s)
+        row = repo.get(order_id)
+        if not row:
+            # Race: row was deleted between the two reads. Not worth
+            # special-casing further than a clean 404.
+            raise HTTPException(404, "Order not found")
+        state = json.loads(row.order_state or "{}") if row.order_state else {}
+        state["incoming_document_path"] = saved_path
+        row.order_state = json.dumps(state, default=str)
+        row.updated_at = utcnow()
+        s.add(row)
+        s.commit()
+
+    return {
+        "saved_path": saved_path,
+        "file_size": len(content),
+        "content_type": content_type,
+    }
