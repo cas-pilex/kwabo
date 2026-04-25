@@ -14,7 +14,7 @@ from sqlmodel import Session
 
 from kwabo.db.repository import OrderLogRepo
 from kwabo.db.session import engine
-from kwabo.integrations.navision_api import build_sales_order_payload
+from kwabo.integrations.navision_steps import compose_navision_operations
 from kwabo.utils.logging import log
 
 router = APIRouter(prefix="/api/orders", tags=["orders-preview"])
@@ -27,10 +27,17 @@ class PatchFieldBody(BaseModel):
 
 
 class NavisionPreviewResponse(BaseModel):
-    method: str
-    url: str
-    headers: dict
-    body: dict
+    """Trigger-aware NAV preview shape (post-T9).
+
+    Frontend (T11) renders the chronologically ordered NavOperation list
+    so the reviewer sees exactly the POST/PATCH chain push_navision will
+    execute via `create_sales_order_stepwise`. The legacy `{header, lines}`
+    payload is gone — that flat shape bypassed NAV's OnValidate triggers.
+    """
+
+    operations: list[dict]
+    expected_post_count: int
+    expected_patch_count: int
     status: str          # "ready" | "missing" | "no_customer"
     missing_count: int
 
@@ -130,7 +137,9 @@ def _save(order_id: int, state: dict, **extra_fields: Any) -> None:
 @router.get("/{order_id}/navision-preview", response_model=NavisionPreviewResponse)
 def navision_preview(order_id: int) -> NavisionPreviewResponse:
     state, _ = _load(order_id)
-    payload = build_sales_order_payload(state)
+    # Prefer state["nav_operations"] if compose_order populated it (post-T9).
+    # Fall back to recomposing on the fly so older review rows still preview.
+    operations = state.get("nav_operations") or list(compose_navision_operations(state))
     klant = (state.get("klant_match") or {}).get("navision_klantnr")
     missing = _all_needs_review_paths(state)
     if not klant:
@@ -139,14 +148,12 @@ def navision_preview(order_id: int) -> NavisionPreviewResponse:
         status = "missing"
     else:
         status = "ready"
+    post_count = sum(1 for op in operations if op.get("op") == "POST")
+    patch_count = sum(1 for op in operations if op.get("op") == "PATCH")
     return NavisionPreviewResponse(
-        method="POST",
-        url="{NAV_BASE}/api/v2.0/companies({companyId})/salesOrders",
-        headers={
-            "Content-Type": "application/json",
-            "If-Match": "*",
-        },
-        body=payload,
+        operations=list(operations),
+        expected_post_count=post_count,
+        expected_patch_count=patch_count,
         status=status,
         missing_count=len(missing),
     )

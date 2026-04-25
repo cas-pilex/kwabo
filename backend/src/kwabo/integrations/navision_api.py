@@ -533,51 +533,8 @@ def get_navision_client() -> NavisionClient:
     raise ValueError(f"Unknown NAVISION_MODE: {mode}")
 
 
-def build_sales_order_payload(state: dict) -> dict:
-    """Build the exact header + lines that will be POSTed to Navision.
-
-    Shared by `push_navision` and the `/api/orders/{id}/navision-preview` endpoint
-    so that the dashboard preview is byte-identical to what gets pushed.
-    """
-    from kwabo.utils.eenheid_mapping import normalize_eenheid
-
-    klant = state.get("klant_match") or {}
-    header: dict = {
-        "customerNumber": klant.get("navision_klantnr"),
-        "externalDocumentNumber": state.get("bestelnummer_klant", "") or "",
-        "requestedDeliveryDate": state.get("gewenste_leverdatum"),
-    }
-    ship = state.get("afleveradres")
-    if ship:
-        header.update(
-            {
-                "shipToName": ship.get("naam", ""),
-                "shipToAddressLine1": ship.get("straat", ""),
-                "shipToCity": ship.get("plaats", ""),
-                "shipToPostCode": ship.get("postcode", ""),
-                "shipToCountry": ship.get("land", "NL"),
-            }
-        )
-    if state.get("opmerkingen"):
-        header["comment"] = state["opmerkingen"]
-    if state.get("afleverinstructies"):
-        header["shippingInstructions"] = state["afleverinstructies"]
-
-    lines: list[dict] = []
-    for r in state.get("orderregels") or []:
-        if not r.get("artikelnummer_kwabo_matched"):
-            continue
-        line = {
-            "itemNumber": r["artikelnummer_kwabo_matched"],
-            "quantity": r.get("hoeveelheid"),
-            "unitOfMeasureCode": normalize_eenheid(r.get("eenheid")),
-        }
-        if r.get("prijs_per_eenheid") is not None and r.get("prijs_validated") is True:
-            line["unitPrice"] = r["prijs_per_eenheid"]
-        if r.get("leverdatum_regel"):
-            line["shipmentDate"] = r["leverdatum_regel"]
-        if r.get("opmerkingen"):
-            line["description2"] = r["opmerkingen"]
-        lines.append(line)
-
-    return {"header": header, "lines": lines}
+# `build_sales_order_payload` removed in T9. Callers now use
+# `kwabo.integrations.navision_steps.compose_navision_operations` to build the
+# trigger-aware NavOperation list, which both push_navision (executes via
+# create_sales_order_stepwise) and the /api/orders/{id}/navision-preview
+# endpoint (returns to the dashboard) share.

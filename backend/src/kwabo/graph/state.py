@@ -30,6 +30,12 @@ class OrderRegel(TypedDict, total=False):
     opmerkingen: Optional[str]
     match_confidence: Optional[float]
     match_methode: Optional[str]
+    # T7: optional UoM picker for mixprijzen lines (set by apply_mixprijzen)
+    mix_uom_kandidaat: Optional[list[str]]
+    mix_uom_gekozen: Optional[str]
+    # T3/T4: line-level default UoM (informational; lets the composer suppress
+    # redundant unitOfMeasureCode PATCHes when the regel uses the item default)
+    eenheid_default: Optional[str]
 
 
 class KlantMatch(TypedDict, total=False):
@@ -86,6 +92,26 @@ class OrderState(TypedDict, total=False):
     review_status: str  # "pending", "approved", "rejected", "needs_edit"
     review_corrections: Optional[dict]
     reviewer: Optional[str]
+
+    # T5: ship-to selection (filled by select_ship_to_node)
+    ship_to_kandidaten: list[dict]
+    ship_to_gekozen: Optional[str]
+
+    # T7: mixprijzen flag (set by apply_mixprijzen_node when customer has mix-prices)
+    mixprijzen_actief: bool
+
+    # T8: europallet line, computed when an order needs a pallet
+    europallet_regel: Optional[dict]
+
+    # T9: pre-push artifacts — a path to the source document we'll attach as
+    # /incomingDocuments + the chronologically ordered NAV operation list
+    # composed by `compose_navision_operations`. push_navision feeds the latter
+    # to `create_sales_order_stepwise` and stores the per-op outcome plus the
+    # union of NAV-side autofilled fields back into state for the audit trail.
+    incoming_document_path: Optional[str]
+    nav_operations: list[dict]
+    nav_operation_results: list[dict]
+    nav_autofilled: dict
 
     # Navision
     navision_order_nr: Optional[str]

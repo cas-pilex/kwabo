@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 
 from kwabo.api.preview import _all_needs_review_paths, _get, _set, _split_path
-from kwabo.integrations.navision_api import build_sales_order_payload
+from kwabo.integrations.navision_steps import compose_navision_operations
 from kwabo.utils.eenheid_mapping import normalize_eenheid
 from kwabo.utils.json_parser import parse_json_loose
 
@@ -101,32 +101,45 @@ class TestNeedsReviewPaths:
         assert len(paths) == 3
 
 
-class TestNavisionPayload:
-    def test_builds_header_and_lines(self):
+class TestNavisionOperations:
+    """Post-T9: pipeline emits a chronological NavOperation list, not a flat
+    {header, lines} payload. These tests cover the new shape."""
+
+    def test_builds_header_and_line_ops(self):
         state = {
             "klant_match": {"navision_klantnr": "10001"},
             "bestelnummer_klant": "PO-123",
             "gewenste_leverdatum": "2026-05-01",
-            "afleveradres": {"naam": "A", "straat": "B 1", "postcode": "1000AA", "plaats": "AMS", "land": "NL"},
             "orderregels": [
-                {"artikelnummer_kwabo_matched": "1515", "hoeveelheid": 10, "eenheid": "ROL", "prijs_per_eenheid": 15, "prijs_validated": True},
+                {"artikelnummer_kwabo_matched": "1515", "hoeveelheid": 10, "eenheid": "ROL"},
                 {"artikelnummer_kwabo_matched": None, "hoeveelheid": 5, "eenheid": "STUK"},  # skipped
             ],
         }
-        payload = build_sales_order_payload(state)
-        assert payload["header"]["customerNumber"] == "10001"
-        assert payload["header"]["externalDocumentNumber"] == "PO-123"
-        assert payload["header"]["shipToName"] == "A"
-        assert len(payload["lines"]) == 1
-        assert payload["lines"][0]["itemNumber"] == "1515"
-        assert payload["lines"][0]["unitPrice"] == 15
+        ops = compose_navision_operations(state)
 
-    def test_skips_price_when_not_validated(self):
-        state = {
-            "klant_match": {"navision_klantnr": "10001"},
-            "orderregels": [
-                {"artikelnummer_kwabo_matched": "X", "hoeveelheid": 1, "eenheid": "STUK", "prijs_per_eenheid": 10, "prijs_validated": False},
-            ],
-        }
-        payload = build_sales_order_payload(state)
-        assert "unitPrice" not in payload["lines"][0]
+        # First op MUST be the customer POST (single field, no triggers bypassed).
+        assert ops[0]["op"] == "POST"
+        assert ops[0]["path"] == "/salesOrders"
+        assert ops[0]["body"] == {"customerNumber": "10001"}
+
+        # PO number + dates are PATCHes — one field each.
+        po_patches = [o for o in ops if o.get("body", {}).get("externalDocumentNumber")]
+        assert po_patches and po_patches[0]["body"] == {"externalDocumentNumber": "PO-123"}
+
+        # Only the matched line is emitted.
+        line_posts = [o for o in ops if o["path"].endswith("/salesOrderLines") and o["op"] == "POST"]
+        assert len(line_posts) == 1
+        assert line_posts[0]["body"] == {"lineType": "Item", "itemNumber": "1515"}
+
+        # Quantity PATCH is single-field.
+        qty_patches = [
+            o for o in ops
+            if o["op"] == "PATCH"
+            and o["path"].startswith("/salesOrderLines")
+            and "quantity" in o["body"]
+        ]
+        assert qty_patches and qty_patches[0]["body"] == {"quantity": 10}
+
+    def test_no_klant_yields_empty(self):
+        ops = compose_navision_operations({"orderregels": []})
+        assert ops == []
