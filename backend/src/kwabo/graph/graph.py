@@ -1,7 +1,9 @@
 """LangGraph build/compile (PDF §3.3).
 
 We split into two graphs:
-  - ingest_graph: intake → classify → extract → match_customer → match_articles → validate_prices → compose_order → END
+  - ingest_graph: intake → classify → extract → match_customer → select_ship_to →
+    match_articles → apply_mixprijzen → compute_europallet → validate_prices →
+    compose_order → END
   - finalize_graph: push_navision → send_confirmation → END
 The review happens externally (dashboard approves, then calls finalize).
 """
@@ -12,6 +14,7 @@ from langgraph.graph import END, StateGraph
 from kwabo.graph.nodes.apply_mixprijzen import apply_mixprijzen_node
 from kwabo.graph.nodes.classify import classify_node
 from kwabo.graph.nodes.compose_order import compose_order_node
+from kwabo.graph.nodes.compute_europallet import compute_europallet_node
 from kwabo.graph.nodes.extract import extract_node
 from kwabo.graph.nodes.intake import intake_node
 from kwabo.graph.nodes.match_articles import match_articles_node
@@ -35,6 +38,7 @@ def build_ingest_graph():
     wf.add_node("select_ship_to", select_ship_to_node)
     wf.add_node("match_articles", match_articles_node)
     wf.add_node("apply_mixprijzen", apply_mixprijzen_node)
+    wf.add_node("compute_europallet", compute_europallet_node)
     wf.add_node("validate_prices", validate_prices_node)
     wf.add_node("compose", compose_order_node)
 
@@ -45,7 +49,8 @@ def build_ingest_graph():
     wf.add_edge("match_customer", "select_ship_to")
     wf.add_edge("select_ship_to", "match_articles")
     wf.add_edge("match_articles", "apply_mixprijzen")
-    wf.add_edge("apply_mixprijzen", "validate_prices")
+    wf.add_edge("apply_mixprijzen", "compute_europallet")
+    wf.add_edge("compute_europallet", "validate_prices")
     wf.add_edge("validate_prices", "compose")
     wf.add_edge("compose", END)
     return wf.compile()
@@ -63,13 +68,15 @@ def build_sub_order_graph():
     wf.add_node("select_ship_to", select_ship_to_node)
     wf.add_node("match_articles", match_articles_node)
     wf.add_node("apply_mixprijzen", apply_mixprijzen_node)
+    wf.add_node("compute_europallet", compute_europallet_node)
     wf.add_node("validate_prices", validate_prices_node)
     wf.add_node("compose", compose_order_node)
     wf.set_entry_point("match_customer")
     wf.add_edge("match_customer", "select_ship_to")
     wf.add_edge("select_ship_to", "match_articles")
     wf.add_edge("match_articles", "apply_mixprijzen")
-    wf.add_edge("apply_mixprijzen", "validate_prices")
+    wf.add_edge("apply_mixprijzen", "compute_europallet")
+    wf.add_edge("compute_europallet", "validate_prices")
     wf.add_edge("validate_prices", "compose")
     wf.add_edge("compose", END)
     return wf.compile()
