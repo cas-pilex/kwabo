@@ -1,4 +1,4 @@
-"""Match articles: exact → history → klantenkaart → fuzzy → manual."""
+"""Match articles: exact → kruisverwijzing → klantenkaart → history → fuzzy → manual."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -8,7 +8,7 @@ from kwabo.utils import utcnow
 from rapidfuzz import fuzz, process
 from sqlmodel import Session
 
-from kwabo.db.repository import ArtikelRepo
+from kwabo.db.repository import ArtikelRepo, KruisverwijzingRepo
 from kwabo.db.session import engine
 from kwabo.graph.state import OrderRegel, OrderState
 from kwabo.integrations.navision_api import NavisionClient, get_navision_client
@@ -30,14 +30,18 @@ async def _match_single(regel: dict, klant_nr: str | None, nav: NavisionClient) 
 
     if klant_nr and regel.get("artikelnummer_klant"):
         with Session(engine) as s:
-            repo = ArtikelRepo(s)
-            # 2) History
-            hist = repo.best_history(klant_nr, regel["artikelnummer_klant"])
-            if hist and await nav.get_item(hist.kwabo_artikelnr):
-                result["artikelnummer_kwabo_matched"] = hist.kwabo_artikelnr
+            # 2) Kruisverwijzing (NAV item-reference table 5717): customer's own
+            # SKU → kwabo_artikelnr. Authoritative customer-supplied mapping,
+            # so it takes precedence over klantenkaart and history.
+            kv_repo = KruisverwijzingRepo(s)
+            kv_kwabo = kv_repo.lookup(klant_nr, regel["artikelnummer_klant"])
+            if kv_kwabo and await nav.get_item(kv_kwabo):
+                result["artikelnummer_kwabo_matched"] = kv_kwabo
                 result["match_confidence"] = 0.95
-                result["match_methode"] = "history"
+                result["match_methode"] = "kruisverwijzing"
                 return result
+
+            repo = ArtikelRepo(s)
             # 3) Klantenkaart mapping
             mapping = repo.mapping(klant_nr, regel["artikelnummer_klant"])
             if mapping and await nav.get_item(mapping.kwabo_artikelnr):
@@ -45,8 +49,15 @@ async def _match_single(regel: dict, klant_nr: str | None, nav: NavisionClient) 
                 result["match_confidence"] = 0.9
                 result["match_methode"] = "klantenkaart"
                 return result
+            # 4) History
+            hist = repo.best_history(klant_nr, regel["artikelnummer_klant"])
+            if hist and await nav.get_item(hist.kwabo_artikelnr):
+                result["artikelnummer_kwabo_matched"] = hist.kwabo_artikelnr
+                result["match_confidence"] = 0.95
+                result["match_methode"] = "history"
+                return result
 
-    # 4) Fuzzy op omschrijving tegen Nav item search
+    # 5) Fuzzy op omschrijving tegen Nav item search
     oms = regel.get("omschrijving") or ""
     if oms:
         candidates = await nav.search_items(beschrijving=oms[:40])
@@ -62,7 +73,7 @@ async def _match_single(regel: dict, klant_nr: str | None, nav: NavisionClient) 
                 result["match_methode"] = "fuzzy"
                 return result
 
-    # 5) Manual
+    # 6) Manual
     result["artikelnummer_kwabo_matched"] = None
     result["match_confidence"] = 0.0
     result["match_methode"] = "manual"
@@ -91,7 +102,7 @@ async def match_articles_node(state: OrderState) -> OrderState:
         "details": {
             "per_methode": {
                 m: sum(1 for r in matched if r.get("match_methode") == m)
-                for m in ("exact", "history", "klantenkaart", "fuzzy", "manual")
+                for m in ("exact", "kruisverwijzing", "klantenkaart", "history", "fuzzy", "manual")
             }
         },
     }
