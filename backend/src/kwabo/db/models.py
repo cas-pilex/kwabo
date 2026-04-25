@@ -22,6 +22,7 @@ class Klantenkaart(SQLModel, table=True):
     standaard_afleveradres: Optional[str] = None  # JSON
     speciale_instructies: Optional[str] = None
     is_4plus: bool = False
+    mixprijzen: bool = Field(default=False, nullable=False)
     kredietlimiet: Optional[float] = None
     betalingsconditie: Optional[str] = None
     created_at: datetime = Field(default_factory=utcnow)
@@ -121,6 +122,72 @@ class ArtikelMatchingHistory(SQLModel, table=True):
     was_correctie: bool = False
     order_datum: Optional[date] = None
     created_at: datetime = Field(default_factory=utcnow)
+
+
+class Artikelkaart(SQLModel, table=True):
+    """NAV item card mirror — one row per Kwabo article."""
+
+    __tablename__ = "artikelkaarten"
+
+    kwabo_artikelnr: str = Field(primary_key=True)
+    naam: str
+    basis_eenheid: str  # NAV UOM code, e.g. "STUK", "ROL"
+    mixprijzen: bool = Field(default=False, nullable=False)
+    palletable: Optional[bool] = Field(default=None)  # nullable, computed/learned
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
+class ArtikelEenheid(SQLModel, table=True):
+    """Item Unit-of-Measure register — multiple rows per artikel."""
+
+    __tablename__ = "artikel_eenheden"
+
+    kwabo_artikelnr: str = Field(primary_key=True)
+    eenheid_code: str = Field(primary_key=True)
+    qty_per_base: float = 1.0
+    is_mix_uom: bool = Field(default=False, nullable=False)
+
+
+class KlantenkaartShipTo(SQLModel, table=True):
+    """Ship-to address mirror (NAV table 222)."""
+
+    __tablename__ = "klantenkaart_ship_to"
+
+    klant_nr: str = Field(primary_key=True)
+    ship_to_code: str = Field(primary_key=True)
+    naam: str
+    straat: str
+    postcode: str
+    plaats: str
+    land: str
+    is_default: bool = Field(default=False, nullable=False)
+
+
+class ArtikelKruisverwijzing(SQLModel, table=True):
+    """Item Reference (NAV table 5717) — customer artikel-nr -> Kwabo artikel-nr."""
+
+    __tablename__ = "artikel_kruisverwijzing"
+
+    klant_nr: str = Field(primary_key=True)
+    klant_artikelnr: str = Field(primary_key=True)
+    kwabo_artikelnr: str
+    eenheid_klant: Optional[str] = Field(default=None)
+    bron: str = Field(default="customer")
+
+
+class ArtikelPalletKennis(SQLModel, table=True):
+    """Self-learning europallet table — what we know per artikel/eenheid."""
+
+    __tablename__ = "artikel_pallet_kennis"
+
+    kwabo_artikelnr: str = Field(primary_key=True)
+    eenheid: str = Field(primary_key=True)
+    pallet_required: bool = Field(default=False, nullable=False)
+    per_pallet: int = 24
+    confidence: float = 0.0
+    laatst_bevestigd_op: datetime = Field(default_factory=utcnow)
+    bevestigd_door: Optional[str] = Field(default=None)
 
 
 class OrderLog(SQLModel, table=True):

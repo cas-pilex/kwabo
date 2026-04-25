@@ -10,10 +10,14 @@ from sqlmodel import Session, select
 from kwabo.utils import utcnow
 
 from kwabo.db.models import (
+    ArtikelKruisverwijzing,
     ArtikelMatchingHistory,
+    ArtikelPalletKennis,
+    Artikelkaart,
     Klantenkaart,
     KlantEmailAlias,
     KlantenkaartArtikel,
+    KlantenkaartShipTo,
     OrderLog,
     Prijsafspraak,
 )
@@ -291,3 +295,127 @@ class OrderLogRepo:
         self.s.commit()
         self.s.refresh(row)
         return row
+
+
+class ArtikelkaartRepo:
+    """NAV item card mirror — read-side cache populated by the NAV sync job."""
+
+    def __init__(self, session: Session) -> None:
+        self.s = session
+
+    def get(self, artikelnr: str) -> Optional[Artikelkaart]:
+        return self.s.get(Artikelkaart, artikelnr)
+
+    def upsert(self, record: Artikelkaart) -> Artikelkaart:
+        existing = self.get(record.kwabo_artikelnr)
+        if existing:
+            for field in ("naam", "basis_eenheid", "mixprijzen", "palletable"):
+                val = getattr(record, field)
+                if val is not None or field == "palletable":
+                    setattr(existing, field, val)
+            existing.updated_at = utcnow()
+            self.s.add(existing)
+            self.s.commit()
+            self.s.refresh(existing)
+            return existing
+        self.s.add(record)
+        self.s.commit()
+        self.s.refresh(record)
+        return record
+
+    def list_with_mixprijzen(self) -> list[Artikelkaart]:
+        return list(
+            self.s.exec(select(Artikelkaart).where(Artikelkaart.mixprijzen.is_(True))).all()
+        )
+
+
+class ShipToRepo:
+    """Mirror of NAV ship-to addresses (table 222)."""
+
+    def __init__(self, session: Session) -> None:
+        self.s = session
+
+    def list_for_klant(self, klant_nr: str) -> list[KlantenkaartShipTo]:
+        return list(
+            self.s.exec(
+                select(KlantenkaartShipTo).where(KlantenkaartShipTo.klant_nr == klant_nr)
+            ).all()
+        )
+
+    def upsert(self, record: KlantenkaartShipTo) -> KlantenkaartShipTo:
+        existing = self.s.get(
+            KlantenkaartShipTo, (record.klant_nr, record.ship_to_code)
+        )
+        if existing:
+            for field in ("naam", "straat", "postcode", "plaats", "land", "is_default"):
+                val = getattr(record, field)
+                if val is not None:
+                    setattr(existing, field, val)
+            self.s.add(existing)
+            self.s.commit()
+            self.s.refresh(existing)
+            return existing
+        self.s.add(record)
+        self.s.commit()
+        self.s.refresh(record)
+        return record
+
+
+class KruisverwijzingRepo:
+    """NAV Item Reference (table 5717) — customer artikel-nr -> Kwabo artikel-nr."""
+
+    def __init__(self, session: Session) -> None:
+        self.s = session
+
+    def lookup(self, klant_nr: str, klant_artikelnr: str) -> Optional[str]:
+        row = self.s.get(ArtikelKruisverwijzing, (klant_nr, klant_artikelnr))
+        return row.kwabo_artikelnr if row else None
+
+    def upsert(self, record: ArtikelKruisverwijzing) -> ArtikelKruisverwijzing:
+        existing = self.s.get(
+            ArtikelKruisverwijzing, (record.klant_nr, record.klant_artikelnr)
+        )
+        if existing:
+            existing.kwabo_artikelnr = record.kwabo_artikelnr
+            if record.eenheid_klant is not None:
+                existing.eenheid_klant = record.eenheid_klant
+            if record.bron:
+                existing.bron = record.bron
+            self.s.add(existing)
+            self.s.commit()
+            self.s.refresh(existing)
+            return existing
+        self.s.add(record)
+        self.s.commit()
+        self.s.refresh(record)
+        return record
+
+
+class PalletKennisRepo:
+    """Self-learning europallet table — used by europallet decision logic."""
+
+    def __init__(self, session: Session) -> None:
+        self.s = session
+
+    def lookup(self, kwabo_artikelnr: str, eenheid: str) -> Optional[ArtikelPalletKennis]:
+        return self.s.get(ArtikelPalletKennis, (kwabo_artikelnr, eenheid))
+
+    def upsert(self, record: ArtikelPalletKennis) -> ArtikelPalletKennis:
+        existing = self.lookup(record.kwabo_artikelnr, record.eenheid)
+        if existing:
+            existing.pallet_required = record.pallet_required
+            existing.per_pallet = record.per_pallet
+            existing.confidence = record.confidence
+            existing.laatst_bevestigd_op = record.laatst_bevestigd_op or utcnow()
+            if record.bevestigd_door is not None:
+                existing.bevestigd_door = record.bevestigd_door
+            self.s.add(existing)
+            self.s.commit()
+            self.s.refresh(existing)
+            return existing
+        if record.laatst_bevestigd_op is None:
+            record.laatst_bevestigd_op = utcnow()
+        self.s.add(record)
+        self.s.commit()
+        self.s.refresh(record)
+        return record
