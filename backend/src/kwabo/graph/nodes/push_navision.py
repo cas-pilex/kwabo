@@ -35,6 +35,8 @@ def _serialise_op_results(results: list[dict]) -> list[dict]:
     for r in results or []:
         out.append({
             "operation": {
+                # Keep all keys except 'body'; for 'body' keep only dicts so
+                # JSON serialization stays clean (drops None/raw strings).
                 k: v for k, v in (r.get("operation") or {}).items()
                 if k != "body" or isinstance(v, dict)
             },

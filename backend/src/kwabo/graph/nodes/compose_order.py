@@ -11,6 +11,7 @@ the human approves the order. This node's responsibility is purely
 from __future__ import annotations
 
 import json
+import traceback
 from datetime import datetime
 
 from kwabo.utils import utcnow
@@ -63,6 +64,7 @@ async def compose_order_node(state: OrderState) -> OrderState:
                 "compose_navision_operations_failed",
                 email_id=state.get("email_id"),
                 error=f"{type(exc).__name__}: {exc}"[:200],
+                traceback=traceback.format_exc()[:1500],
             )
             nav_operations = []
 
