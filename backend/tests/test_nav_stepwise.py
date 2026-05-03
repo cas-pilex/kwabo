@@ -123,12 +123,16 @@ async def test_mock_stepwise_mixprijzen_quantity_triggers_discount(tmp_path):
     )
 
     client = MockNavisionClient(out_dir=tmp_path)
-    # 10001 + 1515155 are both mixprijzen=True.
+    # 10001 + 1515155 are both mixprijzen=True. Item 1515155 has alternate
+    # UoM PAL (qty=24); the mock's mix-discount only fires when the line's
+    # UOM equals that mix-UOM (real-NAV-faithful behaviour, see Bug 2 fix).
     ops = [
         {"op": "POST", "path": "/salesOrders",
          "body": {"customerNumber": "10001"}, "label": "klant"},
         {"op": "POST", "path": "/salesOrders({id})/salesOrderLines",
          "body": {"lineType": "Item", "itemNumber": "1515155"}, "label": "regel"},
+        {"op": "PATCH", "path": "/salesOrderLines({id})",
+         "body": {"unitOfMeasureCode": "PAL"}, "label": "eenheid"},
         {"op": "PATCH", "path": "/salesOrderLines({id})",
          "body": {"quantity": MOCK_MIX_THRESHOLD},
          "label": "aantal",
@@ -136,7 +140,7 @@ async def test_mock_stepwise_mixprijzen_quantity_triggers_discount(tmp_path):
     ]
     result = await client.create_sales_order_stepwise(ops)
 
-    qty_patch = result["operation_results"][2]
+    qty_patch = result["operation_results"][3]
     expected = round(100.0 * MOCK_MIX_DISCOUNT_FACTOR, 4)
     assert qty_patch["response_body"]["unitPrice"] == expected
     # Same scenario but with a non-mix customer should NOT discount.
@@ -147,10 +151,12 @@ async def test_mock_stepwise_mixprijzen_quantity_triggers_discount(tmp_path):
         {"op": "POST", "path": "/salesOrders({id})/salesOrderLines",
          "body": {"lineType": "Item", "itemNumber": "1515155"}, "label": "regel"},
         {"op": "PATCH", "path": "/salesOrderLines({id})",
+         "body": {"unitOfMeasureCode": "PAL"}, "label": "eenheid"},
+        {"op": "PATCH", "path": "/salesOrderLines({id})",
          "body": {"quantity": MOCK_MIX_THRESHOLD}, "label": "aantal"},
     ]
     result2 = await client2.create_sales_order_stepwise(ops2)
-    qty_patch2 = result2["operation_results"][2]
+    qty_patch2 = result2["operation_results"][3]
     assert qty_patch2["response_body"]["unitPrice"] == 100.0
 
 

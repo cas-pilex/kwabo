@@ -208,6 +208,28 @@ def _strip_marker_keys(body: dict) -> dict:
     return {k: v for k, v in body.items() if not k.startswith("_")}
 
 
+def _extract_external_doc_number(operations: list[dict]) -> str | None:
+    """Find the externalDocumentNumber that the composed ops will set on the
+    sales-order header, or None if none is set.
+
+    Both stepwise clients use this for idempotency: if NAV already has a
+    sales-order with this externalDocumentNumber we short-circuit the create
+    rather than risk a duplicate-key error or a second order with the same PO.
+    Mirrors the legacy guard in `RealNavisionClient.create_sales_order`."""
+    for op in operations:
+        if op.get("op") != "PATCH":
+            continue
+        path = op.get("path") or ""
+        # Only header PATCHes count — line PATCHes can't set externalDocumentNumber.
+        if "/salesOrders(" not in path or "/salesOrderLines" in path:
+            continue
+        body = op.get("body") or {}
+        external = body.get("externalDocumentNumber")
+        if external:
+            return str(external)
+    return None
+
+
 def _diff_autofilled(sent_body: dict, server_record: dict) -> dict:
     """Return the fields NAV populated for us via triggers.
 

@@ -8,14 +8,14 @@ from fastapi import APIRouter, HTTPException, UploadFile
 
 from kwabo.config import settings
 from kwabo.graph.runner import _raw_email_to_state, run_on_eml
-from kwabo.integrations.email_client import FileDropEmailClient, parse_eml_bytes
+from kwabo.integrations.email_client import get_email_client, parse_eml_bytes
 
 router = APIRouter(prefix="/api/intake", tags=["intake"])
 
 
 @router.post("/scan")
 async def scan_inbox() -> dict:
-    client = FileDropEmailClient()
+    client = get_email_client()
     processed = []
     errors = []
     for raw in client.list_new():

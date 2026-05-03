@@ -53,6 +53,7 @@ async def compose_order_node(state: OrderState) -> OrderState:
     # they fix problems. Returns [] if there's no matched customer (in
     # which case push_navision will refuse to run anyway).
     nav_operations: list[dict] = []
+    compose_error: str | None = None
     if state.get("is_order"):
         try:
             nav_operations = list(compose_navision_operations(dict(state)))
@@ -60,10 +61,11 @@ async def compose_order_node(state: OrderState) -> OrderState:
             # Compose is pure but defensive: bad state shouldn't crash the
             # pre-review save. We log + leave nav_operations empty; the
             # reviewer + push_navision both surface the missing list.
+            compose_error = f"{type(exc).__name__}: {exc}"[:200]
             log.error(
                 "compose_navision_operations_failed",
                 email_id=state.get("email_id"),
-                error=f"{type(exc).__name__}: {exc}"[:200],
+                error=compose_error,
                 traceback=traceback.format_exc()[:1500],
             )
             nav_operations = []
@@ -124,10 +126,13 @@ async def compose_order_node(state: OrderState) -> OrderState:
         regels=len(regels),
         nav_operations=len(nav_operations),
     )
-    return {
+    out: OrderState = {
         **state,
         "order_log_id": log_id,
         "review_status": "pending",
         "nav_operations": nav_operations,
         "stappen_log": steps,
     }
+    if compose_error is not None:
+        out["compose_error"] = compose_error
+    return out

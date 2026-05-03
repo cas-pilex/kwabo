@@ -215,3 +215,30 @@ class FileDropEmailClient:
         p = self._path_by_id.get(email_id)
         if p and p.exists():
             shutil.move(str(p), str(self.processed / p.name))
+
+
+def get_email_client():
+    """Factory: pick the email client implementation by `EMAIL_MODE`.
+
+    Modes:
+      * file_drop  — local .eml files in `inbox_path` (default; what the
+                     test harness and dev loop use today).
+      * graph      — Microsoft Graph mailbox; OAuth2 token stored by the
+                     /api/mailbox/oauth/* flow.
+      * imap       — not yet implemented; placeholder so the env var is
+                     recognised and the operator gets a clear message.
+
+    Mirrors `kwabo.integrations.navision_api.get_navision_client`. Switching
+    to a real mailbox should be a config flip + credentials, not a code
+    change."""
+    mode = settings.email_mode
+    if mode == "file_drop":
+        return FileDropEmailClient()
+    if mode == "graph":
+        from kwabo.integrations.email_client_graph import GraphEmailClient
+        return GraphEmailClient()
+    if mode == "imap":
+        raise NotImplementedError(
+            "EMAIL_MODE=imap is not yet supported. Use file_drop or graph."
+        )
+    raise ValueError(f"Unknown EMAIL_MODE: {mode!r}")

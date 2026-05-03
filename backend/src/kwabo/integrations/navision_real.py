@@ -40,11 +40,39 @@ from kwabo.integrations.nav_operations import (
     StepwiseResult,
     _assert_op_invariants,
     _diff_autofilled,
+    _extract_external_doc_number,
     _strip_marker_keys,
     _substitute_body_values,
     _substitute_path,
 )
 from kwabo.utils.logging import log
+
+
+_REDACT_KEYS = {"password", "client_secret", "access_token", "authorization"}
+
+
+def _redact_body(body: dict) -> dict:
+    """Remove credential-bearing keys before logging the request body.
+
+    The composed ops never carry credentials today (auth is on the transport
+    layer), but adding this guard now keeps us safe if a future op type starts
+    sending tokens or secrets in the body."""
+    if not isinstance(body, dict):
+        return {}
+    return {
+        k: ("<redacted>" if k.lower() in _REDACT_KEYS else v)
+        for k, v in body.items()
+    }
+
+
+def _truncate_text(text: str, limit: int) -> str:
+    """Cap response-body text in logs so a pathological response doesn't
+    flood the log file. Keeps the first `limit` chars and a marker."""
+    if not isinstance(text, str):
+        return ""
+    if len(text) <= limit:
+        return text
+    return text[:limit] + f"…<truncated {len(text) - limit} chars>"
 
 
 class _TokenCache:
@@ -410,6 +438,32 @@ class RealNavisionClient:
         last_line_id: str = ""
         last_incoming_doc_id: str = ""
 
+        # Idempotency guard: if the composed ops set an externalDocumentNumber
+        # and NAV already has a sales-order with that number, short-circuit.
+        # Mirrors the legacy guard in `create_sales_order` so re-pushing the
+        # same email is safe — NAV's unique-key constraint would otherwise
+        # fail the second push with a confusing error.
+        external = _extract_external_doc_number(list(operations))
+        if external:
+            existing_resp = await self._get(
+                "salesOrders",
+                {"$filter": f"externalDocumentNumber eq '{external}'"},
+            )
+            existing_value = (existing_resp or {}).get("value") or []
+            if existing_value:
+                e = existing_value[0]
+                log.info(
+                    "nav_dedup_skip_stepwise",
+                    external_doc=external,
+                    found_number=e.get("number"),
+                )
+                return StepwiseResult(
+                    sales_order_id=e.get("id", ""),
+                    sales_order_number=e.get("number", ""),
+                    operation_results=[],
+                    nav_autofilled={"_dedup": external},
+                )
+
         for idx, op in enumerate(operations):
             method = op["op"]
             raw_path = op["path"]
@@ -558,21 +612,40 @@ class RealNavisionClient:
                     autofilled_union.update(patch_autofilled)
             except Exception as exc:
                 err_msg = self._format_http_error(exc)
+                response_status = (
+                    getattr(getattr(exc, "response", None), "status_code", 0) or 0
+                )
                 results.append(
                     NavOpResult(
                         operation=op,
-                        status=getattr(getattr(exc, "response", None), "status_code", 0) or 0,
+                        status=response_status,
                         response_body={},
                         autofilled={},
                         error=err_msg,
                     )
                 )
+                # Capture every breadcrumb a debugger needs for go-live
+                # post-mortem: request body, response body+status, error type.
+                # Bodies are truncated so a pathological 100KB error response
+                # doesn't flood the log file.
+                response_body_text = ""
+                resp = getattr(exc, "response", None)
+                if resp is not None:
+                    try:
+                        response_body_text = resp.text
+                    except Exception:
+                        response_body_text = ""
                 log.error(
                     "nav_stepwise_failure",
                     op_index=idx,
                     op_label=op.get("label"),
-                    op=method,
-                    path=raw_path,
+                    op_method=method,
+                    op_path=raw_path,
+                    request_body=_redact_body(wire_body),
+                    response_status=response_status,
+                    response_body=_truncate_text(response_body_text, 2000),
+                    error_type=type(exc).__name__,
+                    error_message=str(exc)[:500],
                     error=err_msg,
                 )
                 return StepwiseResult(

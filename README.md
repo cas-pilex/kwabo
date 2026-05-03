@@ -111,13 +111,29 @@ kwabo-order-intake/
     └── navision_mock/orders/      Mock ERP orders als JSON
 ```
 
-## Swap naar echte externe systemen
+## Go-live: koppelen aan echte mailbox + NAV
 
-- **Navision 2018 REST:** implementeer `RealNavisionClient` achter `NavisionClient`-protocol in `integrations/navision_api.py` (PDF §10) en zet `NAVISION_MODE=real` in `.env`.
-- **IMAP/Graph mailbox:** implementeer `ImapEmailClient` achter `EmailClient`-protocol; zet `EMAIL_MODE=imap`.
-- **SharePoint klantenkaart-import:** nieuw script `scripts/import_klantenkaarten.py` via Microsoft Graph.
+Volledige variabelenlijst staat in `backend/.env.example`. Korte versie:
 
-Geen andere code hoeft aangepast — alle nodes en API-routes zijn integratie-agnostisch.
+**Echte NAV 2018 (OData v2)** — `RealNavisionClient` is af. Zet:
+- `NAVISION_MODE=real`
+- `NAV_BASE_URL`, `NAV_COMPANY_ID`
+- `NAV_AUTH_MODE=basic` met `NAV_USERNAME` + `NAV_PASSWORD` (Web Service Access Key) **of**
+  `NAV_AUTH_MODE=oauth` met `NAV_TENANT_ID`, `NAV_CLIENT_ID`, `NAV_CLIENT_SECRET`, `NAV_SCOPE`
+- Optioneel `NAV_VERIFY_SSL=false` voor self-signed staging
+
+Daarna eenmalig `python backend/scripts/sync_navision_masters.py --full` om klanten/items/ship-tos/UoMs/cross-refs uit NAV op te halen. Vervolgens incrementeel met `--delta`.
+
+**Microsoft Graph mailbox** — plumbing (OAuth-flow + token-opslag) staat klaar; de fetch-implementatie is een stub die met een duidelijke melding faalt tot deze is ingevuld. Zet:
+- `EMAIL_MODE=graph`
+- Doorloop OAuth via dashboard → `/api/mailbox/oauth/start`
+
+**File-drop fallback** (huidige standaard, geen wijziging vereist):
+- `EMAIL_MODE=file_drop` + drop `.eml` files in `data/inbox/`
+
+**IMAP** — niet geïmplementeerd. `EMAIL_MODE=imap` geeft een duidelijke `NotImplementedError` zodat configuratiefouten zichtbaar zijn.
+
+Bij elke NAV-error tijdens go-live worden request body, response body+status, error type en op-context gestructureerd gelogd (`event=nav_stepwise_failure`) zodat post-mortem mogelijk is.
 
 ## Volgende stappen om naar 100% werkende orders te komen
 

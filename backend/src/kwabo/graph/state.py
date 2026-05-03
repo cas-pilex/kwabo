@@ -113,6 +113,11 @@ class OrderState(TypedDict, total=False):
     nav_operation_results: list[dict]
     nav_autofilled: dict
 
+    # Diagnostic surfaced by compose_order_node when compose_navision_operations
+    # raises. Populated when nav_operations cannot be built (e.g. no matched
+    # articles); the dashboard shows this and push_navision refuses.
+    compose_error: Optional[str]
+
     # Navision
     navision_order_nr: Optional[str]
     navision_status: Optional[str]

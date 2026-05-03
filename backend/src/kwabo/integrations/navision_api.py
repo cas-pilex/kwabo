@@ -25,6 +25,7 @@ from kwabo.integrations.nav_operations import (
     StepwiseResult,
     _assert_op_invariants,
     _diff_autofilled,
+    _extract_external_doc_number,
     _strip_marker_keys,
     _substitute_body_values,
     _substitute_path,
@@ -201,6 +202,26 @@ class MockNavisionClient:
         sales_order_number: str = ""
         last_line_id: str = ""
         last_incoming_doc_id: str = ""
+
+        # Idempotency guard: if the composed ops set an externalDocumentNumber
+        # and we already have a stored order with that number, short-circuit.
+        # Real NAV's unique-key constraint would otherwise fail the second push.
+        external = _extract_external_doc_number(list(operations))
+        if external:
+            existing = next(
+                (
+                    o for o in self._orders.values()
+                    if o.get("externalDocumentNumber") == external
+                ),
+                None,
+            )
+            if existing:
+                return {
+                    "sales_order_id": existing["id"],
+                    "sales_order_number": existing["number"],
+                    "operation_results": [],
+                    "nav_autofilled": {"_dedup": external},
+                }
 
         for idx, op in enumerate(operations):
             method = op["op"]
@@ -499,11 +520,19 @@ class MockNavisionClient:
                     (key, value), = body.items()
                     line[key] = value
                     # Trigger emulation: quantity change -> mix-discount rule.
+                    # Real NAV's mix-staffel codeunit only fires when the line's
+                    # UOM is a registered mix-UOM (qtyPerUnitOfMeasure > 1.0).
+                    # Discounting on quantity alone would hide composer bugs
+                    # where the wrong UOM is patched.
                     if key == "quantity":
                         cust_mix = order.get("_customer_mixprijzen", False)
                         item_mix = line.get("_item_mixprijzen", False)
+                        current_uom = line.get("unitOfMeasureCode", "")
+                        is_mix_uom = self._is_mix_uom_for_item(
+                            line["itemNumber"], current_uom
+                        )
                         if (
-                            cust_mix and item_mix
+                            cust_mix and item_mix and is_mix_uom
                             and isinstance(value, (int, float))
                             and value >= MOCK_MIX_THRESHOLD
                         ):
@@ -511,11 +540,23 @@ class MockNavisionClient:
                             line["unitPrice"] = round(
                                 base * MOCK_MIX_DISCOUNT_FACTOR, 4
                             )
-                    # Trigger emulation: unitOfMeasureCode change -> ensure
-                    # the UoM exists for this item (defensive; doesn't change
-                    # price in our simplified mock).
                     return {k: v for k, v in line.items() if not k.startswith("_")}
         raise ValueError(f"unknown sales-order line {line_id!r}")
+
+    def _is_mix_uom_for_item(self, item_number: str, uom_code: str) -> bool:
+        """True iff the UOM code is registered as a mix-UOM for the item.
+
+        An alternate UOM with qtyPerUnitOfMeasure > 1.0 counts. Items without
+        UoM fixtures fall back to "any UOM qualifies" so we don't break items
+        that simply lack mock data; items that have only a base UOM also
+        qualify (the base is the only UOM the item supports)."""
+        uoms = self.item_uoms.get(item_number, [])
+        if not uoms:
+            return True
+        alternates = [u for u in uoms if u.get("qtyPerUnitOfMeasure", 1.0) > 1.0]
+        if not alternates:
+            return True
+        return any(u.get("code") == uom_code for u in alternates)
 
 
 def get_navision_client() -> NavisionClient:

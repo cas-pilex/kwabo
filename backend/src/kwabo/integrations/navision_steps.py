@@ -238,6 +238,7 @@ def compose_navision_operations(state: dict) -> list[NavOperation]:
 
     # ---- Steps 6-8: per orderregel -----------------------------------------
     regels = state.get("orderregels") or []
+    matched_count = 0
     for idx, regel in enumerate(regels, start=1):
         artikelnr = regel.get("artikelnummer_kwabo_matched")
         if not artikelnr:
@@ -246,6 +247,19 @@ def compose_navision_operations(state: dict) -> list[NavOperation]:
             # the graph blocks the push for those orders anyway.
             continue
         ops.extend(_emit_line_ops(regel, artikelnr, f"Regel {idx}"))
+        matched_count += 1
+
+    # Defensive guard: refuse to compose a header-only order. Either there
+    # were zero regels (extraction failed) or every regel was unmatched
+    # (matching failed). Real NAV would accept the empty order but the
+    # result is structurally invalid; we'd rather surface the upstream
+    # failure now than ship a header-only order to NAV.
+    if matched_count == 0:
+        email_id = state.get("email_id") or "<unknown>"
+        raise ValueError(
+            f"Cannot compose NAV order for {email_id}: no matched articles "
+            f"({len(regels)} regels, all unmatched)."
+        )
 
     # ---- Step 9: europallet (artikel 19820) --------------------------------
     europallet = state.get("europallet_regel")

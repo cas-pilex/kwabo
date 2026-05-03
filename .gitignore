@@ -27,6 +27,9 @@ data/llm_cache/
 # logs
 *.log
 
+# E2E run reports — generated artefacts, keep folder via .gitkeep
+backend/reports/*.md
+
 # playwright
 frontend/test-results/
 frontend/playwright-report/
