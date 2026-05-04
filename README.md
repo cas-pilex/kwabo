@@ -152,16 +152,17 @@ Bij elke NAV-error tijdens go-live worden request body, response body+status, er
 
 ### 2. Railway (backend)
 
-1. Connect GitHub repo `cas-pilex/kwabo`, selecteer `backend/` als root.
-2. Build command: `pip install -r requirements.txt`. Start command: `PYTHONPATH=src uvicorn kwabo.main:app --host 0.0.0.0 --port $PORT`.
-3. Env vars: kopiëer alle uncommented regels uit `backend/.env.example`, vul echte waarden. Belangrijk:
+1. Connect GitHub repo `cas-pilex/kwabo` → **New Service** → Deploy from GitHub.
+2. **Settings → Service → Root Directory = `backend`** (kritiek — anders detecteert nixpacks Python niet en faalt de build met "pip: command not found").
+3. Build + start command staan in `backend/railway.toml` (auto-detected). Je hoeft niets handmatig te configureren.
+4. Env vars: kopiëer alle uncommented regels uit `backend/.env.example`, vul echte waarden. Belangrijk:
    - `DATABASE_URL` (Supabase **transaction pooler** URI — host eindigt op `.pooler.supabase.com:6543`, user heeft de vorm `postgres.<projectref>`)
    - `ANTHROPIC_API_KEY`
    - `KWABO_CORS_EXTRA=https://<je-vercel-domain>` zodat de frontend mag aanroepen
    - `NAVISION_MODE=real` + alle `NAV_*` creds wanneer je echte NAV koppelt
    - `EMAIL_MODE=graph` + `GRAPH_*` wanneer je echte mailbox koppelt
-4. Bij eerste deploy: zet `EMAIL_MODE=file_drop` en `NAVISION_MODE=mock` om de boel in mock-mode te smoke-testen, daarna omschakelen.
-5. Health check: Railway pingt `/api/health` (al ingebouwd in `railway.toml`).
+5. Bij eerste deploy: zet `EMAIL_MODE=file_drop` en `NAVISION_MODE=mock` om de boel in mock-mode te smoke-testen, daarna omschakelen.
+6. Health check: Railway pingt `/api/health` (al ingebouwd in `railway.toml`).
 
 ### 3. Vercel (frontend)
 
