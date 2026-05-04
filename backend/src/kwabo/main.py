@@ -69,6 +69,10 @@ def create_app() -> FastAPI:
     def root() -> dict:
         return {"name": "kwabo-order-intake", "version": "0.1.0"}
 
+    @app.get("/api/health")
+    def health() -> dict:
+        return {"status": "ok"}
+
     return app
 
 
