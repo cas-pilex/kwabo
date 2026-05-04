@@ -1,6 +1,3 @@
-[build]
-builder = "NIXPACKS"
-
 [deploy]
 startCommand = "PYTHONPATH=src uvicorn kwabo.main:app --host 0.0.0.0 --port $PORT"
 restartPolicyType = "ON_FAILURE"
