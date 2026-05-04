@@ -135,6 +135,43 @@ Daarna eenmalig `python backend/scripts/sync_navision_masters.py --full` om klan
 
 Bij elke NAV-error tijdens go-live worden request body, response body+status, error type en op-context gestructureerd gelogd (`event=nav_stepwise_failure`) zodat post-mortem mogelijk is.
 
+## Cloud deploy: Supabase + Railway + Vercel
+
+| Component | Hosting | Hoe gekoppeld |
+|---|---|---|
+| Postgres database | Supabase | `DATABASE_URL` (transaction pooler URI, port 6543) |
+| FastAPI backend | Railway | reads `DATABASE_URL` + `ANTHROPIC_API_KEY` + NAV/Graph creds uit Railway env |
+| Next.js frontend | Vercel | `NEXT_PUBLIC_API_BASE_URL` wijst naar Railway-URL |
+
+### 1. Supabase (eenmalig)
+
+1. Pak de **Transaction pooler** connection string uit Supabase Dashboard → Project Settings → Database → Connection string → URI tab.
+2. Zet hem als `DATABASE_URL` in Railway én lokaal in `.env`. Het pad gebruikt `postgresql+psycopg://...:6543/postgres`.
+3. Schema bootstrappen: één keer een script draaien dat `init_db()` aanroept tegen de Supabase URL — bv. `PYTHONPATH=src python -c "from kwabo.db.session import init_db; init_db()"`. Dit is idempotent (re-run = no-op).
+4. Master-data sync: `python backend/scripts/sync_navision_masters.py --full` (vereist NAV-creds; vult klanten/items/ship-tos/UOMs/kruisverwijzingen).
+
+### 2. Railway (backend)
+
+1. Connect GitHub repo `cas-pilex/kwabo`, selecteer `backend/` als root.
+2. Build command: `pip install -r requirements.txt`. Start command: `PYTHONPATH=src uvicorn kwabo.main:app --host 0.0.0.0 --port $PORT`.
+3. Env vars: kopiëer alle uncommented regels uit `backend/.env.example`, vul echte waarden. Belangrijk:
+   - `DATABASE_URL` (Supabase pooler URI)
+   - `ANTHROPIC_API_KEY`
+   - `NAVISION_MODE=real` + alle `NAV_*` creds wanneer je echte NAV koppelt
+   - `EMAIL_MODE=graph` + `GRAPH_*` wanneer je echte mailbox koppelt
+4. Bij eerste deploy: zet `EMAIL_MODE=file_drop` en `NAVISION_MODE=mock` om de boel in mock-mode te smoke-testen, daarna omschakelen.
+
+### 3. Vercel (frontend)
+
+1. Connect GitHub repo, selecteer `frontend/` als root, framework = Next.js (auto-detected).
+2. Env vars:
+   - `NEXT_PUBLIC_API_BASE_URL=https://<je-railway-app>.up.railway.app`
+   - Optioneel `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` als de frontend ooit direct met Supabase praat (nu niet, gaat via backend).
+
+### Secrets — nooit committen
+
+`.env` staat in `.gitignore`. Productie-secrets horen alleen in Railway/Vercel env-UI of in Supabase Vault. Service-role key van Supabase **nooit** in frontend env zetten — die bypasst Row Level Security.
+
 ## Volgende stappen om naar 100% werkende orders te komen
 
 1. **Artikel-match verbeteren:** seed mapping aanvullen op basis van echte Kwabo-masterdata (Nav items export) zodat exact/klantenkaart-matches slagen i.p.v. fuzzy → 80%+ auto-match.

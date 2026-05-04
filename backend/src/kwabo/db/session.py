@@ -6,24 +6,48 @@ from typing import Optional
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
+from sqlalchemy.pool import NullPool
 from sqlmodel import Session, SQLModel, create_engine
 
 from kwabo.config import settings
 
-engine = create_engine(
-    settings.database_url,
-    echo=False,
-    connect_args={"check_same_thread": False} if settings.database_url.startswith("sqlite") else {},
-)
+
+def _build_engine(url: str) -> Engine:
+    """Engine factory with dialect-specific knobs.
+
+    sqlite — share connection across threads (FastAPI dev server).
+    postgres on Supabase pgbouncer (port 6543, transaction mode) — disable
+        SQLAlchemy pooling (pgbouncer already pools) and disable psycopg3
+        server-side prepared statements (incompatible with transaction-mode
+        bouncer).
+    """
+    if url.startswith("sqlite"):
+        return create_engine(url, echo=False, connect_args={"check_same_thread": False})
+    if url.startswith("postgresql") or url.startswith("postgres"):
+        return create_engine(
+            url,
+            echo=False,
+            poolclass=NullPool,
+            connect_args={"prepare_threshold": None},
+        )
+    return create_engine(url, echo=False)
 
 
-# Idempotent ALTER TABLE shim: SQLModel.metadata.create_all() does NOT add
-# columns to tables that already exist. For new columns on existing tables we
-# attempt an ALTER if the column is missing. New tables are handled normally
-# by create_all(). Keep entries minimal — one per added column.
-_ADDITIVE_MIGRATIONS: list[tuple[str, str, str]] = [
-    # (table, column, type+default)
-    ("klantenkaarten", "mixprijzen", "BOOLEAN NOT NULL DEFAULT 0"),
+engine = _build_engine(settings.database_url)
+
+
+# Per-dialect SQL fragments — `BOOLEAN DEFAULT 0` is SQLite syntax; Postgres
+# wants `FALSE`. Add a row per (table, column) — the helper picks the right
+# fragment based on the active dialect.
+_ADDITIVE_MIGRATIONS: list[tuple[str, str, dict[str, str]]] = [
+    (
+        "klantenkaarten",
+        "mixprijzen",
+        {
+            "sqlite": "BOOLEAN NOT NULL DEFAULT 0",
+            "postgresql": "BOOLEAN NOT NULL DEFAULT FALSE",
+        },
+    ),
 ]
 
 
@@ -53,14 +77,18 @@ def _apply_additive_migrations(target_engine: Optional[Engine] = None) -> None:
     means it'll be created by `create_all()` with the column already in place.
     """
     eng = target_engine if target_engine is not None else engine
+    dialect = eng.dialect.name
     with eng.begin() as conn:
-        for table, column, decl in _ADDITIVE_MIGRATIONS:
+        for table, column, decl_by_dialect in _ADDITIVE_MIGRATIONS:
             cols = _existing_columns(conn, table)
             if not cols:
                 # Table doesn't exist yet — create_all() will materialize it
                 # with the column already defined on the model.
                 continue
             if column in cols:
+                continue
+            decl = decl_by_dialect.get(dialect)
+            if decl is None:
                 continue
             conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {decl}"))
 
