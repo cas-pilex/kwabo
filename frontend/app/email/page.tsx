@@ -270,9 +270,9 @@ export default function EmailPage() {
           <li>
             Ga naar <a className="text-[var(--kwabo-navy)] underline" href="https://portal.azure.com" target="_blank" rel="noopener noreferrer">portal.azure.com</a> → <strong>Azure Active Directory</strong> → <strong>App registrations</strong> → <strong>New registration</strong>
           </li>
-          <li>Naam: <em>"Kwabo Order Intake"</em></li>
+          <li>Naam: <em>&quot;Kwabo Order Intake&quot;</em></li>
           <li>
-            Supported account types: <strong>Single tenant</strong> (pilex.ai) — of Multi-tenant als je 'm ook voor Kwabo wilt gebruiken
+            Supported account types: <strong>Single tenant</strong> (pilex.ai) — of Multi-tenant als je &apos;m ook voor Kwabo wilt gebruiken
           </li>
           <li>
             Redirect URI: type <strong>Web</strong>, URL ={" "}
@@ -290,7 +290,7 @@ export default function EmailPage() {
           <li>
             Linkermenu <strong>Overview</strong> → kopieer <strong>Application (client) ID</strong> en <strong>Directory (tenant) ID</strong>
           </li>
-          <li>Plak deze 3 waarden hierboven, klik "Config opslaan", dan "Connect with Microsoft"</li>
+          <li>Plak deze 3 waarden hierboven, klik &quot;Config opslaan&quot;, dan &quot;Connect with Microsoft&quot;</li>
         </ol>
       </details>
 

@@ -58,17 +58,9 @@ def test_graph_stub_list_new_raises_clear_error_without_token():
         client.list_new()
 
 
-def test_graph_stub_mark_seen_raises_not_implemented():
-    """mark_seen is a stub today; calling it must NotImplementedError."""
+def test_graph_mark_seen_without_token_raises_clear_oauth_error():
+    """mark_seen is implemented but, without a token row, must surface the
+    same actionable OAuth error as list_new — never a confusing AttributeError."""
     client = GraphEmailClient(token=None)
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(RuntimeError, match=r"oauth|OAuth"):
         client.mark_seen("any-id")
-
-
-def test_graph_stub_list_new_with_token_raises_not_implemented():
-    """With a token loaded but no implementation yet, list_new() must
-    NotImplementedError so a misconfigured deployment is loud, not silent."""
-    sentinel_token = object()  # opaque — stub doesn't use the body yet
-    client = GraphEmailClient(token=sentinel_token)
-    with pytest.raises(NotImplementedError, match="stub"):
-        client.list_new()

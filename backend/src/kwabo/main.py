@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlmodel import Session
 
 from kwabo.api.artikelen import router as artikelen_router
 from kwabo.api.audit import router as audit_router
@@ -16,10 +18,9 @@ from kwabo.api.orders import router as orders_router
 from kwabo.api.preview import router as preview_router
 from kwabo.api.prijsafspraken import router as prijs_router
 from kwabo.config import settings
-from kwabo.utils.logging import log, setup_logging
-from kwabo.db.session import engine, init_db
 from kwabo.db.seed import seed
-from sqlmodel import Session
+from kwabo.db.session import engine, init_db
+from kwabo.utils.logging import log, setup_logging
 
 
 def _cors_origins() -> list[str]:
@@ -33,9 +34,22 @@ def _cors_origins() -> list[str]:
     return base
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    with Session(engine) as s:
+        seed(s)
+    log.info("app_started", routes=len(app.routes))
+    yield
+
+
 def create_app() -> FastAPI:
     setup_logging()
-    app = FastAPI(title="Kwabo Order Intake AI", version="0.1.0")
+    app = FastAPI(
+        title="Kwabo Order Intake AI",
+        version="0.1.0",
+        lifespan=lifespan,
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=_cors_origins(),
@@ -57,13 +71,6 @@ def create_app() -> FastAPI:
         from kwabo.api import testing as testing_api
 
         app.include_router(testing_api.router)
-
-    @app.on_event("startup")
-    def _startup() -> None:
-        init_db()
-        with Session(engine) as s:
-            seed(s)
-        log.info("app_started", routes=len(app.routes))
 
     @app.get("/")
     def root() -> dict:
