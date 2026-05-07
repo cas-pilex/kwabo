@@ -571,6 +571,11 @@ def get_navision_client() -> NavisionClient:
     if mode == "real":
         from kwabo.integrations.navision_real import RealNavisionClient
         return RealNavisionClient()
+    if mode == "nav2018":
+        # NAV 2018 OData V4 endpoint with PLX_* custom pages and Basic auth.
+        # See navision_nav2018.py for the URL/field translation rules.
+        from kwabo.integrations.navision_nav2018 import Nav2018ODataClient
+        return Nav2018ODataClient()
     raise ValueError(f"Unknown NAVISION_MODE: {mode}")
 
 

@@ -31,6 +31,36 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("KWABO_TEST_MODE", "TEST_MODE", "test_mode"),
     )
 
+    # --- Auth ---
+    # Single-admin shared password gate. When set, /api/auth/login validates
+    # against this. JWT_SECRET signs the session cookie; auto-generated for
+    # dev but MUST be set explicitly in production (Railway env).
+    admin_password: str = ""
+    jwt_secret: str = "dev-only-change-me-in-prod"
+    jwt_ttl_hours: int = 24
+
+    # --- NAV 2018 OData V4 (Kwabo-test endpoint shape) ---
+    # Used when navision_mode == "nav2018".
+    # Base URL excluding the Company('...') segment, e.g.
+    #   https://sf-112840.dynamicstocloud.com:1153/ST-124593-WS/ODataV4
+    nav_base_url: str = ""
+    # Company display name as it appears in NAV (with spaces). The client
+    # URL-encodes this when building paths.
+    nav_company: str = ""
+    # Web Service Access Key flow — username + key (Basic auth).
+    nav_username: str = ""
+    nav_password: str = ""
+    # Page (entity) names exposed via NAV web services. Defaults match the
+    # Pilex test environment Cas provided. Override per-deployment.
+    nav_page_sales_order: str = "PLX_SalesOrder"
+    nav_page_sales_order_lines: str = "PLX_SalesOrderLines"
+    nav_page_customer: str = "PLX_Customer"
+    nav_page_item: str = "PLX_Item"
+    nav_page_item_reference: str = "PLX_ItemReference"
+    nav_page_ship_to: str = "PLX_ShipToAddress"
+    nav_page_item_uom: str = "PLX_ItemUnitOfMeasure"
+    nav_verify_ssl: bool = True
+
     @property
     def inbox_path(self) -> Path:
         return Path(self.inbox_dir).resolve()

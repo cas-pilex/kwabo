@@ -1,148 +1,140 @@
-# Go-live checklist — wat alleen Cas nog kan invullen
+# Go-live checklist — wat alleen Cas nog moet doen
 
-Alles in de codebase wat zonder echte credentials gefixt kon worden, is gefixt:
-de NAV-trigger-aware push-laag is af, alle 27 NAV-tests passen, de FastAPI
-deprecation-warnings zijn weg, de stale email-stub-tests zijn aangepast op
-het huidige (geïmplementeerde) gedrag, en de unescaped HTML-entities in het
-dashboard zijn opgelost. Status van de codebase is daarmee: 215/215 tests
-passen (de 17 skipped zijn integratie-tests die expliciet credentials
-verwachten).
+Code-status van deze branch:
+- 232 backend tests groen, 0 failures
+- Admin auth (login-pagina + middleware-redirect, JWT bearer in cookie) actief
+- NAV 2018 OData V4 client (`navision_nav2018.py`) klaar, 10 unit-tests groen
+- Frontend build slaagt op Vercel onder cas-pilex scope
+- Railway backend live op `https://kwabo-production.up.railway.app`
 
-Wat hieronder staat zijn de stappen die alleen jij kan doen, omdat ze
+Wat hieronder staat zijn de stappen die alleen jij kan doen omdat ze
 externe systeemtoegang of fysieke configuratie vereisen.
 
-## 1. Microsoft Graph mailbox aansluiten
+---
 
-**Doel:** orders die binnenkomen op `info@kwabo.nl` worden automatisch
-opgehaald in plaats van handmatig via file-drop.
+## 1. Admin password instellen op Railway
 
-1. **Azure AD app-registratie** (eenmalig, ±5 min):
-   - portal.azure.com → Azure Active Directory → App registrations → New
-   - Naam: `Kwabo Order Intake`
-   - Account types: Single tenant
-   - Redirect URI (Web): `http://localhost:8000/api/mailbox/oauth/callback`
-     (later vervangen door je productie-URL)
-2. **API permissions** (delegated, Microsoft Graph):
-   - `Mail.ReadWrite`
-   - `User.Read`
-   - `offline_access`
-   - Klik **Grant admin consent**
-3. **Client secret** aanmaken → kopieer de **Value** (niet de Secret ID)
-4. **Tenant ID + Client ID** kopiëren uit Overview-pagina
-5. In het dashboard: open `/email`, plak de drie waarden, klik
-   **Config opslaan** en daarna **Connect with Microsoft**
-6. In `.env`: zet `EMAIL_MODE=graph`
+Verplicht. Zonder password is auth uit (dev-mode) en kan iedereen het
+dashboard openen.
 
-Het dashboard heeft een complete UI-walkthrough hiervoor (`/email` route),
-inclusief screenshots.
-
-## 2. Echte NAV 2018 koppelen
-
-**Doel:** de orders worden in de echte NAV 2018 OData-API aangemaakt in
-plaats van in de in-memory mock. De stepwise NAV-client is af + getest;
-alleen credentials ontbreken.
-
-In `backend/.env`:
+Railway → kwabo-production service → **Variables** → **New Variable**:
 
 ```
-NAVISION_MODE=real
-NAV_BASE_URL=https://<jouw-nav-host>:7048/<NAV-instance>/api/v2.0
-NAV_COMPANY_ID=<company-guid-uit-nav>
-NAV_AUTH_MODE=basic            # of: oauth
-# bij basic:
-NAV_USERNAME=<web-service-user>
-NAV_PASSWORD=<web-service-key>
-# bij oauth (Azure AD-fronted NAV):
-NAV_TENANT_ID=...
-NAV_CLIENT_ID=...
-NAV_CLIENT_SECRET=...
-NAV_SCOPE=https://api.businesscentral.dynamics.com/.default
-NAV_VERIFY_SSL=true            # false ALLEEN bij self-signed staging
+ADMIN_PASSWORD=<kies-een-sterk-wachtwoord>
+JWT_SECRET=<32+ random chars, ander dan ADMIN_PASSWORD>
 ```
 
-### Web Service Access Key in NAV ophalen
+`JWT_SECRET` rotation = alle sessies vervallen. Bewaar deze 2 in een
+password manager. Deel **alleen** ADMIN_PASSWORD met Kwabo-personeel.
 
-1. NAV 2018 → user kaart van de service-user → Web Service Access Key →
-   "Generate" → kopieer de waarde
-2. Geef die user de juiste permissies (P/G voor Sales Header, Sales Line,
-   Item, Customer, Item Reference, Incoming Document, Attachment)
+Na save → Railway deployt automatisch opnieuw → login werkt.
 
-## 3. Master-data sync draaien (eenmalig + daarna delta)
+## 2. NAV 2018 koppeling activeren
 
-Zodra NAV-creds staan:
+Railway → Variables → toevoegen:
 
-```bash
-cd kwabo-order-intake/backend
-PYTHONPATH=src python scripts/sync_navision_masters.py --full
+```
+NAVISION_MODE=nav2018
+NAV_BASE_URL=https://sf-112840.dynamicstocloud.com:1153/ST-124593-WS/ODataV4
+NAV_COMPANY=Kopie 2023 Kwabo Techniek B.V.
+NAV_USERNAME=<service-user-in-NAV>
+NAV_PASSWORD=<web-service-access-key>
+NAV_VERIFY_SSL=true
 ```
 
-Dit haalt klanten, items, ship-to-adressen, UoMs en kruisverwijzingen uit
-NAV en zet ze in de SQLite-mirror. Daarna delta:
+### Hoe je de Web Service Access Key krijgt
 
-```bash
-PYTHONPATH=src python scripts/sync_navision_masters.py        # default = --delta
+1. NAV 2018 → **User Setup** of **Users** lijst → user-kaart van de
+   service-account
+2. **Web Service Access Key** veld → **Generate** of **New** →
+   kopieer de waarde (28+ alfanumerieke tekens)
+3. Als deze user nog niet bestaat: maak een dedicated `KWABO_API` user
+   met permissies (`P/G`) op:
+   - PLX_SalesOrder, PLX_SalesOrderLines (write)
+   - PLX_Customer, PLX_Item, PLX_ItemReference (read)
+   - PLX_ShipToAddress, PLX_ItemUnitOfMeasure (read)
+
+### Connectiviteit testen vanuit het dashboard
+
+Na deploy: open in je browser
+`https://kwabo-pilex.vercel.app/api/diagnostics/nav` (vervang door je
+eigen Vercel URL). Output:
+
+```json
+{
+  "ok": true,
+  "status": 200,
+  "url": "https://sf-112840.../Company('...')/PLX_SalesOrder",
+  "page": "PLX_SalesOrder",
+  "company": "Kopie 2023 Kwabo Techniek B.V.",
+  "preview": "..."
+}
 ```
 
-Roep dit dagelijks aan via een scheduler (Task Scheduler / cron).
+- `ok: false, status: 401` → username/key fout
+- `ok: false, status: 404` → page name fout (NAV_PAGE_* vars overriden)
+- `ok: false, error: ConnectError` → DNS/firewall probleem
+
+### Page names anders dan PLX_* ?
+
+Override per env var:
+
+```
+NAV_PAGE_SALES_ORDER=<jouw_page>
+NAV_PAGE_SALES_ORDER_LINES=<jouw_page>
+# etc.
+```
+
+## 3. Microsoft Graph mailbox via dashboard koppelen
+
+Geen code-wijzigingen nodig. Stappen voor Kwabo-personeel (na inloggen):
+
+1. **Login** op `https://kwabo-pilex.vercel.app/` met het admin password
+2. Open `/email` in het dashboard
+3. Volg de in-app walkthrough:
+   - Azure AD app registreren (`portal.azure.com`)
+   - 3 waarden invoeren (Tenant ID, Client ID, Client Secret)
+   - Klik **Connect with Microsoft** → OAuth-flow → consent
+4. Daarna verschijnt elke nieuwe mail in `info@kwabo.nl` automatisch in
+   de Order Queue
 
 ## 4. Eén staging-push als acceptatietest
 
-Vóór je productie aanzet:
+Vóór je productie aanzet — drop één test-`.eml` in `data/inbox/` lokaal,
+of laat het via mailbox binnenkomen. Verifieer in NAV staging dat:
 
-1. Zet `NAVISION_MODE=real` met **staging**-creds (niet productie)
-2. Drop één test-`.eml` in `data/inbox/`
-3. Backend draaien: `PYTHONPATH=src uvicorn kwabo.main:app --port 8000`
-4. Trigger scan: `curl -X POST http://localhost:8000/api/intake/scan`
-5. Open dashboard → review de order → klik **Goedkeuren**
-6. **Verifieer in NAV staging:**
-   - Sales Header is aangemaakt met klantgegevens (sellToCustomerName,
-     paymentTermsCode, currencyCode) door de OnValidate van customerNumber
-   - Sales Line bevat unitPrice (niet €0,00) en — bij mix-klant + mix-artikel
-     met mix-UoM — de mix-staffel-prijs (Codeunit moet zijn afgevuurd)
-   - Externe documentnr, requestedDeliveryDate, shipmentDate kloppen
-   - Bij mix-flow: ziet het Unit Price-veld op de regel een prijs <
-     standaardprijs zodra de mix-quantity-PATCH is gestuurd? Zo ja: Codeunit
-     vuurt zoals verwacht.
-   - Incoming Document is aangemaakt + bestand gekoppeld
+- [ ] Sales Header is aangemaakt met klantgegevens (Sell_to_Customer_Name,
+  Payment_Terms_Code, Currency_Code) — bewijs dat de OnValidate van
+  `Sell_to_Customer_No` is gelopen
+- [ ] Sales Line bevat Unit_Price > 0 (niet 0) — bewijs dat NAV's
+  prijs-codeunit liep na de PATCH op `No`
+- [ ] External_Document_No, Requested_Delivery_Date, Shipment_Date
+  staan op de orderkop
+- [ ] Bij mix-klant + mix-artikel: Unit_Price wijzigt nadat de
+  quantity-PATCH binnenkomt (bewijs dat mix-staffel codeunit liep)
 
-Als alle 6 punten kloppen op staging → veilig om productie aan te zetten.
+Als alle vier kloppen → veilig om productie aan te zetten.
 
-## 5. Vercel + Railway (optioneel, voor cloud-hosting)
+## Kort overzicht van environment-variabelen
 
-Niet vereist als je alles op één Windows-server draait, maar als je
-multi-user / always-on wil:
+| Variabele | Waar | Vereist | Doel |
+|---|---|---|---|
+| `ANTHROPIC_API_KEY` | Railway | ✓ | Claude voor LLM-extract |
+| `DATABASE_URL` | Railway | ✓ | Supabase Postgres URL |
+| `ADMIN_PASSWORD` | Railway | ✓ (productie) | Login-gate |
+| `JWT_SECRET` | Railway | ✓ (productie) | Session-signing key |
+| `NAVISION_MODE` | Railway | ✓ | `nav2018` voor jouw test-env |
+| `NAV_BASE_URL` | Railway | bij nav2018 | OData V4 root URL |
+| `NAV_COMPANY` | Railway | bij nav2018 | Display name in NAV |
+| `NAV_USERNAME` | Railway | bij nav2018 | NAV user |
+| `NAV_PASSWORD` | Railway | bij nav2018 | Web Service Access Key |
+| `KWABO_CORS_EXTRA` | Railway | ✓ | `https://kwabo-pilex.vercel.app` |
+| `NEXT_PUBLIC_API_BASE` | Vercel | ✓ | `https://kwabo-production.up.railway.app` |
 
-- **Supabase** Postgres: zet `DATABASE_URL` op de transaction pooler URI
-  (poort 6543), draai eenmalig `init_db()` tegen die URL
-- **Railway** voor de FastAPI-backend: root `backend`, env vars uit `.env`
-- **Vercel** voor de Next.js dashboard: root `frontend`,
-  `NEXT_PUBLIC_API_BASE` wijzen naar Railway-URL
-- **CORS:** zet `KWABO_CORS_EXTRA=https://<je-vercel-domain>` in Railway
+## Hoe je deze stack pauseert / debugt
 
-## Snel-controle vóór go-live
-
-```bash
-# Backend tests groen?
-cd kwabo-order-intake/backend
-python -m pytest -q
-# Verwacht: 215 passed, 17 skipped (geen failures)
-
-# Frontend build slaagt?
-cd ../frontend
-pnpm build
-# Verwacht: ✓ Compiled successfully
-```
-
-## Wat al af is
-
-- ✅ NAV trigger-aware stepwise client (single-field PATCH per veld)
-- ✅ 10-stappen-flow uit de feedback gemapt op code (header → ship-to → external doc → datums → regels → UoM → quantity → europallet → incoming document → attachment)
-- ✅ Mix-prijzen flow (klantflag × artikelflag × mix-UoM check)
-- ✅ Idempotency-guard op externalDocumentNumber (re-push faalt niet)
-- ✅ Audit trail: per-PATCH autofill diff bewaard voor post-mortem
-- ✅ 27 dedicated NAV-trigger tests groen
-- ✅ End-to-end testen op 17 voorbeeld-emails: 12 worden compleet doorgepushed naar mock NAV met 0 errors
-- ✅ FastAPI lifespan-migratie (geen deprecation warnings meer)
-- ✅ Stale email-client tests bijgewerkt naar huidig (werkend) gedrag
-- ✅ Frontend build slaagt; resterende lint-errors zijn React 19 strict
-  advisories (geen runtime impact)
+- **Backend logs**: Railway → service → Logs tab (live tail)
+- **Frontend build logs**: Vercel → project → Deployments → klik laatste
+- **NAV connectiviteit**: `/api/diagnostics/nav` (dashboard auth nodig)
+- **Auth probleem**: `/api/auth/me` met `Authorization: Bearer ...`
+  header curlen — moet `{"ok": true}` geven

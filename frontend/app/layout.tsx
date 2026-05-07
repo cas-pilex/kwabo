@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { LogoutButton } from "@/components/logout-button";
 import { MailboxNavItem } from "@/components/mailbox-nav-item";
 import { Toaster } from "@/components/toaster";
 import "./globals.css";
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <MailboxNavItem />
               <Link href="/audit" className="hover:text-white">Audit</Link>
               <Link href="/logs" className="hover:text-white">Logs</Link>
+              <LogoutButton />
             </nav>
           </div>
           <div className="kwabo-header-accent" />

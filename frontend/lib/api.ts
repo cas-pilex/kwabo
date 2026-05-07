@@ -102,12 +102,47 @@ export type EuropalletRegel = {
   positie?: number;
 };
 
+export const AUTH_COOKIE = "kwabo_admin";
+
+// Read the admin token from wherever it lives in the current execution
+// context. Server-side: Next.js cookies() helper. Client-side: document.cookie.
+// Returns null when no token is set — req() turns that into a /login bounce
+// for browsers, or just lets the request go un-authenticated for SSR (the
+// backend then 401s and the page boundary surfaces that to middleware).
+async function getAuthToken(): Promise<string | null> {
+  if (typeof window === "undefined") {
+    try {
+      const mod = await import("next/headers");
+      const store = await mod.cookies();
+      return store.get(AUTH_COOKIE)?.value ?? null;
+    } catch {
+      return null;
+    }
+  }
+  const m = document.cookie.match(/(?:^|;\s*)kwabo_admin=([^;]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = await getAuthToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...((init?.headers as Record<string, string>) || {}),
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
+    headers,
     cache: "no-store",
   });
+  if (res.status === 401 && typeof window !== "undefined") {
+    // Bounce the user to /login when the session is missing/expired.
+    // SSR pages: middleware.ts redirects upstream when the cookie is
+    // missing, so a 401 on the server side is unexpected — surfacing it
+    // as an error makes the bug visible.
+    window.location.href = "/login";
+  }
   if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
   return res.json();
 }
@@ -124,8 +159,16 @@ export type Prijsafspraak = {
   geldig_tot: string | null;
 };
 
+async function authHeaders(extra: Record<string, string> = {}): Promise<Record<string, string>> {
+  const token = await getAuthToken();
+  return token ? { ...extra, Authorization: `Bearer ${token}` } : { ...extra };
+}
+
 export async function listPrijsafspraken(nr: string): Promise<Prijsafspraak[]> {
-  const r = await fetch(`${API_BASE}/api/klanten/${nr}/prijsafspraken`, { cache: "no-store" });
+  const r = await fetch(`${API_BASE}/api/klanten/${nr}/prijsafspraken`, {
+    cache: "no-store",
+    headers: await authHeaders(),
+  });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();
 }
@@ -133,7 +176,7 @@ export async function listPrijsafspraken(nr: string): Promise<Prijsafspraak[]> {
 export async function addPrijsafspraak(nr: string, body: Partial<Prijsafspraak>) {
   const r = await fetch(`${API_BASE}/api/klanten/${nr}/prijsafspraken`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: await authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(body),
   });
   if (!r.ok) {
@@ -150,8 +193,73 @@ export async function addPrijsafspraak(nr: string, body: Partial<Prijsafspraak>)
 export async function deletePrijsafspraak(nr: string, id: number) {
   const r = await fetch(`${API_BASE}/api/klanten/${nr}/prijsafspraken/${id}`, {
     method: "DELETE",
+    headers: await authHeaders(),
   });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
+}
+
+// ---- Auth helpers (stand-alone so /login/page.tsx can call without
+//     bouncing back to /login on its own 401 from /api/auth/me) ----
+
+type LoginResponse = { ok: boolean; token?: string; expires_at?: number };
+
+export async function authLogin(password: string): Promise<LoginResponse> {
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  if (res.status === 401) {
+    throw new Error("Ongeldig wachtwoord");
+  }
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+  const json = (await res.json()) as LoginResponse;
+  if (json.token && typeof document !== "undefined") {
+    // Store on the Vercel domain so SSR (next/headers cookies()) and the
+    // browser fetches share the same source of truth. samesite=lax + secure
+    // is appropriate: this cookie never leaves the frontend domain.
+    const ttl = json.expires_at
+      ? Math.max(60, json.expires_at - Math.floor(Date.now() / 1000))
+      : 86400;
+    document.cookie =
+      `${AUTH_COOKIE}=${encodeURIComponent(json.token)}; ` +
+      `path=/; max-age=${ttl}; samesite=lax${
+        location.protocol === "https:" ? "; secure" : ""
+      }`;
+  }
+  return json;
+}
+
+export async function authLogout(): Promise<void> {
+  if (typeof document !== "undefined") {
+    document.cookie = `${AUTH_COOKIE}=; path=/; max-age=0; samesite=lax`;
+  }
+  // Best-effort backend ping for log purposes — failure non-fatal.
+  try {
+    await fetch(`${API_BASE}/api/auth/logout`, { method: "POST" });
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function authMe(): Promise<{ ok: boolean } | null> {
+  // Returns null on 401 instead of redirecting — callers (login page)
+  // need to differentiate "not logged in" from "session ok".
+  try {
+    const token = await getAuthToken();
+    if (!token) return null;
+    const res = await fetch(`${API_BASE}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (res.status === 401) return null;
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
 }
 
 export const api = {
@@ -176,6 +284,7 @@ export const api = {
     const res = await fetch(`${API_BASE}/api/orders/${id}/incoming-doc`, {
       method: "POST",
       body: fd,
+      headers: await authHeaders(),
     });
     if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
     return res.json();
@@ -198,7 +307,11 @@ export const api = {
   importExcel: async (nr: string, file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    const res = await fetch(`${API_BASE}/api/klanten/${nr}/import-excel`, { method: "POST", body: fd });
+    const res = await fetch(`${API_BASE}/api/klanten/${nr}/import-excel`, {
+      method: "POST",
+      body: fd,
+      headers: await authHeaders(),
+    });
     if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
     return res.json() as Promise<{ ok: boolean; mappings_upserted: number; prijzen_upserted: number; errors: string[] }>;
   },
@@ -248,6 +361,7 @@ export const api = {
     const res = await fetch(`${API_BASE}/api/klanten/${nr}/documenten`, {
       method: "POST",
       body: fd,
+      headers: await authHeaders(),
     });
     if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
     return res.json() as Promise<{
