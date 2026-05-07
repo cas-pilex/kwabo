@@ -136,13 +136,13 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     headers,
     cache: "no-store",
   });
-  if (res.status === 401 && typeof window !== "undefined") {
-    // Bounce the user to /login when the session is missing/expired.
-    // SSR pages: middleware.ts redirects upstream when the cookie is
-    // missing, so a 401 on the server side is unexpected — surfacing it
-    // as an error makes the bug visible.
-    window.location.href = "/login";
-  }
+  // Note: NO automatic redirect on 401. Earlier code did
+  // `window.location.href = "/login"` here, but background pollers
+  // (MailboxNavItem hits /api/mailbox/status every 30s) would race
+  // with the post-login navigation, kicking the user out before the
+  // page had even rendered. Middleware handles the not-logged-in case
+  // upstream of the page; if a request still 401s in the wild, the
+  // caller surfaces the error and the user can re-login manually.
   if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
   return res.json();
 }
