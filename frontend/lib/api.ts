@@ -198,13 +198,20 @@ export async function deletePrijsafspraak(nr: string, id: number) {
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
 }
 
-// ---- Auth helpers (stand-alone so /login/page.tsx can call without
-//     bouncing back to /login on its own 401 from /api/auth/me) ----
+// ---- Auth helpers ----
+// Login/logout go through Vercel-side routes (/api/auth/{login,logout}) that
+// set the kwabo_admin cookie via Set-Cookie. We deliberately do NOT use
+// `document.cookie =` — that races with the post-login redirect (cookie
+// sometimes lands AFTER navigation, causing the middleware to bounce back
+// to /login → infinite loop).
 
-type LoginResponse = { ok: boolean; token?: string; expires_at?: number };
+type LoginResponse = { ok: boolean };
 
 export async function authLogin(password: string): Promise<LoginResponse> {
-  const res = await fetch(`${API_BASE}/api/auth/login`, {
+  // Note the relative path — this hits the Next.js route on Vercel, not
+  // the Railway API directly. The route forwards the password upstream
+  // and translates the upstream response into a Set-Cookie on Vercel.
+  const res = await fetch(`/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ password }),
@@ -215,28 +222,18 @@ export async function authLogin(password: string): Promise<LoginResponse> {
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}`);
   }
-  const json = (await res.json()) as LoginResponse;
-  if (json.token && typeof document !== "undefined") {
-    // Store on the Vercel domain so SSR (next/headers cookies()) and the
-    // browser fetches share the same source of truth. samesite=lax + secure
-    // is appropriate: this cookie never leaves the frontend domain.
-    const ttl = json.expires_at
-      ? Math.max(60, json.expires_at - Math.floor(Date.now() / 1000))
-      : 86400;
-    document.cookie =
-      `${AUTH_COOKIE}=${encodeURIComponent(json.token)}; ` +
-      `path=/; max-age=${ttl}; samesite=lax${
-        location.protocol === "https:" ? "; secure" : ""
-      }`;
-  }
-  return json;
+  return res.json();
 }
 
 export async function authLogout(): Promise<void> {
-  if (typeof document !== "undefined") {
-    document.cookie = `${AUTH_COOKIE}=; path=/; max-age=0; samesite=lax`;
+  // Best-effort: clear cookie via Vercel route (canonical), then ping
+  // upstream for log purposes. Either failure is non-fatal — the user
+  // is going to /login regardless.
+  try {
+    await fetch(`/api/auth/logout`, { method: "POST" });
+  } catch {
+    /* ignore */
   }
-  // Best-effort backend ping for log purposes — failure non-fatal.
   try {
     await fetch(`${API_BASE}/api/auth/logout`, { method: "POST" });
   } catch {
