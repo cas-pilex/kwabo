@@ -64,7 +64,7 @@ class OAuthConfig(SQLModel, table=True):
     client_id: str = ""
     client_secret: str = ""
     redirect_uri: str = "http://localhost:8000/api/mailbox/oauth/callback"
-    scopes: str = "offline_access Mail.Read User.Read"
+    scopes: str = "offline_access Mail.ReadWrite User.Read"
     updated_at: datetime = Field(default_factory=utcnow)
 
 
