@@ -25,7 +25,15 @@ from kwabo.utils.logging import log, setup_logging
 
 
 def _cors_origins() -> list[str]:
-    base = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    """Explicit allow-list. Combined with `_cors_origin_regex` below; either
+    match wins (FastAPI checks both). The hardcoded production hostnames
+    short-circuit the env-var dependency that bit us during go-live."""
+    base = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://kwabo-pilex.vercel.app",
+        "https://kwabo-frontend.vercel.app",
+    ]
     extra = os.environ.get("KWABO_CORS_EXTRA", "").strip()
     if extra:
         for item in extra.split(","):
@@ -33,6 +41,13 @@ def _cors_origins() -> list[str]:
             if item and item not in base:
                 base.append(item)
     return base
+
+
+# Allow ANY Vercel preview deployment (auto-generated URLs change per
+# build), so we don't have to maintain an env-var list as previews come
+# and go. This pattern matches both `<project>.vercel.app` and the
+# hash-form `<project>-<hash>-<team>.vercel.app`.
+_CORS_ORIGIN_REGEX = r"https://.*\.vercel\.app$"
 
 
 @asynccontextmanager
@@ -51,9 +66,12 @@ def create_app() -> FastAPI:
         version="0.1.0",
         lifespan=lifespan,
     )
+    cors_origins = _cors_origins()
+    log.info("cors_config", origins=cors_origins, regex=_CORS_ORIGIN_REGEX)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=_cors_origins(),
+        allow_origins=cors_origins,
+        allow_origin_regex=_CORS_ORIGIN_REGEX,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
