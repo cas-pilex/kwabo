@@ -1,26 +1,28 @@
-"use client";
+// Pure HTML form submission. No JS, no fetch, no redirect race —
+// the /api/auth/login route handles validation + Set-Cookie + redirect
+// in one atomic HTTP response.
+//
+// On failure the route bounces back here with `?err=...` so we render
+// an error block. We also re-render with `?err=...` on rate-limits or
+// upstream issues so the user gets actionable feedback instead of a
+// silent return-to-login.
 
-import { useState } from "react";
-import { authLogin } from "@/lib/api";
+type SearchParams = { err?: string; from?: string };
 
-export default function LoginPage() {
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+const ERROR_MESSAGES: Record<string, string> = {
+  "1": "Ongeldig wachtwoord",
+  upstream: "Backend (Railway) niet bereikbaar — probeer het zo opnieuw",
+  "no-token": "Login slaagde maar er kwam geen sessie-token terug",
+};
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    try {
-      await authLogin(password);
-      // Hard redirect so the cookie is picked up by SSR pages immediately.
-      window.location.href = "/";
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Inloggen mislukt");
-      setLoading(false);
-    }
-  }
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const params = await searchParams;
+  const errorKey = params?.err;
+  const errorMessage = errorKey ? ERROR_MESSAGES[errorKey] ?? "Inloggen mislukt" : null;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
@@ -30,7 +32,11 @@ export default function LoginPage() {
             Kwabo Order Intake
           </h1>
           <p className="text-sm text-slate-500 mb-6">Login om verder te gaan</p>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form
+            method="POST"
+            action="/api/auth/login"
+            className="space-y-4"
+          >
             <div>
               <label
                 htmlFor="password"
@@ -40,29 +46,27 @@ export default function LoginPage() {
               </label>
               <input
                 id="password"
+                name="password"
                 type="password"
                 autoFocus
                 autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
+                required
                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--kwabo-navy)]"
               />
             </div>
-            {error && (
+            {errorMessage && (
               <p
                 role="alert"
                 className="text-xs text-rose-700 bg-rose-50 ring-1 ring-rose-200 rounded px-2 py-1.5"
               >
-                {error}
+                {errorMessage}
               </p>
             )}
             <button
               type="submit"
-              disabled={loading || !password}
               className="w-full rounded-md bg-[var(--kwabo-navy)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--kwabo-navy-500)] disabled:opacity-50"
             >
-              {loading ? "Bezig..." : "Inloggen"}
+              Inloggen
             </button>
           </form>
         </div>
