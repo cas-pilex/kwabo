@@ -16,12 +16,16 @@ router = APIRouter(prefix="/api/diagnostics", tags=["diagnostics"])
 
 
 @router.get("/nav")
-async def nav_probe() -> dict:
+async def nav_probe(page: str | None = None) -> dict:
     """Probe NAV connectivity using the currently configured client.
 
     Returns a status dict; never raises. The operator can read the URL,
     page name and HTTP status to diagnose 401 (creds wrong), 404 (page
     name wrong), or DNS/connect failures.
+
+    Pass `?page=PLX_Item` (or any other PLX_*) to probe a specific page —
+    needed for diagnosing the case where the sales-order page works but
+    master-data pages return 404 / empty / 401 separately.
     """
     mode = settings.navision_mode
     if mode != "nav2018":
@@ -36,7 +40,7 @@ async def nav_probe() -> dict:
 
     client = Nav2018ODataClient()
     try:
-        result = await client.probe()
+        result = await client.probe(page=page)
     finally:
         await client.aclose()
     result["mode"] = mode

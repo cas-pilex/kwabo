@@ -276,12 +276,18 @@ class Nav2018ODataClient:
 
     # ---------- Connectivity probe ----------
 
-    async def probe(self) -> dict:
+    async def probe(self, page: str | None = None) -> dict:
         """Lightweight reachability check. Returns a status dict that the
         dashboard renders on a diagnostic page. Never raises — all failures
-        are reported as `ok=False` with a reason."""
+        are reported as `ok=False` with a reason.
+
+        `page` lets the operator probe any PLX_* page individually — useful
+        when PLX_SalesOrder works but PLX_Item / PLX_Customer return 404 or
+        empty data, which we hit in the Kopie 2026 environment.
+        """
+        target_page = page or self.page_sales_order
         try:
-            url = self._entity_url(self.page_sales_order) + "?$top=1"
+            url = self._entity_url(target_page) + "?$top=1"
             resp = await self._client.get(
                 url, headers=self._headers(), auth=self._auth()
             )
@@ -289,7 +295,7 @@ class Nav2018ODataClient:
                 "ok": resp.status_code < 400,
                 "status": resp.status_code,
                 "url": url,
-                "page": self.page_sales_order,
+                "page": target_page,
                 "company": self.company,
                 "preview": (resp.text or "")[:300],
             }
@@ -297,8 +303,8 @@ class Nav2018ODataClient:
             return {
                 "ok": False,
                 "status": 0,
-                "url": self._entity_url(self.page_sales_order),
-                "page": self.page_sales_order,
+                "url": self._entity_url(target_page),
+                "page": target_page,
                 "company": self.company,
                 "error": f"{type(exc).__name__}: {exc}",
             }

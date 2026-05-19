@@ -236,6 +236,61 @@ async def test_probe_reports_failure_on_401():
     assert result["status"] == 401
 
 
+# Diagnostic capability: when Kopie 2026 returns 200 on PLX_SalesOrder but
+# empty on item/customer searches, the operator needs a way to probe each
+# page individually to distinguish "page returns 404", "page returns 401",
+# and "page returns 200 with empty value array" (= no master data).
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_probe_accepts_explicit_page_override():
+    """Probe must accept any page name and hit that page's URL."""
+    expected_url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_Item?$top=1"
+    respx.get(expected_url).mock(
+        return_value=httpx.Response(200, json={"value": [{"No": "X"}]}),
+    )
+    async with httpx.AsyncClient() as raw:
+        client = _client(raw)
+        result = await client.probe(page="PLX_Item")
+    assert result["ok"] is True
+    assert result["status"] == 200
+    assert result["page"] == "PLX_Item"
+    assert result["url"] == expected_url
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_probe_distinguishes_empty_200_from_404_in_preview():
+    """Empty-but-200 must show `"value":[]` in preview so the operator can
+    tell apart "page works, no data yet" from "page missing / no access"."""
+    expected_url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_Item?$top=1"
+    respx.get(expected_url).mock(
+        return_value=httpx.Response(200, json={"value": []}),
+    )
+    async with httpx.AsyncClient() as raw:
+        client = _client(raw)
+        result = await client.probe(page="PLX_Item")
+    assert result["ok"] is True
+    assert result["status"] == 200
+    assert "\"value\":[]" in result["preview"] or '"value": []' in result["preview"]
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_probe_reports_404_distinctly_with_page_override():
+    expected_url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_Item?$top=1"
+    respx.get(expected_url).mock(
+        return_value=httpx.Response(404, text="Not Found"),
+    )
+    async with httpx.AsyncClient() as raw:
+        client = _client(raw)
+        result = await client.probe(page="PLX_Item")
+    assert result["ok"] is False
+    assert result["status"] == 404
+    assert result["page"] == "PLX_Item"
+
+
 # --- 404 graceful handling on master-data lookups ----------------------------
 #
 # Real-world bug observed against Kopie 2026 NAV: PLX_SalesOrder works (200)
