@@ -39,6 +39,13 @@ class Settings(BaseSettings):
     jwt_secret: str = "dev-only-change-me-in-prod"
     jwt_ttl_hours: int = 24
 
+    # --- Frontend ---
+    # Public origin of the Next.js app. Used by the OAuth callback HTML
+    # page to redirect the user back to the dashboard after Microsoft sign-in.
+    # Default is the local dev origin; set FRONTEND_URL on Railway to the
+    # production Vercel domain (e.g. https://kwabo-pilex.vercel.app).
+    frontend_url: str = "http://localhost:3000"
+
     # --- NAV 2018 OData V4 (Kwabo-test endpoint shape) ---
     # Used when navision_mode == "nav2018".
     # Base URL excluding the Company('...') segment, e.g.

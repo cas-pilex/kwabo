@@ -14,7 +14,10 @@ from kwabo.api.auth import require_admin, router as auth_router
 from kwabo.api.intake_trigger import router as intake_router
 from kwabo.api.klanten import router as klanten_router
 from kwabo.api.logs import router as logs_router
-from kwabo.api.mailbox import router as mailbox_router
+from kwabo.api.mailbox import (
+    router as mailbox_router,
+    router_public as mailbox_public_router,
+)
 from kwabo.api.orders import router as orders_router
 from kwabo.api.preview import router as preview_router
 from kwabo.api.prijsafspraken import router as prijs_router
@@ -78,6 +81,11 @@ def create_app() -> FastAPI:
     )
     # Auth router is unprotected (login itself can't require auth).
     app.include_router(auth_router)
+    # Microsoft OAuth2 browser-redirect endpoints are unprotected: the
+    # callback comes in via a 302 from login.microsoftonline.com with no
+    # Authorization header. CSRF is handled by the state-token issued in
+    # /oauth/start and verified in /oauth/callback (see mailbox.py).
+    app.include_router(mailbox_public_router)
 
     # All other routers require a valid admin session. When ADMIN_PASSWORD
     # is unset (development), the dependency short-circuits with auth

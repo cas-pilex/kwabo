@@ -21,6 +21,11 @@ from kwabo.utils import utcnow
 from kwabo.utils.logging import log
 
 router = APIRouter(prefix="/api/mailbox", tags=["mailbox"])
+# Publieke router voor de OAuth2 browser-redirect endpoints. Microsoft kan
+# bij /oauth/callback geen Authorization-header meesturen, dus deze routes
+# MOGEN niet achter het admin-gate hangen. CSRF blijft afgedwongen via de
+# random state-token (uitgegeven in /oauth/start, gecheckt in /oauth/callback).
+router_public = APIRouter(prefix="/api/mailbox", tags=["mailbox-oauth"])
 
 # ephemere state-values (CSRF-bescherming) — in-memory is OK voor single-instance
 _OAUTH_STATES: dict[str, float] = {}
@@ -203,7 +208,7 @@ def save_oauth_config(body: OAuthConfigIn) -> OAuthConfigOut:
 # ---------- OAuth2 flow ----------
 
 
-@router.get("/oauth/start")
+@router_public.get("/oauth/start")
 def oauth_start(request: Request) -> RedirectResponse:
     with Session(engine) as s:
         cfg = _get_config(s)
@@ -236,6 +241,11 @@ def oauth_start(request: Request) -> RedirectResponse:
 
 
 def _callback_page(title: str, body_html: str) -> HTMLResponse:
+    # FRONTEND_URL env-var bepaalt waar we de gebruiker terug-redirecten.
+    # Default = http://localhost:3000 (dev); productie zet dit op de Vercel-URL.
+    base = settings.frontend_url.rstrip("/")
+    back_url = f"{base}/email"
+    redirect_url = f"{base}/email?connected=1"
     html = f"""<!doctype html>
 <html lang=\"nl\"><head><meta charset=\"utf-8\"><title>{title}</title>
 <style>body{{font-family:system-ui,sans-serif;max-width:560px;margin:80px auto;padding:24px;
@@ -247,13 +257,13 @@ text-decoration:none;font-weight:500;margin-top:12px}}
 .err{{background:#fee2e2;border:1px solid #fecaca;color:#7f1d1d;padding:10px;border-radius:6px;
 margin-top:12px;font-size:13px}}</style>
 </head><body><div class=\"card\"><h1>{title}</h1>{body_html}
-<a class=\"btn\" href=\"http://localhost:3000/email\">← Terug naar dashboard</a>
-<script>setTimeout(function(){{location.href='http://localhost:3000/email?connected=1'}},1500)</script>
+<a class=\"btn\" href=\"{back_url}\">← Terug naar dashboard</a>
+<script>setTimeout(function(){{location.href='{redirect_url}'}},1500)</script>
 </div></body></html>"""
     return HTMLResponse(html)
 
 
-@router.get("/oauth/callback")
+@router_public.get("/oauth/callback")
 async def oauth_callback(
     code: Optional[str] = Query(None),
     state: Optional[str] = Query(None),
