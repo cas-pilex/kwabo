@@ -1,11 +1,17 @@
 # Go-live checklist — wat alleen Cas nog moet doen
 
 Code-status van deze branch:
-- 232 backend tests groen, 0 failures
+- 242 backend tests groen, 0 failures
 - Admin auth (login-pagina + middleware-redirect, JWT bearer in cookie) actief
 - NAV 2018 OData V4 client (`navision_nav2018.py`) klaar, 10 unit-tests groen
 - Frontend build slaagt op Vercel onder cas-pilex scope
 - Railway backend live op `https://kwabo-production.up.railway.app`
+- **Commit 88166c2** (`fix(mailbox): expose OAuth start/callback publicly + parametrize frontend URL`):
+  - `/api/mailbox/oauth/start` en `/oauth/callback` zitten nu in een
+    aparte public router; Microsoft kan callback bereiken zonder Bearer
+    token (was `{"detail":"Niet ingelogd"}`). CSRF blijft via state-token.
+  - Nieuwe `FRONTEND_URL` env-var vervangt het hardcoded
+    `http://localhost:3000` in de callback-pagina (zie env-tabel).
 
 Wat hieronder staat zijn de stappen die alleen jij kan doen omdat ze
 externe systeemtoegang of fysieke configuratie vereisen.
@@ -35,12 +41,18 @@ Railway → Variables → toevoegen:
 
 ```
 NAVISION_MODE=nav2018
-NAV_BASE_URL=https://sf-112840.dynamicstocloud.com:1153/ST-124593-WS/ODataV4
-NAV_COMPANY=Kopie 2023 Kwabo Techniek B.V.
+NAV_BASE_URL=https://sf-112840.dynamicstocloud.com:1143/ST-124593/ODataV4
+NAV_COMPANY=Kopie 2026 Kwabo Techniek B.V.
 NAV_USERNAME=<service-user-in-NAV>
 NAV_PASSWORD=<web-service-access-key>
 NAV_VERIFY_SSL=true
 ```
+
+> Kopie 2026 is het nieuwe test-bedrijf voor de overdracht (was 2023).
+> Port **1143** met instance `ST-124593` per de mail van NAV-beheer. Als
+> NAV op deze port Digest-auth weigert, fallback: port `1153` met instance
+> `ST-124593-WS` en zelfde NAV_COMPANY waarde — de `Nav2018ODataClient`
+> verwerkt beide setups zonder code-wijzigingen.
 
 ### Hoe je de Web Service Access Key krijgt
 
@@ -87,16 +99,39 @@ NAV_PAGE_SALES_ORDER_LINES=<jouw_page>
 
 ## 3. Microsoft Graph mailbox via dashboard koppelen
 
-Geen code-wijzigingen nodig. Stappen voor Kwabo-personeel (na inloggen):
+Stappen voor Kwabo-personeel (na inloggen):
 
 1. **Login** op `https://kwabo-pilex.vercel.app/` met het admin password
 2. Open `/email` in het dashboard
-3. Volg de in-app walkthrough:
-   - Azure AD app registreren (`portal.azure.com`)
-   - 3 waarden invoeren (Tenant ID, Client ID, Client Secret)
-   - Klik **Connect with Microsoft** → OAuth-flow → consent
-4. Daarna verschijnt elke nieuwe mail in `info@kwabo.nl` automatisch in
+3. Azure AD app registratie:
+   - `portal.azure.com` → App registrations → Kwabo-app
+   - **Authentication** → Redirect URIs → voeg de productie-URL toe:
+     ```
+     https://kwabo-production.up.railway.app/api/mailbox/oauth/callback
+     ```
+     (NIET `kwabo-pilex.vercel.app/api/...` — die geeft 404 op Vercel
+     omdat de FastAPI backend op Railway draait.)
+   - **API permissions** (Microsoft Graph, delegated):
+     `Mail.ReadWrite`, `User.Read`, `offline_access` — Admin consent.
+   - **Certificates & secrets** → noteer Tenant ID, Client ID, Client Secret
+4. In `/email` dashboard:
+   - Vul Tenant ID, Client ID, Client Secret in
+   - **Redirect URI** veld → vul exact dezelfde Railway-URL in als in stap 3
+   - **Config opslaan**
+   - **Connect with Microsoft** → OAuth-flow → consent
+5. Daarna verschijnt elke nieuwe mail in `info@kwabo.nl` automatisch in
    de Order Queue
+
+### Backend env vars die de mailbox-flow nodig heeft
+
+Naast de admin-vars uit §1:
+```
+FRONTEND_URL=https://kwabo-pilex.vercel.app
+EMAIL_MODE=graph
+```
+
+`FRONTEND_URL` bepaalt waar de OAuth-callback de gebruiker terug-redirect
+na een succesvolle Microsoft-login (zonder dit: redirect naar localhost).
 
 ## 4. Eén staging-push als acceptatietest
 
@@ -128,6 +163,8 @@ Als alle vier kloppen → veilig om productie aan te zetten.
 | `NAV_COMPANY` | Railway | bij nav2018 | Display name in NAV |
 | `NAV_USERNAME` | Railway | bij nav2018 | NAV user |
 | `NAV_PASSWORD` | Railway | bij nav2018 | Web Service Access Key |
+| `FRONTEND_URL` | Railway | ✓ (productie) | `https://kwabo-pilex.vercel.app` — bepaalt OAuth-callback redirect |
+| `EMAIL_MODE` | Railway | bij Graph | `graph` |
 | `KWABO_CORS_EXTRA` | Railway | ✓ | `https://kwabo-pilex.vercel.app` |
 | `NEXT_PUBLIC_API_BASE` | Vercel | ✓ | `https://kwabo-production.up.railway.app` |
 
