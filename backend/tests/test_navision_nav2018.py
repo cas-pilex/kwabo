@@ -234,3 +234,90 @@ async def test_probe_reports_failure_on_401():
         result = await client.probe()
     assert result["ok"] is False
     assert result["status"] == 401
+
+
+# --- 404 graceful handling on master-data lookups ----------------------------
+#
+# Real-world bug observed against Kopie 2026 NAV: PLX_SalesOrder works (200)
+# but PLX_Item returns 404 for filter queries — page exists but service-account
+# can't reach it. Without graceful handling, the 404 crashes the LangGraph
+# pipeline mid-flight (raise_for_status), bubbling as a 500 to the API caller.
+# A single missing master-data lookup must not break order intake; degrade to
+# "no match" instead.
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_get_item_returns_none_on_404():
+    """When PLX_Item is misconfigured and returns 404, get_item must return
+    None instead of raising — match_articles falls back to other strategies."""
+    item_url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_Item"
+    respx.get(item_url).mock(return_value=httpx.Response(404, text="Not Found"))
+    async with httpx.AsyncClient() as raw:
+        client = _client(raw)
+        result = await client.get_item("804600")
+    assert result is None
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_search_items_returns_empty_list_on_404():
+    """search_items returning [] on 404 lets the matcher fall back to fuzzy
+    description matching or flag for review."""
+    item_url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_Item"
+    respx.get(item_url).mock(return_value=httpx.Response(404, text="Not Found"))
+    async with httpx.AsyncClient() as raw:
+        client = _client(raw)
+        result = await client.search_items(beschrijving="topcoat")
+    assert result == []
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_search_customers_returns_empty_list_on_404():
+    """Same robustness applies to customer lookup."""
+    cust_url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_Customer"
+    respx.get(cust_url).mock(return_value=httpx.Response(404, text="Not Found"))
+    async with httpx.AsyncClient() as raw:
+        client = _client(raw)
+        result = await client.search_customers(email="x@y.nl")
+    assert result == []
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_get_collection_returns_empty_list_on_404():
+    """get_collection is used by master-sync scripts; 404 should yield []
+    not crash the script."""
+    url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_ItemReference"
+    respx.get(url).mock(return_value=httpx.Response(404, text="Not Found"))
+    async with httpx.AsyncClient() as raw:
+        client = _client(raw)
+        result = await client.get_collection("PLX_ItemReference")
+    assert result == []
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_get_still_raises_on_500_for_real_server_errors():
+    """500-class errors are real bugs in NAV or our request; do NOT swallow
+    them — let the caller see the failure and surface it to logs/UI."""
+    url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_Item"
+    respx.get(url).mock(return_value=httpx.Response(500, text="Server boom"))
+    async with httpx.AsyncClient() as raw:
+        client = _client(raw)
+        with pytest.raises(httpx.HTTPStatusError):
+            await client.get_item("804600")
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_get_still_raises_on_401_for_auth_errors():
+    """401 indicates credential problems and must NOT be silently swallowed
+    — the operator needs to see an obvious failure to fix the auth setup."""
+    url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_Item"
+    respx.get(url).mock(return_value=httpx.Response(401, text="Unauthorized"))
+    async with httpx.AsyncClient() as raw:
+        client = _client(raw)
+        with pytest.raises(httpx.HTTPStatusError):
+            await client.get_item("804600")

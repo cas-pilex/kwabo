@@ -187,6 +187,20 @@ class Nav2018ODataClient:
         resp = await self._client.get(
             url, params=params, headers=self._headers(), auth=self._auth()
         )
+        # Treat 404 on a master-data read as "no record" rather than crashing
+        # the pipeline. Real-world cause: a PLX_ page is exposed by NAV
+        # (returns 401 unauth-challenge) but the service-account lacks
+        # table-level Read permission, which NAV reports as 404 on the
+        # filtered query. The order-intake should still flow through to
+        # the review queue with a "no match" warning instead of dying with
+        # HTTP 500 to the API caller.
+        if resp.status_code == 404:
+            log.warning(
+                "nav_page_404",
+                url=url,
+                hint="page exposed but no data returned — check service-account table permissions in NAV",
+            )
+            return {}
         resp.raise_for_status()
         return resp.json() if resp.content else {}
 
@@ -248,6 +262,12 @@ class Nav2018ODataClient:
         next_link = page.get("@odata.nextLink") or page.get("odata.nextLink")
         while next_link:
             resp = await self._client.get(next_link, headers=self._headers(), auth=self._auth())
+            # Mirror _get's 404 tolerance: a misconfigured page that
+            # disappears mid-pagination should yield "no more rows", not
+            # bring down a master-sync script.
+            if resp.status_code == 404:
+                log.warning("nav_page_404_in_pagination", url=next_link)
+                break
             resp.raise_for_status()
             page = resp.json()
             out.extend(page.get("value") or [])
