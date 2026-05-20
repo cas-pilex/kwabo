@@ -78,13 +78,14 @@ async def nav_list_services() -> dict:
 
 
 @router.get("/nav/raw")
-async def nav_raw_request(path: str = "/") -> dict:
-    """Send a raw GET to <base>/Company('...')<path> and dump the response.
+async def nav_raw_request(path: str = "/", under_company: bool = True) -> dict:
+    """Send a raw GET to NAV and dump the response.
 
     Diagnostic only — when list_services returns 0 entries we want to see
-    exactly what NAV 2018 puts at the company root. Some installations need
-    the $metadata endpoint, some return XML, some return nothing on `/`.
-    `path` is appended after Company('...') and percent-encoded as-is.
+    exactly what NAV 2018 puts at various URLs. With `under_company=true`
+    (default) the path is appended after Company('...'); with `false` the
+    path is appended directly after the OData root, which is where the
+    NAV 2018 service document lives.
     """
     mode = settings.navision_mode
     if mode != "nav2018":
@@ -97,10 +98,13 @@ async def nav_raw_request(path: str = "/") -> dict:
 
     client = Nav2018ODataClient()
     try:
-        url = (
-            f"{client.base_url}/Company('{_quote_company(client.company)}')"
-            f"{path}"
-        )
+        if under_company:
+            url = (
+                f"{client.base_url}/Company('{_quote_company(client.company)}')"
+                f"{path}"
+            )
+        else:
+            url = f"{client.base_url}{path}"
         try:
             resp = await client._client.get(
                 url,
