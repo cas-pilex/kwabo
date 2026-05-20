@@ -291,6 +291,50 @@ async def test_probe_reports_404_distinctly_with_page_override():
     assert result["page"] == "PLX_Item"
 
 
+# Listing published web services — to debug Kopie 2026 where the page naming
+# convention is inconsistent (Customer works, PLX_Customer doesn't, etc.). The
+# OData service document at the company root returns the canonical list.
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_list_services_returns_service_document_entries():
+    """Hit Company('...')/ and parse the OData service document for entity names."""
+    service_doc_url = f"{BASE}/Company('{COMPANY_PATH}')/"
+    respx.get(service_doc_url).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "@odata.context": f"{BASE}/Company('{COMPANY_PATH}')/$metadata",
+                "value": [
+                    {"name": "Customer", "kind": "EntitySet", "url": "Customer"},
+                    {"name": "PLX_SalesOrder", "kind": "EntitySet", "url": "PLX_SalesOrder"},
+                    {"name": "Item", "kind": "EntitySet", "url": "Item"},
+                ],
+            },
+        ),
+    )
+    async with httpx.AsyncClient() as raw:
+        client = _client(raw)
+        services = await client.list_services()
+    assert isinstance(services, list)
+    names = [s["name"] for s in services]
+    assert "Customer" in names
+    assert "PLX_SalesOrder" in names
+    assert "Item" in names
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_list_services_returns_empty_on_404_without_crashing():
+    service_doc_url = f"{BASE}/Company('{COMPANY_PATH}')/"
+    respx.get(service_doc_url).mock(return_value=httpx.Response(404, text="Not Found"))
+    async with httpx.AsyncClient() as raw:
+        client = _client(raw)
+        services = await client.list_services()
+    assert services == []
+
+
 # --- 404 graceful handling on master-data lookups ----------------------------
 #
 # Real-world bug observed against Kopie 2026 NAV: PLX_SalesOrder works (200)

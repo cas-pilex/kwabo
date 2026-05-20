@@ -45,3 +45,33 @@ async def nav_probe(page: str | None = None) -> dict:
         await client.aclose()
     result["mode"] = mode
     return result
+
+
+@router.get("/nav/services")
+async def nav_list_services() -> dict:
+    """List all published OData web services for the configured company.
+
+    Reads the OData service document at Company('...')/ which enumerates every
+    EntitySet the server exposes. Useful when probe() reports 404 on an
+    expected page — this shows the canonical names actually published, so
+    the operator can fix the env-var page mappings instead of asking NAV-beheer
+    to (re)publish pages that may already be there under a different name.
+    """
+    mode = settings.navision_mode
+    if mode != "nav2018":
+        return {"ok": False, "skipped": True, "mode": mode}
+
+    from kwabo.integrations.navision_nav2018 import Nav2018ODataClient
+
+    client = Nav2018ODataClient()
+    try:
+        services = await client.list_services()
+    finally:
+        await client.aclose()
+    names = sorted({s.get("name") for s in services if s.get("name")})
+    return {
+        "ok": True,
+        "count": len(names),
+        "names": names,
+        "company": client.company,
+    }

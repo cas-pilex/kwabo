@@ -276,6 +276,29 @@ class Nav2018ODataClient:
 
     # ---------- Connectivity probe ----------
 
+    async def list_services(self) -> list[dict]:
+        """Fetch the OData service document at Company('...')/ and return the
+        list of published entity sets. Used by /api/diagnostics/nav/services to
+        let the operator see which page names are actually exposed — needed in
+        Kopie 2026 where the naming is inconsistent (some pages PLX_*, some
+        plain NAV names like Customer).
+
+        Returns [] on 404 / parse errors rather than raising; this is purely
+        diagnostic and must never bring down the dashboard.
+        """
+        url = f"{self.base_url}/{self._company_segment()}/"
+        try:
+            resp = await self._client.get(
+                url, headers=self._headers(), auth=self._auth()
+            )
+            if resp.status_code != 200:
+                return []
+            data = resp.json()
+            return data.get("value") or []
+        except Exception as exc:  # noqa: BLE001
+            log.warning("nav_list_services_failed", url=url, error=str(exc))
+            return []
+
     async def probe(self, page: str | None = None) -> dict:
         """Lightweight reachability check. Returns a status dict that the
         dashboard renders on a diagnostic page. Never raises — all failures
