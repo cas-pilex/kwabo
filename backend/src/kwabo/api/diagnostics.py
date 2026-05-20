@@ -75,3 +75,46 @@ async def nav_list_services() -> dict:
         "names": names,
         "company": client.company,
     }
+
+
+@router.get("/nav/raw")
+async def nav_raw_request(path: str = "/") -> dict:
+    """Send a raw GET to <base>/Company('...')<path> and dump the response.
+
+    Diagnostic only — when list_services returns 0 entries we want to see
+    exactly what NAV 2018 puts at the company root. Some installations need
+    the $metadata endpoint, some return XML, some return nothing on `/`.
+    `path` is appended after Company('...') and percent-encoded as-is.
+    """
+    mode = settings.navision_mode
+    if mode != "nav2018":
+        return {"ok": False, "skipped": True, "mode": mode}
+
+    from kwabo.integrations.navision_nav2018 import (
+        Nav2018ODataClient,
+        _quote_company,
+    )
+
+    client = Nav2018ODataClient()
+    try:
+        url = (
+            f"{client.base_url}/Company('{_quote_company(client.company)}')"
+            f"{path}"
+        )
+        try:
+            resp = await client._client.get(
+                url,
+                headers=client._headers(),
+                auth=client._auth(),
+            )
+            return {
+                "ok": resp.status_code < 400,
+                "status": resp.status_code,
+                "url": url,
+                "content_type": resp.headers.get("content-type"),
+                "body_preview": (resp.text or "")[:2000],
+            }
+        except Exception as exc:  # noqa: BLE001
+            return {"ok": False, "url": url, "error": f"{type(exc).__name__}: {exc}"}
+    finally:
+        await client.aclose()
