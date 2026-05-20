@@ -116,7 +116,7 @@ async def nav_raw_request(path: str = "/", under_company: bool = True) -> dict:
                 "status": resp.status_code,
                 "url": url,
                 "content_type": resp.headers.get("content-type"),
-                "body_preview": (resp.text or "")[:2000],
+                "body_preview": (resp.text or "")[:20000],
             }
         except Exception as exc:  # noqa: BLE001
             return {"ok": False, "url": url, "error": f"{type(exc).__name__}: {exc}"}
