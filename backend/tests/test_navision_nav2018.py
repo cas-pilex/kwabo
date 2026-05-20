@@ -64,9 +64,12 @@ def test_translate_body_renames_known_keys_and_passes_through_unknown():
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_stepwise_post_uses_company_path_and_translates_field():
-    expected_url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_SalesOrder"
-    route = respx.post(expected_url).mock(
+async def test_stepwise_post_uses_company_querystring_and_translates_field():
+    """NAV 2018 in Kopie 2026 needs `?company=...` querystring, not
+    `Company('...')/` path prefix — discovered when PLX_Item / PLX_Customer
+    returned 404 under the path-style URL but worked with querystring."""
+    base_url_for_post = f"{BASE}/PLX_SalesOrder"
+    route = respx.post(url__startswith=base_url_for_post).mock(
         return_value=httpx.Response(
             201,
             json={
@@ -90,7 +93,9 @@ async def test_stepwise_post_uses_company_path_and_translates_field():
 
     assert route.called
     sent = route.calls.last.request
-    assert sent.url == expected_url
+    assert sent.url.path.endswith("/PLX_SalesOrder")
+    assert "Company(" not in str(sent.url)  # old path-style URL forbidden
+    assert sent.url.params.get("company") == COMPANY
     assert b'"Sell_to_Customer_No":"10009"' in sent.content
     assert result["sales_order_number"] == "SO12345"
 
@@ -98,12 +103,12 @@ async def test_stepwise_post_uses_company_path_and_translates_field():
 @pytest.mark.asyncio
 @respx.mock
 async def test_stepwise_patch_uses_record_url_with_string_key():
-    post_url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_SalesOrder"
-    patch_url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_SalesOrder('SO12345')"
-    respx.post(post_url).mock(
+    post_url = f"{BASE}/PLX_SalesOrder"
+    patch_url_base = f"{BASE}/PLX_SalesOrder('SO12345')"
+    respx.post(url__startswith=post_url).mock(
         return_value=httpx.Response(201, json={"No": "SO12345"}),
     )
-    patch = respx.patch(patch_url).mock(
+    patch = respx.patch(url__startswith=patch_url_base).mock(
         return_value=httpx.Response(200, json={"No": "SO12345", "Ship_to_Code": "MAIN"}),
     )
     async with httpx.AsyncClient() as raw:
@@ -126,7 +131,8 @@ async def test_stepwise_patch_uses_record_url_with_string_key():
 
     assert patch.called
     sent = patch.calls.last.request
-    assert sent.url == patch_url
+    assert sent.url.path.endswith("/PLX_SalesOrder('SO12345')")
+    assert sent.url.params.get("company") == COMPANY
     # Field rename applied.
     assert b'"Ship_to_Code":"MAIN"' in sent.content
     # No errors on either op.
@@ -139,8 +145,8 @@ async def test_stepwise_patch_uses_record_url_with_string_key():
 async def test_stepwise_skips_incoming_documents_op():
     """NAV 2018 incoming-documents flow isn't implemented; the op must be
     skipped with a clear error rather than crashing the whole order."""
-    post_url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_SalesOrder"
-    respx.post(post_url).mock(
+    post_url = f"{BASE}/PLX_SalesOrder"
+    respx.post(url__startswith=post_url).mock(
         return_value=httpx.Response(201, json={"No": "SO12345"}),
     )
     async with httpx.AsyncClient() as raw:
@@ -176,9 +182,9 @@ async def test_stepwise_skips_incoming_documents_op():
 async def test_stepwise_dedup_by_external_doc_no():
     """Re-pushing the same email must short-circuit when NAV already has
     a sales-order with the matching External_Document_No."""
-    list_url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_SalesOrder"
+    list_url = f"{BASE}/PLX_SalesOrder"
     # OData returns a `value` array on the GET probe.
-    respx.get(list_url).mock(
+    respx.get(url__startswith=list_url).mock(
         return_value=httpx.Response(
             200,
             json={"value": [{"No": "SO_EXISTING", "External_Document_No": "PO123"}]},
@@ -210,8 +216,8 @@ async def test_stepwise_dedup_by_external_doc_no():
 @pytest.mark.asyncio
 @respx.mock
 async def test_probe_reports_status_and_url_on_success():
-    expected_url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_SalesOrder?$top=1"
-    respx.get(expected_url).mock(
+    base = f"{BASE}/PLX_SalesOrder"
+    respx.get(url__startswith=base).mock(
         return_value=httpx.Response(200, json={"value": []}),
     )
     async with httpx.AsyncClient() as raw:
@@ -225,8 +231,8 @@ async def test_probe_reports_status_and_url_on_success():
 @pytest.mark.asyncio
 @respx.mock
 async def test_probe_reports_failure_on_401():
-    expected_url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_SalesOrder?$top=1"
-    respx.get(expected_url).mock(
+    base = f"{BASE}/PLX_SalesOrder"
+    respx.get(url__startswith=base).mock(
         return_value=httpx.Response(401, text="Unauthorized"),
     )
     async with httpx.AsyncClient() as raw:
@@ -246,8 +252,8 @@ async def test_probe_reports_failure_on_401():
 @respx.mock
 async def test_probe_accepts_explicit_page_override():
     """Probe must accept any page name and hit that page's URL."""
-    expected_url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_Item?$top=1"
-    respx.get(expected_url).mock(
+    base = f"{BASE}/PLX_Item"
+    respx.get(url__startswith=base).mock(
         return_value=httpx.Response(200, json={"value": [{"No": "X"}]}),
     )
     async with httpx.AsyncClient() as raw:
@@ -256,7 +262,8 @@ async def test_probe_accepts_explicit_page_override():
     assert result["ok"] is True
     assert result["status"] == 200
     assert result["page"] == "PLX_Item"
-    assert result["url"] == expected_url
+    assert result["url"].startswith(base)
+    assert "company=" in result["url"]
 
 
 @pytest.mark.asyncio
@@ -264,8 +271,8 @@ async def test_probe_accepts_explicit_page_override():
 async def test_probe_distinguishes_empty_200_from_404_in_preview():
     """Empty-but-200 must show `"value":[]` in preview so the operator can
     tell apart "page works, no data yet" from "page missing / no access"."""
-    expected_url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_Item?$top=1"
-    respx.get(expected_url).mock(
+    base = f"{BASE}/PLX_Item"
+    respx.get(url__startswith=base).mock(
         return_value=httpx.Response(200, json={"value": []}),
     )
     async with httpx.AsyncClient() as raw:
@@ -279,8 +286,8 @@ async def test_probe_distinguishes_empty_200_from_404_in_preview():
 @pytest.mark.asyncio
 @respx.mock
 async def test_probe_reports_404_distinctly_with_page_override():
-    expected_url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_Item?$top=1"
-    respx.get(expected_url).mock(
+    base = f"{BASE}/PLX_Item"
+    respx.get(url__startswith=base).mock(
         return_value=httpx.Response(404, text="Not Found"),
     )
     async with httpx.AsyncClient() as raw:
@@ -299,17 +306,19 @@ async def test_probe_reports_404_distinctly_with_page_override():
 @pytest.mark.asyncio
 @respx.mock
 async def test_list_services_returns_service_document_entries():
-    """Hit Company('...')/ and parse the OData service document for entity names."""
-    service_doc_url = f"{BASE}/Company('{COMPANY_PATH}')/"
+    """NAV 2018 service document lives at OData root (NOT under Company('...'))
+    — verified live against Kopie 2026. Parse it for the canonical service
+    names actually exposed by the server."""
+    service_doc_url = f"{BASE}/"
     respx.get(service_doc_url).mock(
         return_value=httpx.Response(
             200,
             json={
-                "@odata.context": f"{BASE}/Company('{COMPANY_PATH}')/$metadata",
+                "@odata.context": f"{BASE}/$metadata",
                 "value": [
                     {"name": "Customer", "kind": "EntitySet", "url": "Customer"},
                     {"name": "PLX_SalesOrder", "kind": "EntitySet", "url": "PLX_SalesOrder"},
-                    {"name": "Item", "kind": "EntitySet", "url": "Item"},
+                    {"name": "PLX_Item", "kind": "EntitySet", "url": "PLX_Item"},
                 ],
             },
         ),
@@ -317,17 +326,16 @@ async def test_list_services_returns_service_document_entries():
     async with httpx.AsyncClient() as raw:
         client = _client(raw)
         services = await client.list_services()
-    assert isinstance(services, list)
     names = [s["name"] for s in services]
     assert "Customer" in names
     assert "PLX_SalesOrder" in names
-    assert "Item" in names
+    assert "PLX_Item" in names
 
 
 @pytest.mark.asyncio
 @respx.mock
 async def test_list_services_returns_empty_on_404_without_crashing():
-    service_doc_url = f"{BASE}/Company('{COMPANY_PATH}')/"
+    service_doc_url = f"{BASE}/"
     respx.get(service_doc_url).mock(return_value=httpx.Response(404, text="Not Found"))
     async with httpx.AsyncClient() as raw:
         client = _client(raw)
@@ -350,8 +358,8 @@ async def test_list_services_returns_empty_on_404_without_crashing():
 async def test_get_item_returns_none_on_404():
     """When PLX_Item is misconfigured and returns 404, get_item must return
     None instead of raising — match_articles falls back to other strategies."""
-    item_url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_Item"
-    respx.get(item_url).mock(return_value=httpx.Response(404, text="Not Found"))
+    item_url = f"{BASE}/PLX_Item"
+    respx.get(url__startswith=item_url).mock(return_value=httpx.Response(404, text="Not Found"))
     async with httpx.AsyncClient() as raw:
         client = _client(raw)
         result = await client.get_item("804600")
@@ -363,8 +371,8 @@ async def test_get_item_returns_none_on_404():
 async def test_search_items_returns_empty_list_on_404():
     """search_items returning [] on 404 lets the matcher fall back to fuzzy
     description matching or flag for review."""
-    item_url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_Item"
-    respx.get(item_url).mock(return_value=httpx.Response(404, text="Not Found"))
+    item_url = f"{BASE}/PLX_Item"
+    respx.get(url__startswith=item_url).mock(return_value=httpx.Response(404, text="Not Found"))
     async with httpx.AsyncClient() as raw:
         client = _client(raw)
         result = await client.search_items(beschrijving="topcoat")
@@ -375,8 +383,8 @@ async def test_search_items_returns_empty_list_on_404():
 @respx.mock
 async def test_search_customers_returns_empty_list_on_404():
     """Same robustness applies to customer lookup."""
-    cust_url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_Customer"
-    respx.get(cust_url).mock(return_value=httpx.Response(404, text="Not Found"))
+    cust_url = f"{BASE}/PLX_Customer"
+    respx.get(url__startswith=cust_url).mock(return_value=httpx.Response(404, text="Not Found"))
     async with httpx.AsyncClient() as raw:
         client = _client(raw)
         result = await client.search_customers(email="x@y.nl")
@@ -388,8 +396,8 @@ async def test_search_customers_returns_empty_list_on_404():
 async def test_get_collection_returns_empty_list_on_404():
     """get_collection is used by master-sync scripts; 404 should yield []
     not crash the script."""
-    url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_ItemReference"
-    respx.get(url).mock(return_value=httpx.Response(404, text="Not Found"))
+    url = f"{BASE}/PLX_ItemReference"
+    respx.get(url__startswith=url).mock(return_value=httpx.Response(404, text="Not Found"))
     async with httpx.AsyncClient() as raw:
         client = _client(raw)
         result = await client.get_collection("PLX_ItemReference")
@@ -401,8 +409,8 @@ async def test_get_collection_returns_empty_list_on_404():
 async def test_get_still_raises_on_500_for_real_server_errors():
     """500-class errors are real bugs in NAV or our request; do NOT swallow
     them — let the caller see the failure and surface it to logs/UI."""
-    url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_Item"
-    respx.get(url).mock(return_value=httpx.Response(500, text="Server boom"))
+    url = f"{BASE}/PLX_Item"
+    respx.get(url__startswith=url).mock(return_value=httpx.Response(500, text="Server boom"))
     async with httpx.AsyncClient() as raw:
         client = _client(raw)
         with pytest.raises(httpx.HTTPStatusError):
@@ -414,9 +422,50 @@ async def test_get_still_raises_on_500_for_real_server_errors():
 async def test_get_still_raises_on_401_for_auth_errors():
     """401 indicates credential problems and must NOT be silently swallowed
     — the operator needs to see an obvious failure to fix the auth setup."""
-    url = f"{BASE}/Company('{COMPANY_PATH}')/PLX_Item"
-    respx.get(url).mock(return_value=httpx.Response(401, text="Unauthorized"))
+    url = f"{BASE}/PLX_Item"
+    respx.get(url__startswith=url).mock(return_value=httpx.Response(401, text="Unauthorized"))
     async with httpx.AsyncClient() as raw:
         client = _client(raw)
         with pytest.raises(httpx.HTTPStatusError):
             await client.get_item("804600")
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_company_querystring_is_added_to_get_requests():
+    """Core invariant of the URL-convention switch: every NAV request carries
+    `?company=<name>` so NAV 2018 can route to the right tenant data."""
+    base = f"{BASE}/PLX_Item"
+    route = respx.get(url__startswith=base).mock(
+        return_value=httpx.Response(200, json={"value": []}),
+    )
+    async with httpx.AsyncClient() as raw:
+        client = _client(raw)
+        await client.search_items(beschrijving="x")
+    sent = route.calls.last.request
+    assert sent.url.params.get("company") == COMPANY
+    # And $filter is preserved alongside it (not overwritten).
+    assert "$filter" in sent.url.params
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_company_querystring_is_added_to_post_and_patch():
+    """POST and PATCH must also carry the company querystring."""
+    post_route = respx.post(url__startswith=f"{BASE}/PLX_SalesOrder").mock(
+        return_value=httpx.Response(201, json={"No": "SO99"}),
+    )
+    patch_route = respx.patch(url__startswith=f"{BASE}/PLX_SalesOrder('SO99')").mock(
+        return_value=httpx.Response(200, json={"No": "SO99"}),
+    )
+    async with httpx.AsyncClient() as raw:
+        client = _client(raw)
+        ops: list[NavOperation] = [
+            {"op": "POST", "path": "/salesOrders",
+             "body": {"customerNumber": "10009"}, "label": "h"},
+            {"op": "PATCH", "path": "/salesOrders({id})",
+             "body": {"shipToCode": "MAIN"}, "label": "s"},
+        ]
+        await client.create_sales_order_stepwise(ops)
+    assert post_route.calls.last.request.url.params.get("company") == COMPANY
+    assert patch_route.calls.last.request.url.params.get("company") == COMPANY

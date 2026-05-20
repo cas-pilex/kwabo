@@ -160,17 +160,33 @@ class Nav2018ODataClient:
         )
 
     # ---------- URL building ----------
-
-    def _company_segment(self) -> str:
-        return f"Company('{_quote_company(self.company)}')"
+    #
+    # NAV 2018 in the Kopie 2026 deployment requires the `?company=<name>`
+    # querystring form rather than the `Company('<name>')/PAGE` path form.
+    # Some PLX_* pages refuse the path form entirely (Internal_CompanyNotFound
+    # or 404) while accepting the querystring form. We standardise on the
+    # querystring form everywhere — it works for plain pages (Customer) and
+    # PLX_* pages alike, verified live against Kopie 2026.
 
     def _entity_url(self, entity: str) -> str:
-        """Full URL to an entity collection, e.g. PLX_SalesOrder."""
-        return f"{self.base_url}/{self._company_segment()}/{entity}"
+        """Full URL to an entity collection, e.g. PLX_SalesOrder. The company
+        is added via params=, not the path, by _get/_post/_patch."""
+        return f"{self.base_url}/{entity}"
 
     def _record_url(self, entity: str, key: str) -> str:
         """Full URL to a single record, e.g. PLX_SalesOrder('SO12345')."""
-        return f"{self.base_url}/{self._company_segment()}/{entity}('{_quote_key(key)}')"
+        return f"{self.base_url}/{entity}('{_quote_key(key)}')"
+
+    def _default_params(self) -> dict[str, str]:
+        """Querystring that must travel on every request to NAV 2018: tells
+        the server which company database to read/write against."""
+        return {"company": self.company}
+
+    def _merge_params(self, extra: dict | None) -> dict:
+        merged = self._default_params()
+        if extra:
+            merged.update(extra)
+        return merged
 
     # ---------- HTTP ----------
 
@@ -185,7 +201,10 @@ class Nav2018ODataClient:
 
     async def _get(self, url: str, params: dict | None = None) -> dict:
         resp = await self._client.get(
-            url, params=params, headers=self._headers(), auth=self._auth()
+            url,
+            params=self._merge_params(params),
+            headers=self._headers(),
+            auth=self._auth(),
         )
         # Treat 404 on a master-data read as "no record" rather than crashing
         # the pipeline. Real-world cause: a PLX_ page is exposed by NAV
@@ -206,14 +225,22 @@ class Nav2018ODataClient:
 
     async def _post(self, url: str, body: dict) -> dict:
         resp = await self._client.post(
-            url, json=body, headers={**self._headers(), "If-Match": "*"}, auth=self._auth()
+            url,
+            params=self._default_params(),
+            json=body,
+            headers={**self._headers(), "If-Match": "*"},
+            auth=self._auth(),
         )
         resp.raise_for_status()
         return resp.json() if resp.content else {}
 
     async def _patch(self, url: str, body: dict) -> tuple[int, dict]:
         resp = await self._client.patch(
-            url, json=body, headers={**self._headers(), "If-Match": "*"}, auth=self._auth()
+            url,
+            params=self._default_params(),
+            json=body,
+            headers={**self._headers(), "If-Match": "*"},
+            auth=self._auth(),
         )
         resp.raise_for_status()
         if resp.status_code == 204 or not resp.content:
@@ -277,16 +304,15 @@ class Nav2018ODataClient:
     # ---------- Connectivity probe ----------
 
     async def list_services(self) -> list[dict]:
-        """Fetch the OData service document at Company('...')/ and return the
-        list of published entity sets. Used by /api/diagnostics/nav/services to
-        let the operator see which page names are actually exposed — needed in
-        Kopie 2026 where the naming is inconsistent (some pages PLX_*, some
-        plain NAV names like Customer).
+        """Fetch the OData service document at the ODataV4 root and return
+        the list of published entity sets. NAV 2018 puts the service document
+        at the unprefixed root (NOT under Company('...')) — verified live
+        against Kopie 2026.
 
         Returns [] on 404 / parse errors rather than raising; this is purely
         diagnostic and must never bring down the dashboard.
         """
-        url = f"{self.base_url}/{self._company_segment()}/"
+        url = f"{self.base_url}/"
         try:
             resp = await self._client.get(
                 url, headers=self._headers(), auth=self._auth()
@@ -309,15 +335,16 @@ class Nav2018ODataClient:
         empty data, which we hit in the Kopie 2026 environment.
         """
         target_page = page or self.page_sales_order
+        url_base = self._entity_url(target_page)
         try:
-            url = self._entity_url(target_page) + "?$top=1"
+            params = self._merge_params({"$top": "1"})
             resp = await self._client.get(
-                url, headers=self._headers(), auth=self._auth()
+                url_base, params=params, headers=self._headers(), auth=self._auth()
             )
             return {
                 "ok": resp.status_code < 400,
                 "status": resp.status_code,
-                "url": url,
+                "url": str(resp.url),
                 "page": target_page,
                 "company": self.company,
                 "preview": (resp.text or "")[:300],
@@ -326,7 +353,7 @@ class Nav2018ODataClient:
             return {
                 "ok": False,
                 "status": 0,
-                "url": self._entity_url(target_page),
+                "url": url_base,
                 "page": target_page,
                 "company": self.company,
                 "error": f"{type(exc).__name__}: {exc}",
