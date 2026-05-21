@@ -85,8 +85,24 @@ async def match_articles_node(state: OrderState) -> OrderState:
     klant_nr = (state.get("klant_match") or {}).get("navision_klantnr")
 
     matched: list[OrderRegel] = []
-    for r in state.get("orderregels") or []:
-        matched.append(await _match_single(r, klant_nr, nav))
+    for idx, r in enumerate(state.get("orderregels") or []):
+        try:
+            matched.append(await _match_single(r, klant_nr, nav))
+        except Exception as exc:  # noqa: BLE001
+            log.exception(
+                "match_single_crash",
+                email_id=state.get("email_id"),
+                regel_idx=idx,
+                klant_art=r.get("artikelnummer_klant"),
+                oms=(r.get("omschrijving") or "")[:80],
+                exc_type=type(exc).__name__,
+                exc_msg=str(exc)[:300],
+            )
+            fallback = dict(r)
+            fallback["artikelnummer_kwabo_matched"] = None
+            fallback["match_confidence"] = 0.0
+            fallback["match_methode"] = "manual"
+            matched.append(fallback)
 
     alle_gematcht = bool(matched) and all(r.get("artikelnummer_kwabo_matched") for r in matched)
     log.info(
