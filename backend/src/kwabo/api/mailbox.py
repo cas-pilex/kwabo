@@ -177,20 +177,45 @@ def get_oauth_config() -> OAuthConfigOut:
     )
 
 
+def _validate_redirect_uri(value: str) -> str:
+    v = value.strip()
+    if not v:
+        raise HTTPException(400, "redirect_uri mag niet leeg zijn")
+    if not (v.startswith("https://") or v.startswith("http://localhost")):
+        raise HTTPException(
+            400,
+            "redirect_uri moet beginnen met https:// (of http://localhost voor dev)",
+        )
+    if not v.endswith("/api/mailbox/oauth/callback"):
+        raise HTTPException(
+            400,
+            "redirect_uri moet eindigen op /api/mailbox/oauth/callback",
+        )
+    return v
+
+
 @router.put("/oauth/config", response_model=OAuthConfigOut)
 def save_oauth_config(body: OAuthConfigIn) -> OAuthConfigOut:
     if not body.tenant_id.strip() or not body.client_id.strip():
         raise HTTPException(400, "tenant_id en client_id zijn verplicht")
     with Session(engine) as s:
         cfg = _get_config(s)
+        is_new = cfg is None
         if not cfg:
             cfg = OAuthConfig(id=1, provider="microsoft")
         cfg.tenant_id = body.tenant_id.strip()
         cfg.client_id = body.client_id.strip()
         if body.client_secret is not None and body.client_secret.strip():
             cfg.client_secret = body.client_secret.strip()
-        if body.redirect_uri:
-            cfg.redirect_uri = body.redirect_uri.strip()
+        if body.redirect_uri is not None and body.redirect_uri.strip():
+            cfg.redirect_uri = _validate_redirect_uri(body.redirect_uri)
+        elif is_new or not cfg.redirect_uri or not cfg.redirect_uri.strip():
+            raise HTTPException(
+                400,
+                "redirect_uri is verplicht. Vul de volledige callback-URL in "
+                "(bijv. https://<jouw-domein>/api/mailbox/oauth/callback) en "
+                "registreer dezelfde URI in Azure App Registration → Authentication.",
+            )
         cfg.updated_at = utcnow()
         s.add(cfg)
         s.commit()
@@ -214,6 +239,12 @@ def oauth_start(request: Request) -> RedirectResponse:
         cfg = _get_config(s)
     if not cfg or not cfg.tenant_id or not cfg.client_id:
         raise HTTPException(400, "OAuth2 nog niet geconfigureerd (vul tenant_id + client_id in)")
+    if not cfg.redirect_uri or not cfg.redirect_uri.strip():
+        raise HTTPException(
+            400,
+            "Redirect URI ontbreekt in de OAuth-config. Vul deze in op de E-mail-pagina "
+            "en registreer exact dezelfde URI in Azure App Registration → Authentication.",
+        )
 
     state = secrets.token_urlsafe(24)
     _OAUTH_STATES[state] = time.time()

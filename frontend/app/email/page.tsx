@@ -31,6 +31,7 @@ export default function EmailPage() {
   const [tenant, setTenant] = useState("");
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
+  const [redirectUri, setRedirectUri] = useState("");
 
   async function load() {
     try {
@@ -39,6 +40,7 @@ export default function EmailPage() {
       setCfg(c);
       setTenant(c.tenant_id);
       setClientId(c.client_id);
+      setRedirectUri(c.redirect_uri);
       setErr(null);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -59,12 +61,17 @@ export default function EmailPage() {
       toast.error("Tenant ID en Client ID zijn verplicht");
       return;
     }
+    if (!redirectUri.trim()) {
+      toast.error("Redirect URI is verplicht");
+      return;
+    }
     setBusy(true);
     try {
       const updated = await api.saveOauthConfig({
         tenant_id: tenant.trim(),
         client_id: clientId.trim(),
         client_secret: clientSecret.trim() || undefined,
+        redirect_uri: redirectUri.trim(),
       });
       setCfg(updated);
       setClientSecret("");
@@ -92,7 +99,7 @@ export default function EmailPage() {
     window.location.href = api.oauthStartUrl();
   }
 
-  const canConnect = cfg?.configured && cfg?.has_secret;
+  const canConnect = cfg?.configured && cfg?.has_secret && !!cfg?.redirect_uri;
   const isConnected = status?.connected && status.mode === "graph";
 
   return (
@@ -231,11 +238,22 @@ export default function EmailPage() {
           </label>
         </div>
 
-        <div className="mt-3 text-[11px] text-[var(--kwabo-muted)]">
-          Redirect URI (zet dit in Azure):{" "}
-          <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-[10px]">
-            {cfg?.redirect_uri || "http://localhost:8000/api/mailbox/oauth/callback"}
-          </code>
+        <div className="mt-3">
+          <label className="text-xs">
+            <span className="mb-1 block font-medium text-slate-700">
+              Redirect URI (Omleidings-URI)
+            </span>
+            <input
+              type="text"
+              value={redirectUri}
+              onChange={(e) => setRedirectUri(e.target.value)}
+              placeholder="https://<jouw-domein>/api/mailbox/oauth/callback"
+              className="w-full rounded-md border border-slate-300 px-2 py-1.5 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-[var(--kwabo-navy)]"
+            />
+          </label>
+          <p className="mt-1 text-[11px] text-[var(--kwabo-muted)]">
+            Moet exact overeenkomen met de Omleidings-URI in Azure App Registration → Authentication.
+          </p>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
@@ -251,7 +269,7 @@ export default function EmailPage() {
             disabled={!canConnect}
             title={
               !canConnect
-                ? "Eerst tenant_id, client_id én client_secret opslaan"
+                ? "Eerst tenant_id, client_id, client_secret én redirect_uri opslaan"
                 : "Open Microsoft inlog-scherm"
             }
             className="rounded-md bg-[var(--kwabo-navy)] px-4 py-1.5 text-sm font-medium text-white hover:bg-[var(--kwabo-navy-500)] disabled:cursor-not-allowed disabled:opacity-40"
