@@ -38,7 +38,7 @@ class NavisionPreviewResponse(BaseModel):
     operations: list[dict]
     expected_post_count: int
     expected_patch_count: int
-    status: str          # "ready" | "missing" | "no_customer"
+    status: str          # "ready" | "missing" | "no_customer" | "no_matched_articles"
     missing_count: int
 
 
@@ -137,12 +137,23 @@ def _save(order_id: int, state: dict, **extra_fields: Any) -> None:
 @router.get("/{order_id}/navision-preview", response_model=NavisionPreviewResponse)
 def navision_preview(order_id: int) -> NavisionPreviewResponse:
     state, _ = _load(order_id)
-    # Prefer state["nav_operations"] if compose_order populated it (post-T9).
-    # Fall back to recomposing on the fly so older review rows still preview.
-    operations = state.get("nav_operations") or list(compose_navision_operations(state))
     klant = (state.get("klant_match") or {}).get("navision_klantnr")
     missing = _all_needs_review_paths(state)
-    if not klant:
+    # Prefer state["nav_operations"] if compose_order populated it (post-T9).
+    # Fall back to recomposing on the fly so older review rows still preview.
+    operations: list = list(state.get("nav_operations") or [])
+    compose_error: str | None = None
+    if not operations:
+        try:
+            operations = list(compose_navision_operations(state))
+        except ValueError as exc:
+            # Compose refuses header-only orders (no matched articles).
+            # Surface as an explicit status instead of bubbling up a 500.
+            compose_error = str(exc)
+            operations = []
+    if compose_error:
+        status = "no_matched_articles"
+    elif not klant:
         status = "no_customer"
     elif missing:
         status = "missing"

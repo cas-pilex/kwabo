@@ -114,6 +114,20 @@ def _quote_key(key: str) -> str:
     return key.replace("'", "''")
 
 
+def _normalize_item(row: dict) -> dict:
+    """PLX_Item rows expose NAV-native field names (No, Description). The rest
+    of the codebase (artikelen API, match_articles fuzzy search) expects the
+    BC-flavoured aliases (number, displayName). Add the aliases without
+    discarding the originals so downstream code keeps working.
+    """
+    out = dict(row)
+    if "number" not in out and "No" in out:
+        out["number"] = out["No"]
+    if "displayName" not in out:
+        out["displayName"] = out.get("Description") or out.get("Description_2") or ""
+    return out
+
+
 class Nav2018ODataClient:
     """NAV 2018 OData V4 client implementing the same contract as
     `RealNavisionClient` (BC-flavoured) so push_navision is mode-agnostic."""
@@ -272,13 +286,13 @@ class Nav2018ODataClient:
         url = self._entity_url(self.page_item)
         res = await self._get(url, {"$filter": f"No eq '{nr}'"})
         items = res.get("value") or []
-        return items[0] if items else None
+        return _normalize_item(items[0]) if items else None
 
     async def search_items(self, beschrijving: Optional[str] = None) -> list[dict]:
         url = self._entity_url(self.page_item)
         params = {"$filter": f"contains(Description,'{beschrijving}')"} if beschrijving else None
         res = await self._get(url, params)
-        return res.get("value") or []
+        return [_normalize_item(it) for it in (res.get("value") or [])]
 
     async def get_collection(self, entity: str, params: dict | None = None) -> list[dict]:
         """Page through an entire entity collection following @odata.nextLink."""

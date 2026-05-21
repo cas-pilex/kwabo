@@ -381,6 +381,49 @@ async def test_search_items_returns_empty_list_on_404():
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_search_items_normalizes_nav_field_names():
+    """PLX_Item exposes NAV-native field names (No, Description). Downstream
+    code (artikelen API ItemOut, match_articles fuzzy) expects the BC aliases
+    (number, displayName). The client must add them without losing originals.
+    """
+    item_url = f"{BASE}/PLX_Item"
+    respx.get(url__startswith=item_url).mock(
+        return_value=httpx.Response(200, json={"value": [
+            {"No": "10010", "Description": "Materiaalslang 19x7", "Type": "Inventory"},
+            {"No": "10011", "Description_2": "Only desc2 set"},
+        ]})
+    )
+    async with httpx.AsyncClient() as raw:
+        client = _client(raw)
+        result = await client.search_items(beschrijving="slang")
+    assert result[0]["number"] == "10010"
+    assert result[0]["displayName"] == "Materiaalslang 19x7"
+    assert result[0]["No"] == "10010"  # original preserved
+    assert result[0]["Type"] == "Inventory"
+    assert result[1]["number"] == "10011"
+    assert result[1]["displayName"] == "Only desc2 set"  # fallback to Description_2
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_get_item_normalizes_nav_field_names():
+    """Same normalization for the single-item lookup."""
+    item_url = f"{BASE}/PLX_Item"
+    respx.get(url__startswith=item_url).mock(
+        return_value=httpx.Response(200, json={"value": [
+            {"No": "20020", "Description": "Klem 12mm"},
+        ]})
+    )
+    async with httpx.AsyncClient() as raw:
+        client = _client(raw)
+        result = await client.get_item("20020")
+    assert result["number"] == "20020"
+    assert result["displayName"] == "Klem 12mm"
+    assert result["No"] == "20020"
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_search_customers_returns_empty_list_on_404():
     """Same robustness applies to customer lookup."""
     cust_url = f"{BASE}/PLX_Customer"
