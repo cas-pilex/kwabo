@@ -38,6 +38,7 @@ class SyncReport(BaseModel):
     skipped: int
     skipped_reasons: dict[str, int]
     sample_keys: list[str]  # keys seen on the first NAV row, for debugging
+    fetch_error: Optional[str] = None  # populated when get_collection raised
 
 
 class NavSyncResponse(BaseModel):
@@ -128,15 +129,21 @@ def _item_to_artikelkaart(row: dict, existing: Optional[Artikelkaart]) -> Artike
 
 
 def _itemref_to_kruisverwijzing(row: dict) -> Optional[ArtikelKruisverwijzing]:
-    """PLX_ItemReference fields per NAV 2018 table 5717 OData-naming:
-    Reference_Type, Reference_Type_No, Reference_No (customer's SKU),
-    Item_No (Kwabo's article), Unit_of_Measure.
-    Only emit when all three required fields are present and Reference_Type
-    is Customer.
+    """PLX_ItemReference (NAV 2018 table 5717, Item Cross Reference) uses the
+    legacy Cross_Reference_* naming in OData V4. Per probe of Kopie 2026:
+      Cross_Reference_Type    e.g. "Customer", "Vendor", ""
+      Cross_Reference_Type_No customer or vendor number
+      Cross_Reference_No      the customer's/vendor's own SKU
+      Item_No                 Kwabo's article
+      Unit_of_Measure         optional UOM hint
+    Only emit when all three required fields are present AND Reference_Type
+    is Customer (vendor refs we don't mirror).
     """
-    rtype = _str_or_none(row.get("Reference_Type"))
-    klant_nr = _str_or_none(row.get("Reference_Type_No"))
-    klant_art = _str_or_none(row.get("Reference_No"))
+    rtype = _str_or_none(row.get("Cross_Reference_Type") or row.get("Reference_Type"))
+    klant_nr = _str_or_none(
+        row.get("Cross_Reference_Type_No") or row.get("Reference_Type_No")
+    )
+    klant_art = _str_or_none(row.get("Cross_Reference_No") or row.get("Reference_No"))
     kwabo_art = _str_or_none(row.get("Item_No"))
     if not (klant_nr and klant_art and kwabo_art):
         return None
@@ -174,7 +181,7 @@ async def _sync_customers(
     if err:
         return SyncReport(
             domain="customers", fetched=0, upserted=0, skipped=0,
-            skipped_reasons={"fetch_error": 1, "msg": 0}, sample_keys=[],
+            skipped_reasons={"fetch_error": 1}, sample_keys=[], fetch_error=err,
         )
     upserted = 0
     for r in rows:
@@ -212,7 +219,7 @@ async def _sync_items(
     if err:
         return SyncReport(
             domain="items", fetched=0, upserted=0, skipped=0,
-            skipped_reasons={"fetch_error": 1}, sample_keys=[],
+            skipped_reasons={"fetch_error": 1}, sample_keys=[], fetch_error=err,
         )
     upserted = 0
     for r in rows:
@@ -248,7 +255,7 @@ async def _sync_cross_ref(
     if err:
         return SyncReport(
             domain="cross_ref", fetched=0, upserted=0, skipped=0,
-            skipped_reasons={"fetch_error": 1}, sample_keys=[],
+            skipped_reasons={"fetch_error": 1}, sample_keys=[], fetch_error=err,
         )
     upserted = 0
     for r in rows:
