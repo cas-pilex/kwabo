@@ -424,6 +424,30 @@ async def test_get_item_normalizes_nav_field_names():
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_search_customers_normalizes_nav_field_names():
+    """PLX_Customer exposes No/Name/E_Mail. match_customer reads number/displayName.
+    Aliases must be added without losing the NAV originals."""
+    cust_url = f"{BASE}/PLX_Customer"
+    respx.get(url__startswith=cust_url).mock(
+        return_value=httpx.Response(200, json={"value": [
+            {"No": "50000", "Name": "Groenhart Centraal Magazijn", "E_Mail": "orders@groenhart.nl"},
+            {"No": "50010", "Name_2": "Only Name_2"},
+        ]})
+    )
+    async with httpx.AsyncClient() as raw:
+        client = _client(raw)
+        result = await client.search_customers(email="orders@groenhart.nl")
+    assert result[0]["number"] == "50000"
+    assert result[0]["displayName"] == "Groenhart Centraal Magazijn"
+    assert result[0]["email"] == "orders@groenhart.nl"
+    assert result[0]["No"] == "50000"  # original preserved
+    assert result[0]["E_Mail"] == "orders@groenhart.nl"  # original preserved
+    assert result[1]["number"] == "50010"
+    assert result[1]["displayName"] == "Only Name_2"  # falls back to Name_2
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_search_customers_returns_empty_list_on_404():
     """Same robustness applies to customer lookup."""
     cust_url = f"{BASE}/PLX_Customer"

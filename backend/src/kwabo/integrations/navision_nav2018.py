@@ -128,6 +128,21 @@ def _normalize_item(row: dict) -> dict:
     return out
 
 
+def _normalize_customer(row: dict) -> dict:
+    """PLX_Customer rows expose NAV-native field names (No, Name, E_Mail). The
+    match_customer node reads ['number'] and ['displayName'] (BC convention),
+    so add those aliases without losing the NAV originals.
+    """
+    out = dict(row)
+    if "number" not in out and "No" in out:
+        out["number"] = out["No"]
+    if "displayName" not in out:
+        out["displayName"] = out.get("Name") or out.get("Name_2") or ""
+    if "email" not in out:
+        out["email"] = out.get("E_Mail") or ""
+    return out
+
+
 class Nav2018ODataClient:
     """NAV 2018 OData V4 client implementing the same contract as
     `RealNavisionClient` (BC-flavoured) so push_navision is mode-agnostic."""
@@ -280,7 +295,7 @@ class Nav2018ODataClient:
             filters.append(f"contains(Name,'{naam}')")
         params = {"$filter": " or ".join(filters)} if filters else None
         res = await self._get(url, params)
-        return res.get("value") or []
+        return [_normalize_customer(c) for c in (res.get("value") or [])]
 
     async def get_item(self, nr: str) -> Optional[dict]:
         url = self._entity_url(self.page_item)
