@@ -219,6 +219,17 @@ class Nav2018ODataClient:
             f"(Document_Type='{document_type}',No='{_quote_key(no)}')"
         )
 
+    def _sales_order_line_record_url(self, composite_key: str) -> str:
+        """Composite-key URL for PLX_SalesOrderLines, e.g.
+        PLX_SalesOrderLines(Document_Type='Order',Document_No='VO2600993',Line_No=10000).
+
+        The caller passes the already-built composite-key fragment
+        (no outer parens, no quoting); we drop it inside `(...)` as-is.
+        Wrapping it in single quotes via _record_url breaks OData parsing
+        (NAV returns 500).
+        """
+        return f"{self.base_url}/{self.page_sales_order_lines}({composite_key})"
+
     def _default_params(self) -> dict[str, str]:
         """Querystring that must travel on every request to NAV 2018: tells
         the server which company database to read/write against."""
@@ -435,7 +446,11 @@ class Nav2018ODataClient:
         if m:
             line_id = m.group(1)
             line_key = line_keys.get(line_id, line_id)
-            return self._record_url(self.page_sales_order_lines, line_key)
+            # PLX_SalesOrderLines uses a composite primary key
+            # (Document_Type, Document_No, Line_No). The captured composite
+            # key string ("Document_Type='Order',Document_No='...',Line_No=N")
+            # must NOT be wrapped in single quotes — that's invalid OData.
+            return self._sales_order_line_record_url(line_key)
         # Incoming-documents are NAV 2018 standard pages but composer-side
         # markers (`/incomingDocuments`, `/attachments`) are skipped here:
         # NAV 2018 attachment workflow differs from BC and we don't support
