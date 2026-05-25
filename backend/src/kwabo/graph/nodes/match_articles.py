@@ -8,7 +8,7 @@ from kwabo.utils import utcnow
 from rapidfuzz import fuzz, process
 from sqlmodel import Session
 
-from kwabo.db.repository import ArtikelRepo, KruisverwijzingRepo
+from kwabo.db.repository import ArtikelkaartRepo, ArtikelRepo, KruisverwijzingRepo
 from kwabo.db.session import engine
 from kwabo.graph.state import OrderRegel, OrderState
 from kwabo.integrations.navision_api import NavisionClient, get_navision_client
@@ -103,6 +103,29 @@ async def match_articles_node(state: OrderState) -> OrderState:
             fallback["match_confidence"] = 0.0
             fallback["match_methode"] = "manual"
             matched.append(fallback)
+
+    # Enrich each matched line with the item's NAV base-UoM from the synced
+    # artikelkaarten mirror. The LLM extractor often defaults to "STUK" but
+    # NAV rejects any UoM that is not in the item's PLX_ItemUnitOfMeasure
+    # table (HTTP 400 "Unit of Measure Code ... cannot be found in the
+    # related table"). Setting eenheid_default = basis_eenheid lets
+    # _line_uom_to_emit skip the UoM PATCH when the extractor's guess
+    # matches the base; setting eenheid to basis_eenheid when the
+    # extractor's value is the generic "STUK" fallback avoids the 400.
+    GENERIC_UOM_FALLBACKS = {"STUK", "STK", "ST", "STK.", "PC", "PCS", ""}
+    with Session(engine) as s:
+        art_repo = ArtikelkaartRepo(s)
+        for r in matched:
+            artnr = r.get("artikelnummer_kwabo_matched")
+            if not artnr:
+                continue
+            kaart = art_repo.get(artnr)
+            if not kaart or not kaart.basis_eenheid:
+                continue
+            r["eenheid_default"] = kaart.basis_eenheid
+            current = (r.get("eenheid") or "").strip().upper()
+            if current in GENERIC_UOM_FALLBACKS:
+                r["eenheid"] = kaart.basis_eenheid
 
     alle_gematcht = bool(matched) and all(r.get("artikelnummer_kwabo_matched") for r in matched)
     log.info(
