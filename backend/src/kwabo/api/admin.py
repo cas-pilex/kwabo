@@ -7,6 +7,8 @@ from curl/dashboard without needing Railway shell access.
 from __future__ import annotations
 
 import asyncio
+import time
+import uuid
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
@@ -52,6 +54,28 @@ class DbCounts(BaseModel):
     klanten: int
     artikelen: int
     kruisverwijzingen: int
+
+
+class JobStartResponse(BaseModel):
+    job_id: str
+    state: str
+    detail: str
+
+
+class JobStatusResponse(BaseModel):
+    job_id: str
+    state: str  # pending | running | done | failed
+    started_at: float
+    finished_at: Optional[float]
+    progress: dict  # arbitrary per-domain counts
+    result: Optional[NavSyncResponse]
+    error: Optional[str]
+
+
+# Module-level job registry. Restarted on uvicorn restart — that's fine,
+# sync jobs are short-lived and we use this only to poll a single in-flight
+# job from curl.
+_JOBS: dict[str, dict] = {}
 
 
 # ---------- helpers: NAV row -> DB model ----------
@@ -309,30 +333,68 @@ def db_counts() -> DbCounts:
     return DbCounts(klanten=n_k, artikelen=n_a, kruisverwijzingen=n_x)
 
 
-@router.post("/nav-sync", response_model=NavSyncResponse)
-async def nav_sync(
+async def _run_sync_job(job_id: str, selected: set[str], dry_run: bool) -> None:
+    """Background worker. Updates _JOBS[job_id] as it goes; never raises
+    to caller (errors are recorded on the job)."""
+    job = _JOBS[job_id]
+    try:
+        client = get_navision_client()
+        if not isinstance(client, Nav2018ODataClient):
+            raise RuntimeError(
+                f"Expected Nav2018ODataClient, got {type(client).__name__}"
+            )
+        reports: list[SyncReport] = []
+        with Session(engine) as session:
+            if "customers" in selected:
+                job["progress"]["current"] = "customers"
+                reports.append(await _sync_customers(client, session, dry_run))
+                job["progress"]["customers"] = reports[-1].model_dump()
+            if "items" in selected:
+                job["progress"]["current"] = "items"
+                reports.append(await _sync_items(client, session, dry_run))
+                job["progress"]["items"] = reports[-1].model_dump()
+            if "cross_ref" in selected:
+                job["progress"]["current"] = "cross_ref"
+                reports.append(await _sync_cross_ref(client, session, dry_run))
+                job["progress"]["cross_ref"] = reports[-1].model_dump()
+        counts = db_counts()
+        job["result"] = NavSyncResponse(
+            mode=settings.navision_mode,
+            dry_run=dry_run,
+            domains=reports,
+            db_counts=counts.model_dump(),
+        ).model_dump()
+        job["state"] = "done"
+        log.info(
+            "nav_sync_done", job_id=job_id, dry_run=dry_run,
+            domains={r.domain: {"fetched": r.fetched, "upserted": r.upserted} for r in reports},
+            db_counts=counts.model_dump(),
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.exception("nav_sync_job_failed", job_id=job_id)
+        job["state"] = "failed"
+        job["error"] = f"{type(exc).__name__}: {exc}"
+    finally:
+        job["finished_at"] = time.time()
+
+
+@router.post("/nav-sync", response_model=JobStartResponse, status_code=202)
+async def nav_sync_start(
     domains: str = "customers,items,cross_ref",
     dry_run: bool = False,
-) -> NavSyncResponse:
-    """Sync NAV master data into the local mirror tables.
+) -> JobStartResponse:
+    """Start a NAV master-data sync in the background.
 
-    Query params:
-      domains  comma-separated subset of {customers, items, cross_ref}.
-               Default: all three.
-      dry_run  if true, fetch from NAV but skip DB writes (returns the
-               counts we *would* upsert).
-
-    Only supports nav2018 mode for now. For NAVISION_MODE=real, use the
-    sync_navision_masters.py CLI script directly.
+    Returns immediately with a job_id; poll GET /api/admin/nav-sync/{job_id}
+    for progress. Avoids tying up the HTTP worker for 30+ seconds and
+    bypasses Railway's proxy request-timeout.
     """
     if settings.navision_mode != "nav2018":
         raise HTTPException(
             400,
             f"nav-sync via HTTP only supports navision_mode=nav2018 "
-            f"(current: {settings.navision_mode}). "
-            f"For 'real' mode, run scripts/sync_navision_masters.py via CLI.",
+            f"(current: {settings.navision_mode}).",
         )
-
     selected = {d.strip() for d in domains.split(",") if d.strip()}
     valid = {"customers", "items", "cross_ref"}
     unknown = selected - valid
@@ -341,33 +403,34 @@ async def nav_sync(
     if not selected:
         selected = valid
 
-    client = get_navision_client()
-    if not isinstance(client, Nav2018ODataClient):
-        raise HTTPException(
-            500,
-            f"Expected Nav2018ODataClient, got {type(client).__name__}. "
-            f"Restart with NAVISION_MODE=nav2018.",
-        )
-
-    log.info("nav_sync_start", domains=sorted(selected), dry_run=dry_run)
-    reports: list[SyncReport] = []
-    with Session(engine) as session:
-        if "customers" in selected:
-            reports.append(await _sync_customers(client, session, dry_run))
-        if "items" in selected:
-            reports.append(await _sync_items(client, session, dry_run))
-        if "cross_ref" in selected:
-            reports.append(await _sync_cross_ref(client, session, dry_run))
-
-    counts = db_counts()
-    log.info(
-        "nav_sync_done", dry_run=dry_run,
-        domains={r.domain: {"fetched": r.fetched, "upserted": r.upserted} for r in reports},
-        db_counts=counts.model_dump(),
+    job_id = uuid.uuid4().hex[:12]
+    _JOBS[job_id] = {
+        "job_id": job_id,
+        "state": "running",
+        "started_at": time.time(),
+        "finished_at": None,
+        "progress": {"selected": sorted(selected), "dry_run": dry_run, "current": None},
+        "result": None,
+        "error": None,
+    }
+    log.info("nav_sync_started", job_id=job_id, domains=sorted(selected), dry_run=dry_run)
+    asyncio.create_task(_run_sync_job(job_id, selected, dry_run))
+    return JobStartResponse(
+        job_id=job_id,
+        state="running",
+        detail=f"poll GET /api/admin/nav-sync/{job_id}",
     )
-    return NavSyncResponse(
-        mode=settings.navision_mode,
-        dry_run=dry_run,
-        domains=reports,
-        db_counts=counts.model_dump(),
-    )
+
+
+@router.get("/nav-sync/{job_id}", response_model=JobStatusResponse)
+def nav_sync_status(job_id: str) -> JobStatusResponse:
+    job = _JOBS.get(job_id)
+    if job is None:
+        raise HTTPException(404, f"unknown job_id: {job_id}")
+    return JobStatusResponse(**job)
+
+
+@router.get("/nav-sync", response_model=list[JobStatusResponse])
+def nav_sync_list() -> list[JobStatusResponse]:
+    """List all in-memory sync jobs (cleared on uvicorn restart)."""
+    return [JobStatusResponse(**j) for j in _JOBS.values()]
