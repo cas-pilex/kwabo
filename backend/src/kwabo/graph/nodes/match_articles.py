@@ -105,14 +105,19 @@ async def match_articles_node(state: OrderState) -> OrderState:
             matched.append(fallback)
 
     # Enrich each matched line with the item's NAV base-UoM from the synced
-    # artikelkaarten mirror. The LLM extractor often defaults to "STUK" but
-    # NAV rejects any UoM that is not in the item's PLX_ItemUnitOfMeasure
-    # table (HTTP 400 "Unit of Measure Code ... cannot be found in the
-    # related table"). Setting eenheid_default = basis_eenheid lets
-    # _line_uom_to_emit skip the UoM PATCH when the extractor's guess
-    # matches the base; setting eenheid to basis_eenheid when the
-    # extractor's value is the generic "STUK" fallback avoids the 400.
-    GENERIC_UOM_FALLBACKS = {"STUK", "STK", "ST", "STK.", "PC", "PCS", ""}
+    # artikelkaarten mirror. The LLM extractor guesses a UoM from the mail
+    # text (often "STUK", "M1", "PC" etc.) but NAV rejects any UoM that is
+    # not in the item's PLX_ItemUnitOfMeasure table (HTTP 400 "Unit of
+    # Measure Code ... cannot be found in the related table").
+    #
+    # The base_eenheid synced from PLX_Item.Base_Unit_of_Measure is the one
+    # UoM that is ALWAYS valid for an item (NAV requires it). Until we also
+    # mirror PLX_ItemUnitOfMeasure and can validate alternative UoMs, the
+    # safe contract is: overwrite the line's eenheid with the base. This
+    # makes _line_uom_to_emit a no-op (eenheid == eenheid_default) so NAV
+    # falls through to the item default during line POST. apply_mixprijzen
+    # can still override later via mix_uom_gekozen for mix-priced items —
+    # that path knows which UoM is valid for the mix discount.
     with Session(engine) as s:
         art_repo = ArtikelkaartRepo(s)
         for r in matched:
@@ -123,9 +128,7 @@ async def match_articles_node(state: OrderState) -> OrderState:
             if not kaart or not kaart.basis_eenheid:
                 continue
             r["eenheid_default"] = kaart.basis_eenheid
-            current = (r.get("eenheid") or "").strip().upper()
-            if current in GENERIC_UOM_FALLBACKS:
-                r["eenheid"] = kaart.basis_eenheid
+            r["eenheid"] = kaart.basis_eenheid
 
     alle_gematcht = bool(matched) and all(r.get("artikelnummer_kwabo_matched") for r in matched)
     log.info(
