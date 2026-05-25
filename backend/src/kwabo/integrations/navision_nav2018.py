@@ -203,8 +203,21 @@ class Nav2018ODataClient:
         return f"{self.base_url}/{entity}"
 
     def _record_url(self, entity: str, key: str) -> str:
-        """Full URL to a single record, e.g. PLX_SalesOrder('SO12345')."""
+        """Full URL to a single record, e.g. PLX_SalesOrder('SO12345').
+
+        For single-key pages only. PLX_SalesOrder uses a composite key
+        (Document_Type, No) and must go through _sales_order_record_url.
+        """
         return f"{self.base_url}/{entity}('{_quote_key(key)}')"
+
+    def _sales_order_record_url(self, no: str, document_type: str = "Order") -> str:
+        """Composite-key URL for PLX_SalesOrder, e.g.
+        PLX_SalesOrder(Document_Type='Order',No='VO2600993').
+        """
+        return (
+            f"{self.base_url}/{self.page_sales_order}"
+            f"(Document_Type='{document_type}',No='{_quote_key(no)}')"
+        )
 
     def _default_params(self) -> dict[str, str]:
         """Querystring that must travel on every request to NAV 2018: tells
@@ -407,7 +420,10 @@ class Nav2018ODataClient:
             return self._entity_url(self.page_sales_order)
         m = self._BC_RE_SALES_ORDER_BY_ID.match(bc_path)
         if m:
-            return self._record_url(self.page_sales_order, m.group(1))
+            # PLX_SalesOrder uses a composite primary key (Document_Type, No).
+            # OData V4 single-key syntax `PLX_SalesOrder('SO123')` returns a
+            # 500 from NAV. Build the composite-key URL explicitly.
+            return self._sales_order_record_url(m.group(1))
         m = self._BC_RE_SALES_ORDER_LINES.match(bc_path)
         if m:
             # NAV 2018 typically exposes lines as their own page; we POST to

@@ -102,9 +102,11 @@ async def test_stepwise_post_uses_company_querystring_and_translates_field():
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_stepwise_patch_uses_record_url_with_string_key():
+async def test_stepwise_patch_uses_record_url_with_composite_key():
+    """PLX_SalesOrder uses a composite key (Document_Type, No). The PATCH
+    URL must reflect that or NAV returns 500 (observed in Kopie 2026)."""
     post_url = f"{BASE}/PLX_SalesOrder"
-    patch_url_base = f"{BASE}/PLX_SalesOrder('SO12345')"
+    patch_url_base = f"{BASE}/PLX_SalesOrder(Document_Type='Order',No='SO12345')"
     respx.post(url__startswith=post_url).mock(
         return_value=httpx.Response(201, json={"No": "SO12345"}),
     )
@@ -131,7 +133,9 @@ async def test_stepwise_patch_uses_record_url_with_string_key():
 
     assert patch.called
     sent = patch.calls.last.request
-    assert sent.url.path.endswith("/PLX_SalesOrder('SO12345')")
+    assert sent.url.path.endswith(
+        "/PLX_SalesOrder(Document_Type='Order',No='SO12345')"
+    )
     assert sent.url.params.get("company") == COMPANY
     # Field rename applied.
     assert b'"Ship_to_Code":"MAIN"' in sent.content
@@ -522,7 +526,9 @@ async def test_company_querystring_is_added_to_post_and_patch():
     post_route = respx.post(url__startswith=f"{BASE}/PLX_SalesOrder").mock(
         return_value=httpx.Response(201, json={"No": "SO99"}),
     )
-    patch_route = respx.patch(url__startswith=f"{BASE}/PLX_SalesOrder('SO99')").mock(
+    patch_route = respx.patch(
+        url__startswith=f"{BASE}/PLX_SalesOrder(Document_Type='Order',No='SO99')"
+    ).mock(
         return_value=httpx.Response(200, json={"No": "SO99"}),
     )
     async with httpx.AsyncClient() as raw:
