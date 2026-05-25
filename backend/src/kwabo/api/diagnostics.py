@@ -122,3 +122,63 @@ async def nav_raw_request(path: str = "/", under_company: bool = True) -> dict:
             return {"ok": False, "url": url, "error": f"{type(exc).__name__}: {exc}"}
     finally:
         await client.aclose()
+
+
+@router.get("/config")
+def config_summary() -> dict:
+    """Non-sensitive runtime config dump.
+
+    Lets the operator verify which env-vars Railway/Vercel actually loaded
+    without needing dashboard access. Secrets are reduced to a presence
+    bool plus length so we can confirm "is set" without leaking values.
+    """
+    def _mask(value: str | None) -> dict:
+        return {"set": bool(value), "len": len(value or "")}
+
+    def _is_dev_default(value: str, *needles: str) -> bool:
+        v = (value or "").lower()
+        return any(n in v for n in needles)
+
+    return {
+        "frontend": {
+            "frontend_url": settings.frontend_url,
+            "frontend_url_is_localhost": _is_dev_default(
+                settings.frontend_url, "localhost", "127.0.0.1"
+            ),
+        },
+        "email": {
+            "email_mode": settings.email_mode,
+            "inbox_dir": settings.inbox_dir,
+            "mail_mode": settings.mail_mode,
+        },
+        "navision": {
+            "navision_mode": settings.navision_mode,
+            "nav_base_url": settings.nav_base_url,
+            "nav_company": settings.nav_company,
+            "nav_username_set": bool(settings.nav_username),
+            "nav_password_set": bool(settings.nav_password),
+            "nav_verify_ssl": settings.nav_verify_ssl,
+            "nav_page_sales_order": settings.nav_page_sales_order,
+            "nav_page_item": settings.nav_page_item,
+        },
+        "auth": {
+            "admin_password": _mask(settings.admin_password),
+            "jwt_secret": _mask(settings.jwt_secret),
+            "jwt_secret_is_dev_default": settings.jwt_secret == "dev-only-change-me-in-prod",
+            "jwt_ttl_hours": settings.jwt_ttl_hours,
+        },
+        "llm": {
+            "anthropic_api_key": _mask(settings.anthropic_api_key),
+            "anthropic_model": settings.anthropic_model,
+            "llm_cache_mode": settings.llm_cache_mode,
+        },
+        "logging": {
+            "log_level": settings.log_level,
+            "langchain_tracing_v2": settings.langchain_tracing_v2,
+        },
+        "database_url_kind": (
+            "postgres" if settings.database_url.startswith("postgresql")
+            else "sqlite" if settings.database_url.startswith("sqlite")
+            else "other"
+        ),
+    }
