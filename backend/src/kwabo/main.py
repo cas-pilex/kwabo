@@ -105,6 +105,10 @@ def create_app() -> FastAPI:
     from kwabo.api.diagnostics import router as diagnostics_router
     app.include_router(diagnostics_router, dependencies=auth_gate)
 
+    # Admin ops (NAV master-sync, DB counts) — auth-gated.
+    from kwabo.api.admin import router as admin_router
+    app.include_router(admin_router, dependencies=auth_gate)
+
     if getattr(settings, "test_mode", "off") == "on":
         from kwabo.api import testing as testing_api
 
