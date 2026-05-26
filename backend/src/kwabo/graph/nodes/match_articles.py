@@ -181,6 +181,23 @@ async def match_articles_node(state: OrderState) -> OrderState:
                 or confidence < 0.85
             ),
         }
+        # Clear the upstream raw-extract review flag when we've successfully
+        # matched. The extract node flags missing `artikelnummer_kwabo` so
+        # the LLM-extracted field is reviewable, but once match_articles has
+        # resolved a confident `_matched`, the raw field is irrelevant for
+        # the push and the warning is noise. The fuzzy path almost always
+        # leaves `artikelnummer_kwabo` empty (NAV-nr comes from description
+        # match, not from the email body) — without this cleanup the
+        # reviewer sees a stuck warning even on perfect matches.
+        if r.get("artikelnummer_kwabo_matched") and confidence >= 0.85:
+            raw_meta = rm.get("artikelnummer_kwabo")
+            if isinstance(raw_meta, dict):
+                raw_meta["needs_review"] = False
+                raw_meta["source_detail"] = (
+                    f"{raw_meta.get('source_detail') or ''} | cleared by match"
+                ).strip(" |")
+            stale = f"orderregels[{i}].artikelnummer_kwabo"
+            needs_paths = [p for p in needs_paths if p != stale]
         regels_meta[i] = rm
         if rm["artikelnummer_kwabo_matched"]["needs_review"]:
             path = f"orderregels[{i}].artikelnummer_kwabo_matched"
