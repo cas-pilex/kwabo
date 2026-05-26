@@ -20,6 +20,7 @@ from kwabo.db.models import (
     Artikelkaart,
     ArtikelKruisverwijzing,
     Klantenkaart,
+    KlantenkaartShipTo,
 )
 from kwabo.db.session import engine
 from kwabo.integrations.navision_api import get_navision_client
@@ -54,6 +55,7 @@ class DbCounts(BaseModel):
     klanten: int
     artikelen: int
     kruisverwijzingen: int
+    ship_to_adressen: int
 
 
 class JobStartResponse(BaseModel):
@@ -150,6 +152,58 @@ def _item_to_artikelkaart(row: dict, existing: Optional[Artikelkaart]) -> Artike
         existing.updated_at = utcnow()
         return existing
     return Artikelkaart(kwabo_artikelnr=nr, naam=naam, basis_eenheid=uom, mixprijzen=False)
+
+
+def _ship_to_to_record(
+    row: dict, existing: Optional[KlantenkaartShipTo]
+) -> Optional[KlantenkaartShipTo]:
+    """Map a PLX_ShipToAddress row to KlantenkaartShipTo. Tolerant of NAV
+    field-name variants because PLX_ShipToAddress isn't formally documented
+    for the Kopie 2026 environment — we accept the common alternatives and
+    fall back to empty strings (the model declares NOT NULL).
+    """
+    klant_nr = _str_or_none(
+        row.get("Customer_No") or row.get("CustomerNo") or row.get("Customer")
+    )
+    code = _str_or_none(row.get("Code") or row.get("Ship_to_Code"))
+    if not klant_nr or not code:
+        return None
+    naam = _str_or_none(row.get("Name") or row.get("Name_2")) or ""
+    straat = (
+        _str_or_none(
+            row.get("Address")
+            or row.get("Address_1")
+            or row.get("Address_Line_1")
+        )
+        or ""
+    )
+    postcode = _str_or_none(row.get("Post_Code") or row.get("PostCode")) or ""
+    plaats = _str_or_none(row.get("City")) or ""
+    land = (
+        _str_or_none(
+            row.get("Country_Region_Code")
+            or row.get("Country_Code")
+            or row.get("Country")
+        )
+        or ""
+    )
+    if existing is not None:
+        existing.naam = naam
+        existing.straat = straat
+        existing.postcode = postcode
+        existing.plaats = plaats
+        existing.land = land
+        return existing
+    return KlantenkaartShipTo(
+        klant_nr=klant_nr,
+        ship_to_code=code,
+        naam=naam,
+        straat=straat,
+        postcode=postcode,
+        plaats=plaats,
+        land=land,
+        is_default=False,
+    )
 
 
 def _itemref_to_kruisverwijzing(row: dict) -> Optional[ArtikelKruisverwijzing]:
@@ -270,6 +324,61 @@ async def _sync_items(
     )
 
 
+async def _sync_ship_to(
+    client: Nav2018ODataClient, session: Session, dry_run: bool
+) -> SyncReport:
+    rows, err = await _fetch_collection_safe(client, client.page_ship_to)
+    sample_keys = sorted(rows[0].keys()) if rows else []
+    skipped = {"no_klant_nr": 0, "no_code": 0, "error": 0}
+    if err:
+        return SyncReport(
+            domain="ship_to", fetched=0, upserted=0, skipped=0,
+            skipped_reasons={"fetch_error": 1}, sample_keys=[], fetch_error=err,
+        )
+    upserted = 0
+    for r in rows:
+        try:
+            klant_nr = _str_or_none(
+                r.get("Customer_No") or r.get("CustomerNo") or r.get("Customer")
+            )
+            code = _str_or_none(r.get("Code") or r.get("Ship_to_Code"))
+        except Exception:  # noqa: BLE001
+            skipped["error"] += 1
+            continue
+        if not klant_nr:
+            skipped["no_klant_nr"] += 1
+            continue
+        if not code:
+            skipped["no_code"] += 1
+            continue
+        if dry_run:
+            upserted += 1
+            continue
+        existing = session.get(KlantenkaartShipTo, (klant_nr, code))
+        try:
+            obj = _ship_to_to_record(r, existing)
+            if obj is None:
+                # _ship_to_to_record already returned None for missing required
+                # fields — shouldn't happen here since we pre-checked above,
+                # but guard for completeness.
+                skipped["error"] += 1
+                continue
+            session.add(obj)
+            upserted += 1
+        except Exception:  # noqa: BLE001
+            log.exception(
+                "nav_sync_ship_to_row_failed", klant_nr=klant_nr, code=code
+            )
+            skipped["error"] += 1
+    if not dry_run:
+        session.commit()
+    return SyncReport(
+        domain="ship_to", fetched=len(rows), upserted=upserted,
+        skipped=sum(skipped.values()), skipped_reasons=skipped,
+        sample_keys=sample_keys,
+    )
+
+
 async def _sync_cross_ref(
     client: Nav2018ODataClient, session: Session, dry_run: bool
 ) -> SyncReport:
@@ -330,7 +439,10 @@ def db_counts() -> DbCounts:
         n_k = s.exec(select(func.count()).select_from(Klantenkaart)).one()
         n_a = s.exec(select(func.count()).select_from(Artikelkaart)).one()
         n_x = s.exec(select(func.count()).select_from(ArtikelKruisverwijzing)).one()
-    return DbCounts(klanten=n_k, artikelen=n_a, kruisverwijzingen=n_x)
+        n_st = s.exec(select(func.count()).select_from(KlantenkaartShipTo)).one()
+    return DbCounts(
+        klanten=n_k, artikelen=n_a, kruisverwijzingen=n_x, ship_to_adressen=n_st
+    )
 
 
 async def _run_sync_job(job_id: str, selected: set[str], dry_run: bool) -> None:
@@ -357,6 +469,10 @@ async def _run_sync_job(job_id: str, selected: set[str], dry_run: bool) -> None:
                 job["progress"]["current"] = "cross_ref"
                 reports.append(await _sync_cross_ref(client, session, dry_run))
                 job["progress"]["cross_ref"] = reports[-1].model_dump()
+            if "ship_to" in selected:
+                job["progress"]["current"] = "ship_to"
+                reports.append(await _sync_ship_to(client, session, dry_run))
+                job["progress"]["ship_to"] = reports[-1].model_dump()
         counts = db_counts()
         job["result"] = NavSyncResponse(
             mode=settings.navision_mode,
@@ -396,7 +512,7 @@ async def nav_sync_start(
             f"(current: {settings.navision_mode}).",
         )
     selected = {d.strip() for d in domains.split(",") if d.strip()}
-    valid = {"customers", "items", "cross_ref"}
+    valid = {"customers", "items", "cross_ref", "ship_to"}
     unknown = selected - valid
     if unknown:
         raise HTTPException(400, f"unknown domains: {sorted(unknown)}. Valid: {sorted(valid)}")
