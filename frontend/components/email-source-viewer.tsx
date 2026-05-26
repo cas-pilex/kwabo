@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
 type Bijlage = { naam: string; type: string; inhoud_tekst: string };
@@ -73,16 +73,42 @@ export function EmailSourceViewer({
   const [viewMode, setViewMode] = useState<"text" | "preview">("text");
   const current = sources.find((s) => s.key === active) ?? sources[0];
   const isAttachment = current && current.key !== "email";
-  const fileUrl = isAttachment && current.naam
-    ? api.attachmentUrl(orderId, current.naam, "inline")
-    : null;
-  const downloadUrl = isAttachment && current.naam
-    ? api.attachmentUrl(orderId, current.naam, "attachment")
-    : null;
-
   const canPreviewInline = current?.type === "pdf";
   const isCsv = current?.type === "csv";
   const csvRows = isCsv && current ? parseCsv(current.content) : null;
+
+  // Iframe-preview gets its signed URL on demand: switching to "preview"
+  // triggers a token mint (5-min HMAC). Token isn't reused across tab/file
+  // switches — re-minting is cheap and avoids stale-token bugs.
+  const [iframeUrl, setIframeUrl] = useState<string | null>(null);
+  const [iframeError, setIframeError] = useState<string | null>(null);
+  useEffect(() => {
+    setIframeUrl(null);
+    setIframeError(null);
+    if (viewMode !== "preview" || !canPreviewInline || !current?.naam) return;
+    let cancelled = false;
+    api
+      .attachmentSignedUrl(orderId, current.naam, "inline")
+      .then((url) => {
+        if (!cancelled) setIframeUrl(url);
+      })
+      .catch((err) => {
+        if (!cancelled) setIframeError(String(err?.message ?? err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [viewMode, canPreviewInline, current?.naam, orderId]);
+
+  async function openInNewTab(disposition: "inline" | "attachment") {
+    if (!current?.naam) return;
+    try {
+      const url = await api.attachmentSignedUrl(orderId, current.naam, disposition);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      alert(`Kon bijlage niet openen: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
   return (
     <div className="space-y-3">
@@ -154,34 +180,42 @@ export function EmailSourceViewer({
             )}
           </div>
           <div className="flex gap-2 text-[11px]">
-            {fileUrl && (
-              <a
-                href={fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+            {current?.naam && (
+              <button
+                onClick={() => openInNewTab("inline")}
                 className="rounded border border-[var(--kwabo-border)] bg-white px-2 py-0.5 text-[var(--kwabo-navy)] hover:bg-slate-50"
               >
                 🗗 Open in nieuw tabblad
-              </a>
+              </button>
             )}
-            {downloadUrl && (
-              <a
-                href={downloadUrl}
+            {current?.naam && (
+              <button
+                onClick={() => openInNewTab("attachment")}
                 className="rounded border border-[var(--kwabo-border)] bg-white px-2 py-0.5 text-[var(--kwabo-navy)] hover:bg-slate-50"
               >
                 📥 Download
-              </a>
+              </button>
             )}
           </div>
         </div>
       )}
 
-      {viewMode === "preview" && canPreviewInline && fileUrl ? (
-        <iframe
-          src={fileUrl}
-          className="h-[60vh] w-full rounded-md ring-1 ring-[var(--kwabo-border)]"
-          title={current?.label}
-        />
+      {viewMode === "preview" && canPreviewInline ? (
+        iframeError ? (
+          <div className="rounded-md border border-rose-300 bg-rose-50 p-3 text-[11px] text-rose-800">
+            PDF kon niet geladen worden: {iframeError}
+          </div>
+        ) : iframeUrl ? (
+          <iframe
+            src={iframeUrl}
+            className="h-[60vh] w-full rounded-md ring-1 ring-[var(--kwabo-border)]"
+            title={current?.label}
+          />
+        ) : (
+          <div className="flex h-[20vh] items-center justify-center rounded-md bg-slate-50 text-[11px] text-slate-500 ring-1 ring-slate-200">
+            PDF laden…
+          </div>
+        )
       ) : csvRows && csvRows.length > 0 ? (
         <div className="max-h-[60vh] overflow-auto rounded-md bg-white ring-1 ring-[var(--kwabo-border)]">
           <table className="min-w-full divide-y divide-[var(--kwabo-border)] text-[11px]">

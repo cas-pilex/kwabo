@@ -391,8 +391,22 @@ export const api = {
     req<{ email_id: string; log_id: number }>(`/api/intake/run-file?path=${encodeURIComponent(path)}`, {
       method: "POST",
     }),
-  attachmentUrl: (orderId: number, naam: string, disposition: "inline" | "attachment" = "inline") =>
-    `${API_BASE}/api/orders/${orderId}/bijlagen?naam=${encodeURIComponent(naam)}&disposition=${disposition}`,
+  attachmentToken: (orderId: number, naam: string, disposition: "inline" | "attachment" = "inline") =>
+    req<{ token: string; expires_at: number }>(
+      `/api/orders/${orderId}/bijlagen-token`,
+      { method: "POST", body: JSON.stringify({ naam, disposition }) },
+    ),
+  attachmentSignedUrl: async (
+    orderId: number,
+    naam: string,
+    disposition: "inline" | "attachment" = "inline",
+  ) => {
+    const { token } = await req<{ token: string; expires_at: number }>(
+      `/api/orders/${orderId}/bijlagen-token`,
+      { method: "POST", body: JSON.stringify({ naam, disposition }) },
+    );
+    return `${API_BASE}/api/orders/${orderId}/bijlagen?naam=${encodeURIComponent(naam)}&disposition=${disposition}&token=${encodeURIComponent(token)}`;
+  },
   mailboxStatus: () =>
     req<{
       mode: string;
