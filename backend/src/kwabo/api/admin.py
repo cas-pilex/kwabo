@@ -250,6 +250,12 @@ async def _fetch_collection_safe(
         return [], f"{type(exc).__name__}: {exc}"
 
 
+# Yield the event loop every N rows during DB ingest so /api/health (and
+# other HTTP requests) keep responding while a multi-thousand-row sync is
+# in flight. session.commit() is sync I/O, so we batch commits too.
+SYNC_CHUNK_SIZE = 100
+
+
 async def _sync_customers(
     client: Nav2018ODataClient, session: Session, dry_run: bool
 ) -> SyncReport:
@@ -262,7 +268,7 @@ async def _sync_customers(
             skipped_reasons={"fetch_error": 1}, sample_keys=[], fetch_error=err,
         )
     upserted = 0
-    for r in rows:
+    for i, r in enumerate(rows):
         if not r.get("No"):
             skipped["no_nav_nr"] += 1
             continue
@@ -280,6 +286,12 @@ async def _sync_customers(
         except Exception as exc:  # noqa: BLE001
             log.exception("nav_sync_customer_row_failed", nav_nr=nav_nr)
             skipped["error"] += 1
+        # Periodically commit + yield so other HTTP requests get a slice
+        # of the event loop. 100-row batches keep partial state small if
+        # the sync is cancelled mid-flight (Railway restart, kill, etc.).
+        if not dry_run and (i + 1) % SYNC_CHUNK_SIZE == 0:
+            session.commit()
+            await asyncio.sleep(0)
     if not dry_run:
         session.commit()
     return SyncReport(
@@ -300,7 +312,7 @@ async def _sync_items(
             skipped_reasons={"fetch_error": 1}, sample_keys=[], fetch_error=err,
         )
     upserted = 0
-    for r in rows:
+    for i, r in enumerate(rows):
         if not r.get("No"):
             skipped["no_nr"] += 1
             continue
@@ -316,6 +328,9 @@ async def _sync_items(
         except Exception as exc:  # noqa: BLE001
             log.exception("nav_sync_item_row_failed", nr=nr)
             skipped["error"] += 1
+        if not dry_run and (i + 1) % SYNC_CHUNK_SIZE == 0:
+            session.commit()
+            await asyncio.sleep(0)
     if not dry_run:
         session.commit()
     return SyncReport(
@@ -336,7 +351,7 @@ async def _sync_ship_to(
             skipped_reasons={"fetch_error": 1}, sample_keys=[], fetch_error=err,
         )
     upserted = 0
-    for r in rows:
+    for i, r in enumerate(rows):
         try:
             klant_nr = _str_or_none(
                 r.get("Customer_No") or r.get("CustomerNo") or r.get("Customer")
@@ -370,6 +385,9 @@ async def _sync_ship_to(
                 "nav_sync_ship_to_row_failed", klant_nr=klant_nr, code=code
             )
             skipped["error"] += 1
+        if not dry_run and (i + 1) % SYNC_CHUNK_SIZE == 0:
+            session.commit()
+            await asyncio.sleep(0)
     if not dry_run:
         session.commit()
     return SyncReport(
@@ -391,7 +409,7 @@ async def _sync_cross_ref(
             skipped_reasons={"fetch_error": 1}, sample_keys=[], fetch_error=err,
         )
     upserted = 0
-    for r in rows:
+    for i, r in enumerate(rows):
         try:
             obj = _itemref_to_kruisverwijzing(r)
         except Exception:  # noqa: BLE001
@@ -422,6 +440,9 @@ async def _sync_cross_ref(
         else:
             session.add(obj)
         upserted += 1
+        if not dry_run and (i + 1) % SYNC_CHUNK_SIZE == 0:
+            session.commit()
+            await asyncio.sleep(0)
     if not dry_run:
         session.commit()
     return SyncReport(

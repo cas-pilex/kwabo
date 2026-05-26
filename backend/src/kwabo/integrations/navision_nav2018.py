@@ -514,15 +514,28 @@ class Nav2018ODataClient:
             raw_path = op["path"]
             body = op.get("body") or {}
 
-            # Skip incoming-doc operations on NAV 2018 (not implemented).
+            # Skip incoming-doc operations on NAV 2018 (not implemented yet).
+            # IMPORTANT: do NOT set `error` here. NAV 2018 doesn't yet have
+            # a PLX_IncomingDocument page exposed for the sales-order link,
+            # but the rest of the order (header + lines) is perfectly valid.
+            # Failing the push because of an unsupported attachment would
+            # waste a real customer order. Log a warning and continue so
+            # the reviewer can manually attach the document NAV-side later.
             if "/incomingDocuments" in raw_path or raw_path.startswith("/incomingDocuments"):
+                log.warning(
+                    "nav2018_incoming_doc_skipped",
+                    op=method,
+                    path=raw_path,
+                    sales_order_no=sales_order_no,
+                    hint="NAV 2018 PLX_IncomingDocument page not exposed yet — "
+                    "header+lines pushed without attachment.",
+                )
                 results.append(
                     NavOpResult(
                         operation=op,
                         status=0,
                         response_body={},
-                        autofilled={},
-                        error="incomingDocuments skipped: NAV 2018 path not yet implemented",
+                        autofilled={"_skipped": "incomingDocuments not supported on nav2018"},
                     )
                 )
                 continue

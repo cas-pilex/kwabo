@@ -33,6 +33,11 @@ class RawEmail:
     email_body: str
     bijlagen: list[Attachment]
     source_path: str | None = None
+    # Raw RFC822 bytes — set by parse_eml_bytes so the intake layer can
+    # persist the source under data/incoming_documents/{log_id}/ and pass
+    # the path to push_navision as `state.incoming_document_path`. Without
+    # this, Graph-ingested mails had no on-disk source-document at all.
+    raw_eml: bytes | None = field(default=None, repr=False)
 
 
 class EmailClient(Protocol):
@@ -169,6 +174,7 @@ def parse_eml_bytes(raw: bytes, email_id: str | None = None, source_path: str | 
         email_body=_plain_body(msg),
         bijlagen=bijlagen,
         source_path=source_path,
+        raw_eml=raw,
     )
 
 
