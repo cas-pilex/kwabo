@@ -124,11 +124,15 @@ async def validate_prices_node(state: OrderState) -> OrderState:
                         or "NAV-standaard (geen prijsafspraak)"
                     )
 
-            source = existing.get("source") or (
-                "pdf" if prijs is not None else
-                "nav_default" if prijs is None and not review_for_missing else
-                "missing"
-            )
+            existing_source = existing.get("source")
+            if prijs is None and not review_for_missing:
+                # NAV-default kicks in. Override any "missing" that extract
+                # left so the dashboard shows the right provenance.
+                source = "nav_default"
+            elif existing_source:
+                source = existing_source
+            else:
+                source = "pdf" if prijs is not None else "missing"
             rm["prijs_per_eenheid"] = {
                 "value": prijs,
                 "source": source,
