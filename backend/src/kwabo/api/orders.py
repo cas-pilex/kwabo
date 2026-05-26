@@ -376,6 +376,26 @@ async def approve_order(order_id: int, body: ApproveRequest, force: bool = False
     }
 
 
+@router.delete("/{order_id}")
+def delete_order(order_id: int, confirm: bool = False) -> dict:
+    """Hard-delete an order log row. Requires ?confirm=true to avoid
+    accidental wipes via curl typos. Used for test-order cleanup; production
+    orders should typically be `rejected` instead."""
+    if not confirm:
+        raise HTTPException(
+            400,
+            "Hard delete vereist ?confirm=true. Overweeg POST /reject voor "
+            "productie-orders zodat de audit-trail behouden blijft.",
+        )
+    with Session(engine) as s:
+        row = OrderLogRepo(s).get(order_id)
+        if not row:
+            raise HTTPException(404, "Order not found")
+        s.delete(row)
+        s.commit()
+    return {"ok": True, "deleted_id": order_id}
+
+
 @router.get("/{order_id}/nav-debug")
 def nav_debug(order_id: int) -> dict:
     """Return the full NAV operation-results trail for a pushed/failed order.

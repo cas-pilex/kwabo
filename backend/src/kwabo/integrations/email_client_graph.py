@@ -26,7 +26,12 @@ from kwabo.utils import utcnow
 from kwabo.utils.logging import log
 
 GRAPH_BASE = "https://graph.microsoft.com/v1.0"
-LIST_PAGE_SIZE = 50  # unread messages fetched per scan
+# 10 messages per scan keeps the worst-case scan wall-clock under
+# ~3 minutes (10 × 15s LLM extraction). Railway's request timeout is
+# ~5 minutes; anything larger risked killing the response and Nico got
+# "mails druppelsgewijs" because background work continued past the cut.
+# Reviewer clicks "Scan" again to drain the next batch.
+LIST_PAGE_SIZE = 10
 
 
 class GraphEmailClient:
