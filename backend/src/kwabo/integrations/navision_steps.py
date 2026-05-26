@@ -274,11 +274,15 @@ def compose_navision_operations(state: dict) -> list[NavOperation]:
     # ---- Step 9: europallet (artikel uit config) ---------------------------
     europallet = state.get("europallet_regel")
     if europallet:
-        ep_nr = europallet.get("kwabo_artikelnr")
-        # Accept whatever artnr compute_europallet emitted. Used to be hard-
-        # coded "19820" check; now we trust the configurable upstream. Still
-        # require the regel to declare an artnr — defensive against malformed
-        # state.
+        # compute_europallet emits the artikel under `artikelnummer_kwabo`
+        # (consistent with normal orderregels). The legacy code in this
+        # file read `kwabo_artikelnr` which has never matched — bug:
+        # europallet lines never reached NAV. Read the correct key,
+        # falling back to `_matched` for completeness.
+        ep_nr = (
+            europallet.get("artikelnummer_kwabo")
+            or europallet.get("artikelnummer_kwabo_matched")
+        )
         if ep_nr:
             ops.extend(_emit_line_ops(europallet, ep_nr, "Europallet"))
 

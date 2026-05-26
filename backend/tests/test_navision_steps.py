@@ -305,7 +305,7 @@ def test_full_pipeline_with_europallet_and_incoming_document(tmp_path):
             },
         ],
         europallet_regel={
-            "kwabo_artikelnr": EUROPALLET_ARTIKELNR,
+            "artikelnummer_kwabo": EUROPALLET_ARTIKELNR,
             "hoeveelheid": 2,
             "eenheid": "STUK",
             "eenheid_default": "STUK",
@@ -412,12 +412,12 @@ def test_next_business_day_skips_weekend():
     assert _next_business_day(mon) == date(2026, 4, 28)
 
 
-def test_europallet_uses_configured_artikelnr_from_state():
-    """europallet_regel.kwabo_artikelnr is the single source of truth — compute
-    fills it from settings.europallet_artikelnr. Compose trusts it; we no
-    longer hardcode "19820" as a sanity check because the whole point of
-    moving to config is per-env rotation. We DO still require a non-empty
-    value (defensive against malformed state)."""
+def test_europallet_uses_artikelnummer_kwabo_key():
+    """compute_europallet emits the artikel under `artikelnummer_kwabo`
+    (matching the orderregel shape). compose must read THAT key, not the
+    legacy/wrong `kwabo_artikelnr` which never matched (pre-existing bug:
+    europallet lines never reached NAV).
+    """
     state = _state_with_klant(
         orderregels=[
             {
@@ -427,7 +427,7 @@ def test_europallet_uses_configured_artikelnr_from_state():
                 "eenheid_default": "ROL",
             }
         ],
-        europallet_regel={"kwabo_artikelnr": "98765", "hoeveelheid": 1},
+        europallet_regel={"artikelnummer_kwabo": "98765", "hoeveelheid": 1},
     )
     ops = compose_navision_operations(state)
     _assert_all_invariants(ops)
@@ -435,13 +435,12 @@ def test_europallet_uses_configured_artikelnr_from_state():
         o for o in ops if o["op"] == "POST" and o["path"].endswith("/salesOrderLines")
     ]
     assert len(line_posts) == 2
-    # Order: matched line first, europallet last.
     assert line_posts[0]["body"]["itemNumber"] == "1515155"
     assert line_posts[1]["body"]["itemNumber"] == "98765"
 
 
 def test_europallet_skipped_when_artikelnr_missing():
-    """Empty/missing kwabo_artikelnr on europallet_regel → no line emitted."""
+    """Empty/missing artikelnummer on europallet_regel → no line emitted."""
     state = _state_with_klant(
         orderregels=[
             {
@@ -451,7 +450,7 @@ def test_europallet_skipped_when_artikelnr_missing():
                 "eenheid_default": "ROL",
             }
         ],
-        europallet_regel={"kwabo_artikelnr": "", "hoeveelheid": 1},
+        europallet_regel={"artikelnummer_kwabo": "", "hoeveelheid": 1},
     )
     ops = compose_navision_operations(state)
     _assert_all_invariants(ops)
