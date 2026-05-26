@@ -19,10 +19,13 @@ from kwabo.api import orders as orders_module
 @pytest.fixture
 def client(session, tmp_path, monkeypatch):
     """TestClient backed by the seeded test DB + a tmp incoming_documents dir."""
-    # Re-bind the module-level engine so the API uses the test DB.
-    from kwabo.db import session as db_session_mod
-    original_engine = db_session_mod.engine
-    db_session_mod.engine = session.get_bind()
+    # `orders.py` imports `engine` at module load time (`from kwabo.db.session
+    # import engine`), so rebinding `db_session_mod.engine` alone does NOT
+    # propagate — the local name in `orders` still points at the old engine.
+    # Monkeypatch both names so the handler reads from our test DB.
+    test_engine = session.get_bind()
+    monkeypatch.setattr("kwabo.db.session.engine", test_engine, raising=True)
+    monkeypatch.setattr(orders_module, "engine", test_engine, raising=True)
 
     # Pin the incoming-documents dir to tmp so we don't pollute the real
     # data dir during tests.
@@ -38,8 +41,6 @@ def client(session, tmp_path, monkeypatch):
     with TestClient(app) as c:
         c.incoming_dir = incoming_dir  # surface for assertions
         yield c
-
-    db_session_mod.engine = original_engine
 
 
 def _seed_order(session) -> int:
@@ -96,6 +97,44 @@ def test_upload_png_accepted(client, session):
         files={"file": ("scan.png", io.BytesIO(b"\x89PNG\r\n\x1a\n"), "image/png")},
     )
     assert r.status_code == 200
+
+
+def test_upload_eml_as_octet_stream_accepted(client, session):
+    """Browsers often label .eml uploads as application/octet-stream because
+    no MIME db entry exists. The reviewer's "file drop" then 400'd. Fallback:
+    accept octet-stream when the extension is in the safe list (.eml here).
+    """
+    order_id = _seed_order(session)
+    eml_bytes = b"From: test@example.com\nSubject: order\n\nbody"
+    r = client.post(
+        f"/api/orders/{order_id}/incoming-doc",
+        files={
+            "file": (
+                "order.eml",
+                io.BytesIO(eml_bytes),
+                "application/octet-stream",
+            )
+        },
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["content_type"] == "application/octet-stream"
+
+
+def test_upload_octet_stream_unknown_extension_rejected(client, session):
+    """Octet-stream + unsafe extension must still be blocked."""
+    order_id = _seed_order(session)
+    r = client.post(
+        f"/api/orders/{order_id}/incoming-doc",
+        files={
+            "file": (
+                "evil.exe",
+                io.BytesIO(b"MZ\x90\x00"),
+                "application/octet-stream",
+            )
+        },
+    )
+    assert r.status_code == 400
+    assert "veilige lijst" in r.json()["detail"].lower()
 
 
 def test_upload_wrong_content_type_rejected(client, session):

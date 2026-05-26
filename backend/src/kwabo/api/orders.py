@@ -508,7 +508,22 @@ ALLOWED_INCOMING_DOC_TYPES = {
     "text/plain",
     "image/png",
     "image/jpeg",
+    # Browsers often label .eml uploads as octet-stream because no MIME db
+    # entry exists. We accept it conditionally: only when the filename ends
+    # in a known-safe extension. See _is_safe_octet_stream below.
+    "application/octet-stream",
 }
+
+# Extensions allowed when content_type is application/octet-stream — keeps
+# random binaries out of the inbox.
+SAFE_OCTET_STREAM_EXTENSIONS = {".eml", ".pdf", ".png", ".jpg", ".jpeg", ".txt"}
+
+
+def _is_safe_octet_stream(content_type: str, filename: str) -> bool:
+    if content_type != "application/octet-stream":
+        return True
+    ext = Path(filename or "").suffix.lower()
+    return ext in SAFE_OCTET_STREAM_EXTENSIONS
 
 
 def _pallet_contributors(regels: list[dict]) -> list[tuple[str, str]]:
@@ -638,6 +653,13 @@ async def upload_incoming_document(
             400,
             f"Content-type '{content_type or 'unknown'}' niet toegestaan. "
             f"Toegestaan: {', '.join(sorted(ALLOWED_INCOMING_DOC_TYPES))}",
+        )
+    if not _is_safe_octet_stream(content_type, file.filename or ""):
+        raise HTTPException(
+            400,
+            f"Bestand '{file.filename or 'onbekend'}' heeft content-type "
+            f"application/octet-stream maar de extensie staat niet in de "
+            f"veilige lijst {sorted(SAFE_OCTET_STREAM_EXTENSIONS)}.",
         )
 
     content = await file.read()
