@@ -349,11 +349,54 @@ async def approve_order(order_id: int, body: ApproveRequest, force: bool = False
         s.commit()
 
     final_state = await finalize(state)
+    nav_status = final_state.get("navision_status") or (
+        "pushed" if final_state.get("navision_order_nr") else "failed"
+    )
+    op_results = list(final_state.get("nav_operation_results") or [])
+    first_error: Optional[str] = None
+    for op in op_results:
+        if op.get("error"):
+            first_error = str(op["error"])[:500]
+            break
+    if not first_error:
+        # `errors` may also carry the failure reason from push_navision_node.
+        for err in final_state.get("errors") or []:
+            if isinstance(err, str) and err.startswith("push_navision:"):
+                first_error = err[len("push_navision:"):].strip()[:500]
+                break
     return {
-        "ok": True,
+        "ok": nav_status != "failed",
         "navision_order_nr": final_state.get("navision_order_nr"),
-        "status": "pushed",
+        "status": "pushed" if nav_status != "failed" else "failed",
+        "nav_status": nav_status,
+        "nav_error": first_error,
+        "nav_operation_count": len(op_results),
+        "nav_failed_op_count": sum(1 for op in op_results if op.get("error")),
         "forced": force,
+    }
+
+
+@router.get("/{order_id}/nav-debug")
+def nav_debug(order_id: int) -> dict:
+    """Return the full NAV operation-results trail for a pushed/failed order.
+
+    Used by the reviewer to inspect why a push failed (or, for a successful
+    push, to see the exact POST/PATCH chain that ran). Auth-gated; only the
+    reviewer should see this depth of detail.
+    """
+    with Session(engine) as s:
+        row = OrderLogRepo(s).get(order_id)
+        if not row:
+            raise HTTPException(404, "Order not found")
+        state = json.loads(row.order_state or "{}") if row.order_state else {}
+    return {
+        "order_id": order_id,
+        "status": row.status,
+        "navision_order_nr": row.navision_order_nr,
+        "navision_status": state.get("navision_status"),
+        "errors": state.get("errors") or [],
+        "nav_autofilled": state.get("nav_autofilled") or {},
+        "nav_operation_results": state.get("nav_operation_results") or [],
     }
 
 

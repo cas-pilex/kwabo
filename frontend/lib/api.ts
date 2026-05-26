@@ -266,10 +266,35 @@ export const api = {
   patchOrder: (id: number, body: Record<string, unknown>) =>
     req(`/api/orders/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   approve: (id: number, body: Record<string, unknown> = {}, opts?: { force?: boolean }) =>
-    req<{ ok: boolean; navision_order_nr?: string; forced?: boolean }>(
+    req<{
+      ok: boolean;
+      navision_order_nr?: string | null;
+      status: "pushed" | "failed";
+      nav_status: "pushed" | "failed" | string;
+      nav_error?: string | null;
+      nav_operation_count: number;
+      nav_failed_op_count: number;
+      forced?: boolean;
+    }>(
       `/api/orders/${id}/approve${opts?.force ? "?force=true" : ""}`,
       { method: "POST", body: JSON.stringify(body) },
     ),
+  navDebug: (id: number) =>
+    req<{
+      order_id: number;
+      status: string;
+      navision_order_nr: string | null;
+      navision_status: string | null;
+      errors: string[];
+      nav_autofilled: Record<string, unknown>;
+      nav_operation_results: Array<{
+        operation: Record<string, unknown>;
+        status?: number | null;
+        response_body?: Record<string, unknown>;
+        autofilled?: Record<string, unknown>;
+        error?: string | null;
+      }>;
+    }>(`/api/orders/${id}/nav-debug`),
   navisionPreview: (id: number) =>
     req<NavPreviewResponse>(`/api/orders/${id}/navision-preview`),
   uploadIncomingDoc: async (

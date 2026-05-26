@@ -123,7 +123,16 @@ export function OrderReview({ order, items }: Props) {
     setMsg(null);
     try {
       const r = await api.approve(order.id, { reviewer: "dashboard" }, { force: forceArmed });
-      const successMsg = `✓ Gepusht naar Navision: ${r.navision_order_nr}${r.forced ? " (force)" : ""}`;
+      if (r.nav_status === "failed") {
+        // The HTTP call succeeded but the NAV push itself failed. Surface
+        // the exact error so the reviewer doesn't have to dig in logs.
+        const errMsg = `NAV-push mislukt: ${r.nav_error ?? "onbekende fout"} (${r.nav_failed_op_count}/${r.nav_operation_count} operaties faalden)`;
+        setMsg(errMsg);
+        toast.error(errMsg);
+        router.refresh();
+        return;
+      }
+      const successMsg = `✓ Gepusht naar Navision: ${r.navision_order_nr} (${r.nav_operation_count} ops)${r.forced ? " (force)" : ""}`;
       setMsg(successMsg);
       toast.success(`Gepusht als ${r.navision_order_nr || "Navision order"}${r.forced ? " (force)" : ""}`);
       router.refresh();
