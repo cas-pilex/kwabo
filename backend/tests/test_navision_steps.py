@@ -412,10 +412,12 @@ def test_next_business_day_skips_weekend():
     assert _next_business_day(mon) == date(2026, 4, 28)
 
 
-def test_europallet_only_emitted_when_artikelnr_matches_19820():
-    """Defensive: if some upstream node fills europallet_regel with the
-    wrong artikelnr, we must NOT emit a line for it. (Ditto: when it's
-    None or absent.)"""
+def test_europallet_uses_configured_artikelnr_from_state():
+    """europallet_regel.kwabo_artikelnr is the single source of truth — compute
+    fills it from settings.europallet_artikelnr. Compose trusts it; we no
+    longer hardcode "19820" as a sanity check because the whole point of
+    moving to config is per-env rotation. We DO still require a non-empty
+    value (defensive against malformed state)."""
     state = _state_with_klant(
         orderregels=[
             {
@@ -425,11 +427,34 @@ def test_europallet_only_emitted_when_artikelnr_matches_19820():
                 "eenheid_default": "ROL",
             }
         ],
-        europallet_regel={"kwabo_artikelnr": "WRONG", "hoeveelheid": 1},
+        europallet_regel={"kwabo_artikelnr": "98765", "hoeveelheid": 1},
     )
     ops = compose_navision_operations(state)
     _assert_all_invariants(ops)
-    # Only one line POST (for 1515155); no europallet line.
+    line_posts = [
+        o for o in ops if o["op"] == "POST" and o["path"].endswith("/salesOrderLines")
+    ]
+    assert len(line_posts) == 2
+    # Order: matched line first, europallet last.
+    assert line_posts[0]["body"]["itemNumber"] == "1515155"
+    assert line_posts[1]["body"]["itemNumber"] == "98765"
+
+
+def test_europallet_skipped_when_artikelnr_missing():
+    """Empty/missing kwabo_artikelnr on europallet_regel → no line emitted."""
+    state = _state_with_klant(
+        orderregels=[
+            {
+                "artikelnummer_kwabo_matched": "1515155",
+                "hoeveelheid": 5,
+                "eenheid": "ROL",
+                "eenheid_default": "ROL",
+            }
+        ],
+        europallet_regel={"kwabo_artikelnr": "", "hoeveelheid": 1},
+    )
+    ops = compose_navision_operations(state)
+    _assert_all_invariants(ops)
     line_posts = [
         o for o in ops if o["op"] == "POST" and o["path"].endswith("/salesOrderLines")
     ]

@@ -176,7 +176,18 @@ async def push_navision_node(state: OrderState) -> OrderState:
                 persisted["nav_operation_results"] = serialised_ops
                 persisted["nav_autofilled"] = autofilled
                 persisted["stappen_log"] = steps
-                row.order_state = _json.dumps(persisted, default=str)
+                serialized = _json.dumps(persisted, default=str)
+                # Observability: orders that balloon past ~500KB indicate
+                # something is accumulating (huge PDF text, append-only logs)
+                # and will hurt review-page load. Log so we can alert.
+                size_kb = len(serialized) / 1024
+                if size_kb > 500:
+                    log.warning(
+                        "state_json_large",
+                        order_log_id=state["order_log_id"],
+                        size_kb=round(size_kb, 1),
+                    )
+                row.order_state = serialized
                 row.navision_order_nr = sales_order_number
                 row.status = "pushed"
                 row.updated_at = utcnow()

@@ -24,6 +24,11 @@ from math import ceil
 from typing import Optional
 
 
+# Kept as module-level constants for backwards-compat with tests and
+# callers that import the symbol. Production read-path goes through
+# settings.europallet_artikelnr so it can be overridden per-env without
+# a code deploy. Tests still import PALLET_ARTIKELNR directly — that's
+# fine, they exercise the pure logic.
 PALLET_ARTIKELNR = "19820"
 PALLET_OMSCHRIJVING = "Europallet"
 HEURISTIC_PER_PALLET = 24.0
@@ -95,10 +100,19 @@ def compute_europallet(state: dict, *, repo) -> Optional[dict]:
     if total < PALLET_THRESHOLD:
         return None
 
+    # Read the article-number from settings so it can be rotated per-env
+    # without a code change. Tests import PALLET_ARTIKELNR module-level
+    # and get the default; production reads settings.europallet_artikelnr.
+    try:
+        from kwabo.config import settings
+        configured_nr = settings.europallet_artikelnr or PALLET_ARTIKELNR
+    except Exception:  # noqa: BLE001
+        configured_nr = PALLET_ARTIKELNR
+
     return {
         "positie": _next_positie(regels),
-        "artikelnummer_kwabo": PALLET_ARTIKELNR,
-        "artikelnummer_kwabo_matched": PALLET_ARTIKELNR,
+        "artikelnummer_kwabo": configured_nr,
+        "artikelnummer_kwabo_matched": configured_nr,
         "omschrijving": PALLET_OMSCHRIJVING,
         "hoeveelheid": int(ceil(total)),
         "eenheid": "STUK",

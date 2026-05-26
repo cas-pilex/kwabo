@@ -100,7 +100,9 @@ async def match_articles_node(state: OrderState) -> OrderState:
     klant_nr = (state.get("klant_match") or {}).get("navision_klantnr")
 
     matched: list[OrderRegel] = []
-    for idx, r in enumerate(state.get("orderregels") or []):
+    crash_count = 0
+    regels_in = state.get("orderregels") or []
+    for idx, r in enumerate(regels_in):
         try:
             matched.append(await _match_single(r, klant_nr, nav))
         except Exception as exc:  # noqa: BLE001
@@ -118,6 +120,19 @@ async def match_articles_node(state: OrderState) -> OrderState:
             fallback["match_confidence"] = 0.0
             fallback["match_methode"] = "manual"
             matched.append(fallback)
+            crash_count += 1
+
+    # If half (or more) of the lines crashed it's almost certainly a NAV
+    # outage rather than per-line data quality. Add a visible warning so
+    # the reviewer doesn't read "all manual" as "AI did a bad job" and
+    # waste time re-running. The actual exceptions are already in
+    # stappen_log via match_single_crash events.
+    nav_outage_warning: str | None = None
+    if regels_in and crash_count * 2 >= len(regels_in):
+        nav_outage_warning = (
+            f"NAV tijdelijk niet bereikbaar — {crash_count}/{len(regels_in)} "
+            f"artikel-matches crashten. Re-run de pipeline of vul handmatig in."
+        )
 
     # Enrich each matched line with the item's NAV base-UoM from the synced
     # artikelkaarten mirror. The LLM extractor guesses a UoM from the mail
@@ -220,6 +235,10 @@ async def match_articles_node(state: OrderState) -> OrderState:
                 needs_paths.append(path)
     meta["orderregels"] = regels_meta
 
+    validatie_warnings = list(state.get("validatie_warnings") or [])
+    if nav_outage_warning:
+        validatie_warnings.append(nav_outage_warning)
+
     return {
         **state,
         "orderregels": matched,
@@ -228,4 +247,5 @@ async def match_articles_node(state: OrderState) -> OrderState:
         "_meta": meta,
         "needs_review_fields": needs_paths,
         "needs_review_count": len(needs_paths),
+        "validatie_warnings": validatie_warnings,
     }

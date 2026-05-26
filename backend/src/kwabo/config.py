@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     # email_mode != "file_drop" (no inbox to poll otherwise).
     mail_poll_interval_seconds: int = 0
 
+    # Article number used for the synthesised europallet line. Config-driven
+    # so operations can rotate it without a code deploy if NAV master-data
+    # ever moves the SKU.
+    europallet_artikelnr: str = "19820"
+
     # --- Frontend ---
     # Public origin of the Next.js app. Used by the OAuth callback HTML
     # page to redirect the user back to the dashboard after Microsoft sign-in.

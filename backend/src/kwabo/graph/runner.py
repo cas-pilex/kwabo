@@ -48,33 +48,49 @@ async def _run_extras(primary: OrderState, raw) -> list[OrderState]:
     parent_steps = [s for s in (primary.get("stappen_log") or []) if s.get("stap") in ("intake", "classify", "extract")]
 
     for idx, extra_parsed in enumerate(extras, start=2):
-        flat, meta, needs = _build_state_from_extract(extra_parsed, raw)
-        spawn_step = {
-            "stap": "multi_order_spawn",
-            "timestamp": utcnow().isoformat(),
-            "beslissing": f"Afgesplitst als sub-order {idx} uit parent log_id={primary_log_id}",
-            "details": {"parent_email_id": primary_email_id, "parent_log_id": primary_log_id, "sub_index": idx},
-        }
-        sub_state: OrderState = {
-            **_raw_email_to_state(raw),
-            **flat,
-            "email_id": f"{primary_email_id}#sub{idx}",
-            "email_subject": f"{primary.get('email_subject') or ''} (sub-order {idx})",
-            "is_order": True,
-            "classificatie_confidence": primary.get("classificatie_confidence"),
-            "_meta": meta,
-            "needs_review_fields": needs,
-            "needs_review_count": len(needs),
-            "stappen_log": [*parent_steps, spawn_step],
-            "parent_log_id": primary_log_id,
-            "sub_order_index": idx,
-        }
-        log.info(
-            "multi_order_spawn", parent_email_id=primary_email_id,
-            parent_log_id=primary_log_id, sub_email_id=sub_state["email_id"], sub_index=idx,
-        )
-        res = await sub_app.ainvoke(sub_state)
-        results.append(res)
+        # Per-sub isolation: a crashing sub-order MUST NOT propagate to the
+        # caller. /api/intake/scan calls mark_seen AFTER _run_extras returns;
+        # if one sub crashes the exception would skip mark_seen and the
+        # primary mail gets re-processed → duplicate primary in DB. Catch
+        # locally, log, continue with the next sub.
+        try:
+            flat, meta, needs = _build_state_from_extract(extra_parsed, raw)
+            spawn_step = {
+                "stap": "multi_order_spawn",
+                "timestamp": utcnow().isoformat(),
+                "beslissing": f"Afgesplitst als sub-order {idx} uit parent log_id={primary_log_id}",
+                "details": {"parent_email_id": primary_email_id, "parent_log_id": primary_log_id, "sub_index": idx},
+            }
+            sub_state: OrderState = {
+                **_raw_email_to_state(raw),
+                **flat,
+                "email_id": f"{primary_email_id}#sub{idx}",
+                "email_subject": f"{primary.get('email_subject') or ''} (sub-order {idx})",
+                "is_order": True,
+                "classificatie_confidence": primary.get("classificatie_confidence"),
+                "_meta": meta,
+                "needs_review_fields": needs,
+                "needs_review_count": len(needs),
+                "stappen_log": [*parent_steps, spawn_step],
+                "parent_log_id": primary_log_id,
+                "sub_order_index": idx,
+            }
+            log.info(
+                "multi_order_spawn", parent_email_id=primary_email_id,
+                parent_log_id=primary_log_id, sub_email_id=sub_state["email_id"], sub_index=idx,
+            )
+            res = await sub_app.ainvoke(sub_state)
+            results.append(res)
+        except Exception as exc:  # noqa: BLE001
+            log.exception(
+                "sub_order_crashed",
+                parent_email_id=primary_email_id,
+                parent_log_id=primary_log_id,
+                sub_index=idx,
+                exc_type=type(exc).__name__,
+                exc_msg=str(exc)[:300],
+            )
+            # Continue with the remaining sub-orders.
     return results
 
 

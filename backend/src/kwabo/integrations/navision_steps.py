@@ -62,6 +62,9 @@ from typing import Any
 from kwabo.integrations.nav_operations import NavOperation
 
 
+# Kept as module-level for backwards-compat. The actual line emitted by
+# compose_navision_operations reads europallet_regel.kwabo_artikelnr which
+# compute_europallet already populates from settings.europallet_artikelnr.
 EUROPALLET_ARTIKELNR = "19820"
 
 
@@ -204,6 +207,13 @@ def compose_navision_operations(state: dict) -> list[NavOperation]:
     # ---- Step 3: external document number (klant's PO number) --------------
     bestelnummer = state.get("bestelnummer_klant") or ""
     if bestelnummer:
+        # NAV External_Document_No is max 35 chars. Truncate instead of
+        # raising — the reviewer already approved the order with whatever
+        # the LLM extracted, and a late 400 during push is worse than a
+        # silently shortened PO-nr. The full original is still on state
+        # for audit.
+        if len(bestelnummer) > 35:
+            bestelnummer = bestelnummer[:35]
         ops.append(
             {
                 "op": "PATCH",
@@ -261,14 +271,16 @@ def compose_navision_operations(state: dict) -> list[NavOperation]:
             f"({len(regels)} regels, all unmatched)."
         )
 
-    # ---- Step 9: europallet (artikel 19820) --------------------------------
+    # ---- Step 9: europallet (artikel uit config) ---------------------------
     europallet = state.get("europallet_regel")
-    if europallet and europallet.get("kwabo_artikelnr") == EUROPALLET_ARTIKELNR:
-        # Reuse _emit_line_ops; europallet is just another line. It carries
-        # `kwabo_artikelnr` rather than `artikelnummer_kwabo_matched` because
-        # it's synthesised by `compute_europallet`, not matched from the
-        # customer's order text.
-        ops.extend(_emit_line_ops(europallet, EUROPALLET_ARTIKELNR, "Europallet"))
+    if europallet:
+        ep_nr = europallet.get("kwabo_artikelnr")
+        # Accept whatever artnr compute_europallet emitted. Used to be hard-
+        # coded "19820" check; now we trust the configurable upstream. Still
+        # require the regel to declare an artnr — defensive against malformed
+        # state.
+        if ep_nr:
+            ops.extend(_emit_line_ops(europallet, ep_nr, "Europallet"))
 
     # ---- Steps 10-12: incoming document ------------------------------------
     incoming_path = state.get("incoming_document_path")

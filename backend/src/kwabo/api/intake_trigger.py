@@ -28,6 +28,11 @@ def _persist_source_eml(raw_eml: bytes, email_id: str) -> str | None:
     push_navision would not attach the source mail. Indexed by email_id
     (stable, content-derived) instead of log_id (only known after intake)
     to avoid a chicken-and-egg with the LangGraph pipeline.
+
+    On failure we log at ERROR (not warning) so disk-full / permission
+    issues are visible in alerting, and return None. Callers must check
+    the return value and decide whether to abort or continue without the
+    attachment — never silently proceed as if the file exists.
     """
     try:
         target_dir = settings.incoming_documents_path / "by_email_id"
@@ -37,7 +42,14 @@ def _persist_source_eml(raw_eml: bytes, email_id: str) -> str | None:
         target_path.write_bytes(raw_eml)
         return str(target_path.resolve())
     except Exception as exc:  # noqa: BLE001
-        log.warning("intake_source_eml_save_failed", email_id=email_id, error=str(exc)[:200])
+        # ERROR level so monitoring picks it up. Marker is set by the caller
+        # on state so compose_order/push_navision know to skip attachment ops.
+        log.error(
+            "intake_source_eml_save_failed",
+            email_id=email_id,
+            error=str(exc)[:300],
+            target_dir=str(settings.incoming_documents_path / "by_email_id"),
+        )
         return None
 
 # Stop processing new emails once the scan has been running this long.
@@ -73,6 +85,11 @@ async def scan_inbox() -> dict:
                 saved_path = _persist_source_eml(raw.raw_eml, raw.email_id)
                 if saved_path:
                     state["incoming_document_path"] = saved_path
+                else:
+                    # Mark explicitly so compose / push / UI can show that
+                    # the source mail is missing on disk. Mail still gets
+                    # processed (header + lines) — only attachment skipped.
+                    state["incoming_document_save_failed"] = True
             from kwabo.graph.graph import get_ingest_app
             from kwabo.graph.runner import _run_extras
             app = get_ingest_app()
@@ -124,6 +141,8 @@ async def upload_eml(file: UploadFile) -> dict:
         saved_path = _persist_source_eml(raw.raw_eml, raw.email_id)
         if saved_path:
             state["incoming_document_path"] = saved_path
+        else:
+            state["incoming_document_save_failed"] = True
     from kwabo.graph.graph import get_ingest_app
     app = get_ingest_app()
     result = await app.ainvoke(state)
