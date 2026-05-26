@@ -188,7 +188,23 @@ function FragmentRow({
         </td>
         <td className="px-2 py-1.5 font-mono text-[11px]">
           {r.artikelnummer_kwabo_matched ? (
-            <span className="font-semibold">{r.artikelnummer_kwabo_matched}</span>
+            (() => {
+              const isFuzzySpec =
+                r.match_methode === "fuzzy" &&
+                (r.match_confidence ?? 1) < 0.95;
+              if (isFuzzySpec) {
+                return (
+                  <span
+                    className="inline-flex items-center gap-1 rounded border-l-4 border-amber-500 bg-amber-50 px-1.5 py-0.5 font-semibold text-amber-900"
+                    title={`Fuzzy match (conf ${(r.match_confidence ?? 0).toFixed(2)}) — controleer item handmatig. Klik om te wijzigen.`}
+                  >
+                    <span aria-hidden>⚠</span>
+                    <span>{r.artikelnummer_kwabo_matched}</span>
+                  </span>
+                );
+              }
+              return <span className="font-semibold">{r.artikelnummer_kwabo_matched}</span>;
+            })()
           ) : (
             <span className="inline-flex rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-800 ring-1 ring-rose-300">
               niet gematcht
