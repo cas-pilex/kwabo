@@ -50,22 +50,14 @@ def _serialise_op_results(results: list[dict]) -> list[dict]:
 
 def _mark_failed(state: OrderState, reason: str, op_results: list[dict]) -> OrderState:
     """Common path for failed pushes: log row update, audit step, state echo."""
+    serialised = _serialise_op_results(op_results)
     log.error(
         "push_navision_failed",
         email_id=state.get("email_id"),
         order_log_id=state.get("order_log_id"),
         reason=reason,
-        op_results=_serialise_op_results(op_results),
+        op_results=serialised,
     )
-
-    if state.get("order_log_id"):
-        with Session(engine) as s:
-            repo = OrderLogRepo(s)
-            repo.update(
-                state["order_log_id"],
-                status="failed",
-                # Keep navision_order_nr empty: nothing was created
-            )
 
     stap = {
         "stap": "push_navision",
@@ -73,7 +65,7 @@ def _mark_failed(state: OrderState, reason: str, op_results: list[dict]) -> Orde
         "beslissing": f"Push afgebroken: {reason}",
         "details": {
             "reason": reason,
-            "op_results": _serialise_op_results(op_results),
+            "op_results": serialised,
             "op_count": len(op_results or []),
         },
     }
@@ -81,6 +73,26 @@ def _mark_failed(state: OrderState, reason: str, op_results: list[dict]) -> Orde
     steps.append(stap)
     errors = list(state.get("errors") or [])
     errors.append(f"push_navision: {reason}")
+
+    if state.get("order_log_id"):
+        # Same reason as the success path: persist the trail so /nav-debug
+        # has something to show. Without this, a "failed" badge in the UI
+        # has no operations log behind it.
+        import json as _json
+        with Session(engine) as s:
+            repo = OrderLogRepo(s)
+            row = repo.get(state["order_log_id"])
+            if row is not None:
+                persisted = _json.loads(row.order_state or "{}") if row.order_state else {}
+                persisted["navision_status"] = "failed"
+                persisted["nav_operation_results"] = serialised
+                persisted["stappen_log"] = steps
+                persisted["errors"] = errors
+                row.order_state = _json.dumps(persisted, default=str)
+                row.status = "failed"
+                row.updated_at = utcnow()
+                s.add(row)
+                s.commit()
 
     return {
         **state,
@@ -132,15 +144,6 @@ async def push_navision_node(state: OrderState) -> OrderState:
         autofilled=list(autofilled.keys()),
     )
 
-    if state.get("order_log_id"):
-        with Session(engine) as s:
-            repo = OrderLogRepo(s)
-            repo.update(
-                state["order_log_id"],
-                navision_order_nr=sales_order_number,
-                status="pushed",
-            )
-
     stap = {
         "stap": "push_navision",
         "timestamp": utcnow().isoformat(),
@@ -154,6 +157,31 @@ async def push_navision_node(state: OrderState) -> OrderState:
     }
     steps = list(state.get("stappen_log") or [])
     steps.append(stap)
+
+    serialised_ops = _serialise_op_results(op_results)
+    if state.get("order_log_id"):
+        # Persist the full operation trail + autofill to order_state. Without
+        # this, /api/orders/{id}/nav-debug shows an empty list because the
+        # repo.update() above only writes a few columns. The trail is the
+        # primary forensic artefact when a reviewer wants to know what
+        # actually went over the wire.
+        import json as _json
+        with Session(engine) as s:
+            repo = OrderLogRepo(s)
+            row = repo.get(state["order_log_id"])
+            if row is not None:
+                persisted = _json.loads(row.order_state or "{}") if row.order_state else {}
+                persisted["navision_status"] = "Draft"
+                persisted["navision_order_nr"] = sales_order_number
+                persisted["nav_operation_results"] = serialised_ops
+                persisted["nav_autofilled"] = autofilled
+                persisted["stappen_log"] = steps
+                row.order_state = _json.dumps(persisted, default=str)
+                row.navision_order_nr = sales_order_number
+                row.status = "pushed"
+                row.updated_at = utcnow()
+                s.add(row)
+                s.commit()
 
     return {
         **state,
