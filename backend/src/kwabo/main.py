@@ -18,7 +18,10 @@ from kwabo.api.mailbox import (
     router as mailbox_router,
     router_public as mailbox_public_router,
 )
-from kwabo.api.orders import router as orders_router
+from kwabo.api.orders import (
+    router as orders_router,
+    router_public as orders_public_router,
+)
 from kwabo.api.preview import router as preview_router
 from kwabo.api.prijsafspraken import router as prijs_router
 from kwabo.config import settings
@@ -86,6 +89,11 @@ def create_app() -> FastAPI:
     # Authorization header. CSRF is handled by the state-token issued in
     # /oauth/start and verified in /oauth/callback (see mailbox.py).
     app.include_router(mailbox_public_router)
+    # Attachment download endpoint validates a short-lived signed token in
+    # the query string; cannot live behind the Bearer-header gate because
+    # `<a target="_blank">` loses the header. CSRF/auth is enforced via the
+    # HMAC token minted at /api/orders/{id}/bijlagen-token.
+    app.include_router(orders_public_router)
 
     # All other routers require a valid admin session. When ADMIN_PASSWORD
     # is unset (development), the dependency short-circuits with auth

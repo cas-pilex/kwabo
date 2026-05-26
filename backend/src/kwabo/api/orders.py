@@ -1,11 +1,15 @@
 """Order review REST endpoints."""
 from __future__ import annotations
 
+import base64
 import email
 import email.policy
+import hashlib
+import hmac
 import io
 import json
 import mimetypes
+import time
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -14,6 +18,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response, StreamingResponse
+from pydantic import BaseModel
 from sqlmodel import Session
 
 from kwabo.api.schemas import (
@@ -32,6 +37,96 @@ from kwabo.utils import utcnow
 from kwabo.utils.pallet_logic import PALLET_ARTIKELNR, compute_europallet
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
+# Public router for attachment downloads. The reviewer opens PDFs in a new
+# tab via <a target="_blank">, which cannot carry a Bearer header. Auth on
+# this route is enforced by a short-lived HMAC token in the query string
+# (minted via POST /{id}/bijlagen-token on the auth-gated router).
+router_public = APIRouter(prefix="/api/orders", tags=["orders-public"])
+
+
+# --------------------------------------------------------------------------
+# Signed-URL helpers (attachment downloads)
+# --------------------------------------------------------------------------
+
+
+def _attachment_secret() -> str:
+    """Resolve the HMAC secret. Empty signed_url_secret falls back to
+    jwt_secret with a static salt — rotating jwt_secret already invalidates
+    download tokens alongside sessions, which is the safer default."""
+    if settings.signed_url_secret:
+        return settings.signed_url_secret
+    return f"{settings.jwt_secret}::attachment"
+
+
+def _b64u_encode(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+
+def _b64u_decode(data: str) -> bytes:
+    pad = 4 - (len(data) % 4)
+    if pad and pad != 4:
+        data = data + ("=" * pad)
+    return base64.urlsafe_b64decode(data)
+
+
+def _sign_attachment_token(
+    order_id: int, naam: str, disposition: str, ttl: int
+) -> tuple[str, int]:
+    """Mint a token binding (order_id, naam, disposition) until exp.
+
+    Returns (token, exp_unix_seconds).
+    """
+    exp = int(time.time()) + ttl
+    payload = {"oid": order_id, "n": naam, "d": disposition, "exp": exp}
+    raw = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    sig = hmac.new(
+        _attachment_secret().encode("utf-8"), raw, hashlib.sha256
+    ).digest()
+    return f"{_b64u_encode(raw)}.{_b64u_encode(sig)}", exp
+
+
+def _verify_attachment_token(
+    token: str, order_id: int, naam: str, disposition: str
+) -> bool:
+    """Validate a token against the expected (order_id, naam, disposition)
+    and ensure it has not expired."""
+    try:
+        body_b64, sig_b64 = token.split(".", 1)
+        raw = _b64u_decode(body_b64)
+        actual_sig = _b64u_decode(sig_b64)
+    except (ValueError, Exception):  # noqa: BLE001
+        return False
+    expected_sig = hmac.new(
+        _attachment_secret().encode("utf-8"), raw, hashlib.sha256
+    ).digest()
+    if not hmac.compare_digest(expected_sig, actual_sig):
+        return False
+    try:
+        payload = json.loads(raw.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return False
+    if not isinstance(payload, dict):
+        return False
+    if payload.get("oid") != order_id:
+        return False
+    if payload.get("n") != naam:
+        return False
+    if payload.get("d") != disposition:
+        return False
+    exp = payload.get("exp")
+    if not isinstance(exp, (int, float)) or time.time() > exp:
+        return False
+    return True
+
+
+class AttachmentTokenRequest(BaseModel):
+    naam: str
+    disposition: str = "inline"
+
+
+class AttachmentTokenResponse(BaseModel):
+    token: str
+    expires_at: int
 
 
 def _find_eml_path(order_state: dict, email_id: str | None) -> Path | None:
@@ -278,12 +373,36 @@ def reject_order(order_id: int, body: RejectRequest) -> dict:
         return {"ok": True}
 
 
-@router.get("/{order_id}/bijlagen")
+@router.post(
+    "/{order_id}/bijlagen-token", response_model=AttachmentTokenResponse
+)
+def mint_attachment_token(
+    order_id: int, body: AttachmentTokenRequest
+) -> AttachmentTokenResponse:
+    """Mint a short-lived signed URL token for a specific attachment.
+
+    The reviewer's browser then GETs `/api/orders/{id}/bijlagen?...&token=...`
+    via `<a target="_blank">` — that GET is on `router_public` and validates
+    the token instead of requiring a Bearer header (which doesn't travel
+    cross-tab). TTL comes from settings.signed_url_ttl_seconds (default 5 min).
+    """
+    if body.disposition not in ("inline", "attachment"):
+        raise HTTPException(400, "disposition must be 'inline' or 'attachment'")
+    token, exp = _sign_attachment_token(
+        order_id, body.naam, body.disposition, settings.signed_url_ttl_seconds
+    )
+    return AttachmentTokenResponse(token=token, expires_at=exp)
+
+
+@router_public.get("/{order_id}/bijlagen")
 def download_attachment(
     order_id: int,
     naam: str = Query(..., description="Filename of the attachment to fetch"),
     disposition: str = Query("inline", pattern="^(inline|attachment)$"),
+    token: str = Query(..., description="Signed URL token from /bijlagen-token"),
 ) -> Response:
+    if not _verify_attachment_token(token, order_id, naam, disposition):
+        raise HTTPException(401, "Ongeldige of verlopen download-token")
     with Session(engine) as s:
         row = OrderLogRepo(s).get(order_id)
         if not row:

@@ -90,7 +90,7 @@ export function OrderLinesTable({
           Geen orderregels geëxtraheerd.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-md border border-[var(--kwabo-border)]">
+        <div className="overflow-x-auto rounded-md border border-[var(--kwabo-border)]">
           <table className="min-w-full divide-y divide-[var(--kwabo-border)] text-xs">
             <thead className="bg-slate-50 text-[10px] uppercase text-slate-500">
               <tr>

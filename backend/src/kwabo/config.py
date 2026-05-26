@@ -38,6 +38,14 @@ class Settings(BaseSettings):
     admin_password: str = ""
     jwt_secret: str = "dev-only-change-me-in-prod"
     jwt_ttl_hours: int = 24
+    # HMAC secret for short-lived URL-embedded download tokens (PDF view in
+    # new tab). Empty → derived from jwt_secret with a static salt; that's
+    # fine because rotating jwt_secret already invalidates download tokens
+    # alongside sessions. Set explicitly to rotate independently.
+    signed_url_secret: str = ""
+    # Default TTL for attachment download tokens. 5 minutes is enough for a
+    # reviewer to click and the browser to follow the GET.
+    signed_url_ttl_seconds: int = 300
 
     # --- Frontend ---
     # Public origin of the Next.js app. Used by the OAuth callback HTML

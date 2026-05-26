@@ -6,8 +6,10 @@ export const dynamic = "force-dynamic";
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const order = await api.getOrder(Number(id));
-  const items = await api.searchItems().catch(() => []);
+  const [order, items] = await Promise.all([
+    api.getOrder(Number(id)),
+    api.searchItems().catch(() => [] as Awaited<ReturnType<typeof api.searchItems>>),
+  ]);
   const state = (order.order_state || {}) as Record<string, unknown>;
   const parentId = (state.parent_log_id as number | undefined) ?? order.parent_log_id ?? null;
   const subIdx = (state.sub_order_index as number | undefined) ?? order.sub_order_index ?? null;
