@@ -206,6 +206,16 @@ def patch_field(order_id: int, body: PatchFieldBody) -> dict:
     state["needs_review_fields"] = needs
     state["needs_review_count"] = len(needs)
 
+    # Invalidate the cached compose. Any patch can affect what the next push
+    # sends: klant_match → customerNumber, ship_to_gekozen → shipToCode,
+    # orderregel artnr/qty/eenheid → line ops. Without clearing, the
+    # navision-preview and push_navision would happily use the original
+    # state's compose output and ignore the reviewer's edit. The next
+    # /navision-preview (and approve→finalize) will recompose from current
+    # state automatically because they fall through when nav_operations is
+    # empty.
+    state["nav_operations"] = []
+
     # If we changed an order line value, also recompute alle_artikelen_gematcht + sync columns
     extra = {}
     if body.path.startswith("orderregels[") and body.path.endswith(".artikelnummer_kwabo_matched"):

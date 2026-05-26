@@ -344,6 +344,25 @@ async def approve_order(order_id: int, body: ApproveRequest, force: bool = False
         state["review_status"] = "approved"
         state["reviewer"] = body.reviewer
         state["order_log_id"] = order_id
+
+        # Recompose nav_operations from the CURRENT state. The pipeline
+        # already composed once during compose_order_node, but reviewer
+        # edits via /patch-field clear that cache (see preview.py) so the
+        # push uses fresh ops that reflect any manual changes.
+        try:
+            from kwabo.integrations.navision_steps import compose_navision_operations
+            state["nav_operations"] = list(compose_navision_operations(state))
+        except ValueError as exc:
+            # Compose refuses header-only orders (no matched lines). Surface
+            # as a 422 with the same shape as needs_review failures so the
+            # frontend can show it.
+            raise HTTPException(
+                422,
+                detail={
+                    "error": "compose_failed",
+                    "message": str(exc),
+                },
+            )
         if force:
             state["force_approved"] = True
             log.info(
