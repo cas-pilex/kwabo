@@ -144,9 +144,18 @@ async def upload_eml(file: UploadFile) -> dict:
         else:
             state["incoming_document_save_failed"] = True
     from kwabo.graph.graph import get_ingest_app
+    from kwabo.graph.runner import _run_extras
     app = get_ingest_app()
     result = await app.ainvoke(state)
-    return {"email_id": raw.email_id, "log_id": result.get("order_log_id")}
+    # Multi-order mails: extract may emit a JSON array; spawn sub-orders for
+    # each extra. Without this, file-drop upload loses sub-orders entirely —
+    # /scan calls _run_extras but /upload did not.
+    extras = await _run_extras(result, raw)
+    return {
+        "email_id": raw.email_id,
+        "log_id": result.get("order_log_id"),
+        "sub_orders": [e.get("order_log_id") for e in extras],
+    }
 
 
 @router.post("/run-file")
