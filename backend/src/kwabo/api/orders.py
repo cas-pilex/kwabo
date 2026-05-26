@@ -130,12 +130,29 @@ class AttachmentTokenResponse(BaseModel):
 
 
 def _find_eml_path(order_state: dict, email_id: str | None) -> Path | None:
-    """Locate the original .eml file for an order: check stored source_path, then scan inbox + processed."""
-    sp = order_state.get("source_path") if isinstance(order_state, dict) else None
-    if sp:
-        p = Path(sp)
-        if p.exists():
-            return p
+    """Locate the original .eml file for an order.
+
+    Lookup order:
+      1. state.incoming_document_path — set by intake_trigger for new orders
+         (auto-save under data/incoming_documents/by_email_id/<email_id>.eml).
+         This is the authoritative location for Graph-ingested mails.
+      2. state.source_path — file-drop / replay mails have this set to a
+         real filesystem path. Graph mails store "graph://<id>" here which
+         won't exist on disk — fall through.
+      3. inbox + processed dirs scanned by short-hash — legacy fallback for
+         file-drop pre-incoming-document era.
+    """
+    if isinstance(order_state, dict):
+        idp = order_state.get("incoming_document_path")
+        if idp:
+            p = Path(idp)
+            if p.exists():
+                return p
+        sp = order_state.get("source_path")
+        if sp and not sp.startswith("graph://"):
+            p = Path(sp)
+            if p.exists():
+                return p
     for root in (settings.inbox_path, settings.processed_path):
         if not root.exists():
             continue
