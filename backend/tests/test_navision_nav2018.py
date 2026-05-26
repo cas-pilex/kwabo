@@ -171,9 +171,11 @@ async def test_stepwise_skips_incoming_documents_op():
         ]
         result = await client.create_sales_order_stepwise(ops)
 
+    # Skip is now non-erroring: marked via autofilled._skipped so the rest
+    # of the order push completes (graceful incoming-doc skip).
     skipped = [
         r for r in result["operation_results"]
-        if r.get("error") and "incomingDocuments" in r["error"]
+        if (r.get("autofilled") or {}).get("_skipped") and not r.get("error")
     ]
     assert len(skipped) == 1
     # Header op succeeded.

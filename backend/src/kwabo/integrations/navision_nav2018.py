@@ -521,7 +521,25 @@ class Nav2018ODataClient:
             # Failing the push because of an unsupported attachment would
             # waste a real customer order. Log a warning and continue so
             # the reviewer can manually attach the document NAV-side later.
-            if "/incomingDocuments" in raw_path or raw_path.startswith("/incomingDocuments"):
+            #
+            # Three op shapes belong to the incoming-doc bundle and must all
+            # be skipped together (the linker PATCH carries an
+            # `{incoming_document_id}` placeholder; without skip, substitute
+            # raises and the whole push fails):
+            #   1) POST /incomingDocuments
+            #   2) PATCH /salesOrders({id}) body={incomingDocumentNumber: ...}
+            #   3) POST /incomingDocuments({incoming_document_id})/attachments
+            references_incoming_id = any(
+                isinstance(v, str) and "{incoming_document_id}" in v
+                for v in body.values()
+            ) or "{incoming_document_id}" in raw_path
+            body_links_incoming = "incomingDocumentNumber" in body
+            if (
+                "/incomingDocuments" in raw_path
+                or raw_path.startswith("/incomingDocuments")
+                or references_incoming_id
+                or body_links_incoming
+            ):
                 log.warning(
                     "nav2018_incoming_doc_skipped",
                     op=method,
