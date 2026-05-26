@@ -5,6 +5,7 @@ import json
 from datetime import date, datetime
 from typing import Any, Optional
 
+from sqlalchemy import func
 from sqlmodel import Session, select
 
 from kwabo.utils import utcnow
@@ -31,14 +32,20 @@ class KlantRepo:
         if not email:
             return None
         normalized = email.strip().lower()
+        # NAV stores emails in mixed case (e.g. EINKAUF-KW@JOKA.DE) but the
+        # mail parser lowercases inbound From-headers. Match case-insensitively
+        # so a customer like 60645 isn't lost between sync and intake.
         stmt = select(Klantenkaart).where(
-            (Klantenkaart.email == normalized) | (Klantenkaart.email_bestelling == normalized)
+            (func.lower(Klantenkaart.email) == normalized)
+            | (func.lower(Klantenkaart.email_bestelling) == normalized)
         )
         hit = self.s.exec(stmt).first()
         if hit:
             return hit
         alias = self.s.exec(
-            select(KlantEmailAlias).where(KlantEmailAlias.email == normalized)
+            select(KlantEmailAlias).where(
+                func.lower(KlantEmailAlias.email) == normalized
+            )
         ).first()
         if alias:
             return self.by_nav_nr(alias.klant_nr)
