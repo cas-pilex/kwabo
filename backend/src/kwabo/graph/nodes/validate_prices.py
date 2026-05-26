@@ -31,8 +31,14 @@ async def validate_prices_node(state: OrderState) -> OrderState:
             hoev = float(r.get("hoeveelheid") or 0)
             pa = repo.best_match(klant, kw, hoev)
             if not pa:
+                # Customer sent a price but we have no contract row to check
+                # it against. Informational only — NAV will accept the price
+                # and the reviewer can still see the warning.
                 r["prijs_validated"] = None
-                warnings.append(f"GEEN PRIJSAFSPRAAK voor regel {r.get('positie')} ({kw})")
+                warnings.append(
+                    f"Geen prijsafspraak in DB voor regel {r.get('positie')} ({kw}) — "
+                    f"prijs €{prijs} uit de mail wordt 1-op-1 doorgezet."
+                )
                 regels_out.append(r)
                 continue
 
@@ -86,26 +92,59 @@ async def validate_prices_node(state: OrderState) -> OrderState:
     while len(regels_meta) < len(regels_out):
         regels_meta.append({})
     needs_paths = list(state.get("needs_review_fields") or [])
-    for i, r in enumerate(regels_out):
-        rm = regels_meta[i] if isinstance(regels_meta[i], dict) else {}
-        existing = rm.get("prijs_per_eenheid") or {}
-        prijs = r.get("prijs_per_eenheid")
-        validated = r.get("prijs_validated")
-        # Prefer the source that was set by extract; only set "missing" if no value at all
-        source = existing.get("source") or ("pdf" if prijs is not None else "missing")
-        rm["prijs_per_eenheid"] = {
-            "value": prijs,
-            "source": source,
-            "source_detail": existing.get("source_detail"),
-            "confidence": float(existing.get("confidence") or (0.9 if prijs is not None else 0)),
-            "needs_review": validated is False,  # mismatch with afspraak ⇒ explicit review
-            "validated": validated,
-        }
-        regels_meta[i] = rm
-        if rm["prijs_per_eenheid"]["needs_review"]:
-            path = f"orderregels[{i}].prijs_per_eenheid"
-            if path not in needs_paths:
-                needs_paths.append(path)
+    with Session(engine) as price_session:
+        price_repo = PrijsRepo(price_session)
+        for i, r in enumerate(regels_out):
+            rm = regels_meta[i] if isinstance(regels_meta[i], dict) else {}
+            existing = rm.get("prijs_per_eenheid") or {}
+            prijs = r.get("prijs_per_eenheid")
+            validated = r.get("prijs_validated")
+            kw = r.get("artikelnummer_kwabo_matched")
+
+            # When the mail has no price for this line, decide whether the
+            # reviewer NEEDS to fill it in:
+            #   - if a prijsafspraak exists for klant+artikel → the customer
+            #     has negotiated terms; we won't auto-push without an
+            #     explicit number. needs_review=True.
+            #   - if no prijsafspraak → NAV will fill the standard unit_price
+            #     from the item catalog. That's the legitimate fallback for
+            #     non-mix B2B orders. needs_review=False, but we flag the
+            #     source so the dashboard can show "NAV-default".
+            review_for_missing = False
+            source_detail_override = existing.get("source_detail")
+            if prijs is None and kw:
+                has_afspraak = bool(
+                    klant and price_repo.best_match(klant, kw, float(r.get("hoeveelheid") or 0))
+                )
+                if has_afspraak:
+                    review_for_missing = True
+                else:
+                    source_detail_override = (
+                        existing.get("source_detail")
+                        or "NAV-standaard (geen prijsafspraak)"
+                    )
+
+            source = existing.get("source") or (
+                "pdf" if prijs is not None else
+                "nav_default" if prijs is None and not review_for_missing else
+                "missing"
+            )
+            rm["prijs_per_eenheid"] = {
+                "value": prijs,
+                "source": source,
+                "source_detail": source_detail_override,
+                "confidence": float(existing.get("confidence") or (0.9 if prijs is not None else 0)),
+                # needs_review fires only for actual mismatches OR when the
+                # customer has a contract price the LLM couldn't extract.
+                # Missing-price-without-contract is no longer noise.
+                "needs_review": validated is False or review_for_missing,
+                "validated": validated,
+            }
+            regels_meta[i] = rm
+            if rm["prijs_per_eenheid"]["needs_review"]:
+                path = f"orderregels[{i}].prijs_per_eenheid"
+                if path not in needs_paths:
+                    needs_paths.append(path)
     meta["orderregels"] = regels_meta
 
     return {

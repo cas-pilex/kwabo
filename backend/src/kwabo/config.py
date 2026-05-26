@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     # reviewer to click and the browser to follow the GET.
     signed_url_ttl_seconds: int = 300
 
+    # Background mail-poll interval. 0 = disabled (manual /scan only). Set to
+    # e.g. 300 in Railway to scan every 5 minutes. Only honoured when
+    # email_mode != "file_drop" (no inbox to poll otherwise).
+    mail_poll_interval_seconds: int = 0
+
     # --- Frontend ---
     # Public origin of the Next.js app. Used by the OAuth callback HTML
     # page to redirect the user back to the dashboard after Microsoft sign-in.

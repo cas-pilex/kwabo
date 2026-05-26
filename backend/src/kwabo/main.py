@@ -1,6 +1,7 @@
 """FastAPI app entry point."""
 from __future__ import annotations
 
+import asyncio
 import os
 from contextlib import asynccontextmanager
 
@@ -56,13 +57,62 @@ def _cors_origins() -> list[str]:
 _CORS_ORIGIN_REGEX = r"https://.*\.vercel\.app$"
 
 
+async def _mail_poll_loop(interval_seconds: int) -> None:
+    """Background coroutine that calls /api/intake/scan logic on a timer.
+
+    Honours `mail_poll_interval_seconds`. Skips when email_mode='file_drop'
+    (no remote inbox to poll). Catches all exceptions so a single failure
+    doesn't kill the loop — Nico shouldn't have to re-deploy after one
+    network blip.
+    """
+    if settings.email_mode == "file_drop":
+        log.info("mail_poll_skipped", reason="email_mode=file_drop")
+        return
+    # Small initial delay so a deploy doesn't immediately hammer Graph.
+    await asyncio.sleep(min(30, interval_seconds))
+    while True:
+        try:
+            from kwabo.api.intake_trigger import scan_inbox
+            result = await scan_inbox()
+            log.info(
+                "mail_poll_tick",
+                processed=len(result.get("processed") or []),
+                errors=len(result.get("errors") or []),
+                partial=result.get("partial"),
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            log.exception("mail_poll_tick_failed", error=str(exc)[:200])
+        await asyncio.sleep(interval_seconds)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
     with Session(engine) as s:
         seed(s)
     log.info("app_started", routes=len(app.routes))
-    yield
+    poll_task: asyncio.Task | None = None
+    interval = settings.mail_poll_interval_seconds
+    if interval and interval >= 30:
+        poll_task = asyncio.create_task(_mail_poll_loop(interval))
+        log.info("mail_poll_started", interval_seconds=interval)
+    elif interval:
+        log.warning(
+            "mail_poll_disabled",
+            reason="interval too low (<30s)",
+            requested=interval,
+        )
+    try:
+        yield
+    finally:
+        if poll_task is not None:
+            poll_task.cancel()
+            try:
+                await poll_task
+            except asyncio.CancelledError:
+                pass
 
 
 def create_app() -> FastAPI:

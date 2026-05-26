@@ -44,10 +44,9 @@ def _meta_for(out: dict, idx: int) -> dict:
 
 
 @pytest.mark.asyncio
-async def test_high_confidence_fuzzy_match_does_not_need_review(session, app_engine):
-    """Fuzzy match on a near-exact description should clear the warning.
-    Pre-fix this returned needs_review=True purely because methode='fuzzy'.
-    """
+async def test_exact_description_match_does_not_need_review(session, app_engine):
+    """An exact-text match on description gets promoted to
+    'description_exact' with confidence 0.95 and clears the warning."""
     state = _state(
         "10001",
         [
@@ -63,13 +62,42 @@ async def test_high_confidence_fuzzy_match_does_not_need_review(session, app_eng
     )
     out = await match_articles_node(state)
     regel = out["orderregels"][0]
-    assert regel["match_methode"] in ("fuzzy", "klantenkaart", "history")
+    assert regel["match_methode"] in (
+        "description_exact", "kruisverwijzing", "klantenkaart", "history"
+    )
     assert regel["match_confidence"] >= 0.85
     meta = _meta_for(out, 0)
     assert meta["needs_review"] is False, (
-        f"high-confidence ({regel['match_confidence']}) {regel['match_methode']} "
+        f"exact-description ({regel['match_confidence']}) {regel['match_methode']} "
         "match must not be flagged for review"
     )
+
+
+@pytest.mark.asyncio
+async def test_partial_fuzzy_match_still_needs_review(session, app_engine):
+    """Imperfect fuzzy matches (WRatio 80..99) are capped at confidence 0.84,
+    which keeps needs_review=True. This is the safety brake on the
+    'JOKA JK 145 -> Stekker' style false positives Nico saw."""
+    state = _state(
+        "10001",
+        [
+            {
+                "positie": 1,
+                "artikelnummer_klant": "X",
+                "artikelnummer_kwabo": None,
+                # Slightly typo'd / shortened version: WRatio will be high
+                # but not 100.
+                "omschrijving": "Ferney stucloper",
+                "hoeveelheid": 1,
+            }
+        ],
+    )
+    out = await match_articles_node(state)
+    regel = out["orderregels"][0]
+    if regel["match_methode"] == "fuzzy":
+        assert regel["match_confidence"] <= 0.84
+        meta = _meta_for(out, 0)
+        assert meta["needs_review"] is True
 
 
 @pytest.mark.asyncio

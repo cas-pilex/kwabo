@@ -13,6 +13,10 @@ export type Regel = {
   omschrijving: string | null;
   hoeveelheid: number | null;
   eenheid: string | null;
+  // What the LLM read from the mail BEFORE match_articles overwrote eenheid
+  // with the NAV-side base UoM. Shown as a tooltip / sub-line so the
+  // reviewer can see "klant schreef PAL, NAV pusht STUK".
+  eenheid_origineel?: string | null;
   prijs_per_eenheid: number | null;
   prijs_validated: boolean | null;
   ean_code: string | null;
@@ -195,7 +199,23 @@ function FragmentRow({
           {r.omschrijving || <span className="text-slate-400">—</span>}
         </td>
         <td className="px-2 py-1.5 text-right tabular-nums">{fmtQty(r.hoeveelheid)}</td>
-        <td className="px-2 py-1.5">{r.eenheid || <span className="text-slate-400">—</span>}</td>
+        <td className="px-2 py-1.5">
+          {r.eenheid ? (
+            <span className="inline-flex flex-col leading-tight">
+              <span>{r.eenheid}</span>
+              {r.eenheid_origineel && r.eenheid_origineel.toUpperCase() !== r.eenheid.toUpperCase() && (
+                <span
+                  className="text-[9px] text-slate-400"
+                  title={`Klant schreef "${r.eenheid_origineel}" — NAV pusht "${r.eenheid}" (basis-UoM)`}
+                >
+                  ← {r.eenheid_origineel}
+                </span>
+              )}
+            </span>
+          ) : (
+            <span className="text-slate-400">—</span>
+          )}
+        </td>
         <td className="px-2 py-1.5 text-right tabular-nums">
           <span
             className={

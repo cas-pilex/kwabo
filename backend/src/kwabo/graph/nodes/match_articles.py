@@ -66,11 +66,26 @@ async def _match_single(regel: dict, klant_nr: str | None, nav: NavisionClient) 
         if candidates:
             names = {c["number"]: c.get("displayName", "") for c in candidates}
             best = process.extractOne(oms, names, scorer=fuzz.WRatio)
-            if best and best[1] >= 70:
+            # Raise the floor to 80: at 70 WRatio matches two unrelated short
+            # strings (e.g. "JOKA JK 145 Maler-Abdeckvlies" → "Stekker 220V"
+            # scored 85 on Nico's order #58). 80 is still permissive enough
+            # for typo-tolerant matches but cuts the worst false positives.
+            if best and best[1] >= 80:
                 number = best[2]
+                score = best[1]
                 result["artikelnummer_kwabo_matched"] = number
-                result["match_confidence"] = round(best[1] / 100.0, 2)
-                result["match_methode"] = "fuzzy"
+                if score >= 99:
+                    # Effectively an exact-text match on description —
+                    # trust it as much as a kruisverwijzing.
+                    result["match_methode"] = "description_exact"
+                    result["match_confidence"] = 0.95
+                else:
+                    # Cap fuzzy confidence below the needs_review threshold
+                    # (0.85). WRatio in [80,99) is too noisy to auto-push;
+                    # the reviewer must confirm. Keeps the raw score visible
+                    # via the meta provenance for debugging.
+                    result["match_methode"] = "fuzzy"
+                    result["match_confidence"] = min(0.84, round(score / 100.0, 2))
                 return result
 
     # 6) Manual

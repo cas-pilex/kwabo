@@ -33,6 +33,7 @@ type Regel = {
   omschrijving: string | null;
   hoeveelheid: number | null;
   eenheid: string | null;
+  eenheid_origineel?: string | null;
   prijs_per_eenheid: number | null;
   prijs_validated: boolean | null;
   ean_code: string | null;
@@ -79,6 +80,8 @@ type State = {
   mixprijzen_actief?: boolean;
   europallet_regel?: EuropalletRegel | null;
   incoming_document_path?: string | null;
+  navision_status?: string | null;
+  errors?: string[] | null;
 };
 
 export function OrderReview({ order, items }: Props) {
@@ -169,6 +172,16 @@ export function OrderReview({ order, items }: Props) {
     <div className="space-y-4">
       {!isNotOrder && (
         <NeedsReviewBanner fields={missing} forceArmed={forceArmed} onToggleForce={setForceArmed} />
+      )}
+
+      {order.status === "failed" && (
+        <NavFailureBanner
+          orderId={order.id}
+          firstError={
+            (initialState.errors || []).find((e) => e.startsWith("push_navision:"))
+              ?.replace(/^push_navision:\s*/, "") ?? null
+          }
+        />
       )}
 
       {!isNotOrder && (
@@ -422,6 +435,73 @@ export function OrderReview({ order, items }: Props) {
           ))}
         </ol>
       </section>
+    </div>
+  );
+}
+
+
+function NavFailureBanner({ orderId, firstError }: { orderId: number; firstError: string | null }) {
+  const [open, setOpen] = useState(false);
+  const [debug, setDebug] = useState<Awaited<ReturnType<typeof api.navDebug>> | null>(null);
+  const [loading, setLoading] = useState(false);
+  async function load() {
+    if (debug) {
+      setOpen((v) => !v);
+      return;
+    }
+    setLoading(true);
+    try {
+      const d = await api.navDebug(orderId);
+      setDebug(d);
+      setOpen(true);
+    } catch (e) {
+      toast.error(`Kan operations-log niet laden: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+  return (
+    <div className="rounded-lg border border-rose-300 bg-rose-50 p-3 text-sm text-rose-900">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="font-semibold">NAV-push mislukt</div>
+          {firstError && (
+            <div className="mt-1 break-words font-mono text-[11px] text-rose-800">
+              {firstError}
+            </div>
+          )}
+        </div>
+        <button
+          onClick={load}
+          disabled={loading}
+          className="shrink-0 rounded border border-rose-400 bg-white px-2 py-1 text-[11px] font-medium text-rose-900 hover:bg-rose-100 disabled:opacity-50"
+        >
+          {loading ? "Laden…" : open ? "Verberg operations-log" : "Bekijk operations-log"}
+        </button>
+      </div>
+      {open && debug && (
+        <div className="mt-3 space-y-1 rounded bg-white p-2 text-[10px] font-mono text-slate-700 ring-1 ring-rose-200">
+          {debug.nav_operation_results.length === 0 && (
+            <div className="text-slate-400">Geen operations geregistreerd.</div>
+          )}
+          {debug.nav_operation_results.map((op, i) => {
+            const meta = (op.operation || {}) as Record<string, unknown>;
+            const labelRaw = meta["label"] ?? meta["path"] ?? "(op)";
+            const label = typeof labelRaw === "string" ? labelRaw : JSON.stringify(labelRaw);
+            return (
+              <div
+                key={i}
+                className={op.error ? "text-rose-700" : "text-emerald-700"}
+              >
+                <span className="font-semibold">{i + 1}.</span>{" "}
+                {(meta["op"] as string) ?? ""} {label}
+                {op.status != null && <span className="ml-1 text-slate-400">[{op.status}]</span>}
+                {op.error && <div className="ml-4 text-rose-900">↳ {op.error}</div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
