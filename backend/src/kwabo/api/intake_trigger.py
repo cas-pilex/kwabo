@@ -20,39 +20,24 @@ from kwabo.utils.logging import log
 router = APIRouter(prefix="/api/intake", tags=["intake"])
 
 
-def _persist_source_eml(log_id: int, raw_eml: bytes, email_id: str) -> str | None:
-    """Write the .eml to data/incoming_documents/{log_id}/ and PATCH the
-    order_state with the resolved path. Returns the path (or None on
-    failure — we never let an attachment-save error tank the intake).
+def _persist_source_eml(raw_eml: bytes, email_id: str) -> str | None:
+    """Write the .eml to data/incoming_documents/by_email_id/{email_id}.eml.
 
-    Once set, the trigger-aware push_navision will reference this path
-    as the order's `Incoming_Document` (NAV-side support is gated; today
-    nav2018 logs a warning and continues). Reviewer also sees the
-    'Bron-bestand' panel populated in the dashboard.
+    Called BEFORE app.ainvoke() so the path is on state when compose_order
+    runs — otherwise compose wouldn't emit the /incomingDocuments ops and
+    push_navision would not attach the source mail. Indexed by email_id
+    (stable, content-derived) instead of log_id (only known after intake)
+    to avoid a chicken-and-egg with the LangGraph pipeline.
     """
     try:
-        target_dir = settings.incoming_documents_path / str(log_id)
+        target_dir = settings.incoming_documents_path / "by_email_id"
         target_dir.mkdir(parents=True, exist_ok=True)
-        # Use a stable filename derived from the email_id so re-runs don't
-        # pile up duplicates. .eml extension keeps the file-drop MIME path
-        # happy if someone re-uploads it.
         safe_id = "".join(c for c in (email_id or "") if c.isalnum() or c in ("-", "_"))[:32] or "source"
         target_path = target_dir / f"{safe_id}.eml"
         target_path.write_bytes(raw_eml)
-        saved_path = str(target_path.resolve())
-        with Session(engine) as s:
-            row = OrderLogRepo(s).get(log_id)
-            if not row:
-                return saved_path  # log gone; file still written
-            state = json.loads(row.order_state or "{}") if row.order_state else {}
-            state["incoming_document_path"] = saved_path
-            row.order_state = json.dumps(state, default=str)
-            row.updated_at = utcnow()
-            s.add(row)
-            s.commit()
-        return saved_path
+        return str(target_path.resolve())
     except Exception as exc:  # noqa: BLE001
-        log.warning("intake_source_eml_save_failed", log_id=log_id, error=str(exc)[:200])
+        log.warning("intake_source_eml_save_failed", email_id=email_id, error=str(exc)[:200])
         return None
 
 # Stop processing new emails once the scan has been running this long.
@@ -81,6 +66,13 @@ async def scan_inbox() -> dict:
             break
         try:
             state = _raw_email_to_state(raw)
+            # Persist BEFORE the pipeline so compose_order sees the path and
+            # emits the /incomingDocuments ops. The file lives under
+            # by_email_id/ — stable across retries and not log_id-dependent.
+            if raw.raw_eml:
+                saved_path = _persist_source_eml(raw.raw_eml, raw.email_id)
+                if saved_path:
+                    state["incoming_document_path"] = saved_path
             from kwabo.graph.graph import get_ingest_app
             from kwabo.graph.runner import _run_extras
             app = get_ingest_app()
@@ -88,10 +80,6 @@ async def scan_inbox() -> dict:
             result = await app.ainvoke(state)
             extras = await _run_extras(result, raw)
             log_id = result.get("order_log_id")
-            # Persist the source .eml so the dashboard "bron-bestand" pane
-            # and push_navision both have something to attach.
-            if log_id and raw.raw_eml:
-                _persist_source_eml(log_id, raw.raw_eml, raw.email_id)
             dt = time.monotonic() - t0
             log.info(
                 "intake_scan_email_ok",
@@ -130,13 +118,16 @@ async def upload_eml(file: UploadFile) -> dict:
     content = await file.read()
     raw = parse_eml_bytes(content)
     state = _raw_email_to_state(raw)
+    # Save the .eml BEFORE the pipeline so compose_order picks up
+    # incoming_document_path and emits the /incomingDocuments ops.
+    if raw.raw_eml:
+        saved_path = _persist_source_eml(raw.raw_eml, raw.email_id)
+        if saved_path:
+            state["incoming_document_path"] = saved_path
     from kwabo.graph.graph import get_ingest_app
     app = get_ingest_app()
     result = await app.ainvoke(state)
-    log_id = result.get("order_log_id")
-    if log_id and raw.raw_eml:
-        _persist_source_eml(log_id, raw.raw_eml, raw.email_id)
-    return {"email_id": raw.email_id, "log_id": log_id}
+    return {"email_id": raw.email_id, "log_id": result.get("order_log_id")}
 
 
 @router.post("/run-file")
