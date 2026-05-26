@@ -11,9 +11,24 @@ REGELS (cruciaal):
   "Artikelcode", "Art.-Nr.") = artikelnummer_klant.
 - Vermeldt de klant beide → vul beide; alleen één → vul alleen die.
 - Hoeveelheden: getal. Eenheden: ROL, STUK, PAL, M2, M1, BOS, DOOS, KG, LTR (onbekend = letterlijk).
+- BELANGRIJK voor pallet-orders: als de klant schrijft "<N> Paletten à <M> Stück",
+  "<N> PAL × <M> ROL", "<N> Paletten je <M> Rollen", "<N> Europaletten" e.d., dan is
+  N de hoeveelheid en de eenheid is PAL. NIET vermenigvuldigen (de berekening
+  N×M=totaal-stuks is fout). Vermeld de "<M>-per-pallet" in `opmerkingen` als context.
+  Voorbeeld: "66 Paletten à 20 Rollen" → hoeveelheid=66, eenheid=PAL,
+  opmerkingen="20 rollen per pallet".
+- Duitse eenheden: "Palette"/"Paletten"/"EUR-Palette"/"Europalette" → PAL,
+  "Stück" → STUK, "Rolle"/"Rollen" → ROL, "Meter"/"lfm" → M1, "m²"/"qm" → M2.
 - Afleveradres ALLEEN als drop-ship/afwijkend van factuuradres; anders null.
 - Forwarded mails: gebruik de ORIGINELE afzender, niet een Kwabo-medewerker.
 - Datums: YYYY-MM-DD; onbekend = null.
+- Duitse weeknummers ("KW<NN>", "KW 24", "KW24/2026", "Lieferung KW24"):
+  beschouw als geldig leverdatum-signaal. Vul `gewenste_leverdatum` met
+  YYYY-MM-DD van de maandag van die ISO-week. Als geen jaar vermeld is en de
+  week is dit jaar al voorbij → volgend jaar. Source = "email_body" of "pdf",
+  confidence ≈ 0.85.
+- ASAP / "Sofort" / "schnellstmöglich" → gewenste_leverdatum = null,
+  opmerkingen krijgt de letterlijke tekst.
 - Multi-order in 1 mail: return JSON ARRAY met meerdere order-objecten in onderstaand format.
 
 PROVENANCE (per veld):

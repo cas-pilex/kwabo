@@ -8,7 +8,8 @@ Produces:
 """
 from __future__ import annotations
 
-from datetime import datetime
+import re
+from datetime import date, datetime, timedelta
 
 from kwabo.utils import utcnow
 from typing import Any
@@ -18,6 +19,59 @@ from kwabo.integrations.email_client import Attachment, RawEmail
 from kwabo.integrations.llm_extractor import extract_from_email
 from kwabo.utils.eenheid_mapping import normalize_eenheid
 from kwabo.utils.logging import log
+
+
+# Duitse "Kalenderwoche" (KW24, KW 24, KW24/2026): catch-all so the LLM
+# can't silently drop a delivery date that's expressed only as a week
+# number. Matches both KW24 and "KW 24" and an optional /YYYY year suffix.
+KW_WEEK_RE = re.compile(
+    r"\bKW\s*(?P<week>\d{1,2})(?:\s*/\s*(?P<year>\d{4}))?\b",
+    re.IGNORECASE,
+)
+
+
+def _iso_week_to_date(week: int, year: int) -> date | None:
+    """Convert (ISO-year, ISO-week) to the Monday of that week."""
+    if not (1 <= week <= 53):
+        return None
+    try:
+        return date.fromisocalendar(year, week, 1)
+    except ValueError:
+        # 53 is invalid in years without a 53rd ISO week — fall back to 52.
+        try:
+            return date.fromisocalendar(year, min(week, 52), 1)
+        except ValueError:
+            return None
+
+
+def _kw_date_from_text(text: str, today: date) -> str | None:
+    """If `text` mentions a Duitse Kalenderwoche (KW24, KW24/2026), return
+    the Monday of that week as ISO YYYY-MM-DD. None if no KW found or the
+    resolved date is in the past (then it's almost certainly a stale ref)."""
+    if not text:
+        return None
+    m = KW_WEEK_RE.search(text)
+    if not m:
+        return None
+    try:
+        week = int(m.group("week"))
+    except (TypeError, ValueError):
+        return None
+    year_raw = m.group("year")
+    if year_raw:
+        year = int(year_raw)
+    else:
+        year = today.year
+        # If the implied week has already passed in the current year, the
+        # author likely means next year (Q4 mails ordering for early-spring
+        # delivery, etc.). Roll forward.
+        candidate = _iso_week_to_date(week, year)
+        if candidate is not None and candidate < today:
+            year = today.year + 1
+    d = _iso_week_to_date(week, year)
+    if d is None:
+        return None
+    return d.isoformat()
 
 
 def _coerce_meta(field: Any) -> dict[str, Any]:
@@ -122,6 +176,36 @@ async def extract_node(state: OrderState) -> OrderState:
         extras = []
 
     flat, meta, needs_review = _build_state_from_extract(primary, raw)
+
+    # Post-processor: rescue Duitse "Lieferung KW24" -style dates that the
+    # LLM treats as unknown. We scan email body + opmerkingen for KW<NN>
+    # and convert to ISO. Confidence 0.7 reflects "post-extracted, not the
+    # LLM's primary signal".
+    if not flat.get("gewenste_leverdatum"):
+        haystack = " ".join(
+            filter(None, [
+                state.get("email_body") or "",
+                state.get("email_subject") or "",
+                flat.get("opmerkingen") or "",
+            ])
+        )
+        # Also peek into PDF attachment text, where Auftragsformulare often
+        # park the KW reference.
+        for b in state.get("bijlagen") or []:
+            haystack += " " + ((b or {}).get("inhoud_tekst") or "")
+        iso = _kw_date_from_text(haystack, date.today())
+        if iso:
+            flat["gewenste_leverdatum"] = iso
+            meta["gewenste_leverdatum"] = {
+                "value": iso,
+                "source": "post_processor",
+                "source_detail": "kw_week_regex",
+                "confidence": 0.7,
+                "needs_review": False,
+            }
+            # Drop the path from needs_review if the LLM had flagged it.
+            if "gewenste_leverdatum" in needs_review:
+                needs_review = [p for p in needs_review if p != "gewenste_leverdatum"]
 
     log.info(
         "extract",

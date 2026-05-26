@@ -127,6 +127,12 @@ async def match_articles_node(state: OrderState) -> OrderState:
             kaart = art_repo.get(artnr)
             if not kaart or not kaart.basis_eenheid:
                 continue
+            # Preserve the LLM-extracted unit so downstream europallet
+            # detection can still see e.g. "PAL" even though we overwrite
+            # the NAV-facing `eenheid` with basis. Without this, "66 PAL"
+            # from a Duitse Auftrag becomes "STUK" before compute_europallet
+            # gets a look — and no europallet line is generated.
+            r.setdefault("eenheid_origineel", r.get("eenheid"))
             r["eenheid_default"] = kaart.basis_eenheid
             r["eenheid"] = kaart.basis_eenheid
 
@@ -166,9 +172,12 @@ async def match_articles_node(state: OrderState) -> OrderState:
             "source": methode if methode else "missing",
             "source_detail": f"match-methode={methode}",
             "confidence": confidence,
+            # Confidence is the source of truth. A fuzzy match scoring ≥0.85
+            # is "trusted enough" — reviewer doesn't get spammed with
+            # warnings on every order. Manual (=no candidate found) still
+            # triggers review because confidence is 0.0 in that path.
             "needs_review": (
                 not r.get("artikelnummer_kwabo_matched")
-                or methode in ("fuzzy", "manual")
                 or confidence < 0.85
             ),
         }

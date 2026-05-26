@@ -28,7 +28,14 @@ PALLET_ARTIKELNR = "19820"
 PALLET_OMSCHRIJVING = "Europallet"
 HEURISTIC_PER_PALLET = 24.0
 HEURISTIC_MIN_QTY = 5.0
-HEURISTIC_EENHEDEN = ("DOOS", "PAL")
+# DOOS is unit-of-secondary-packing; PAL is the pallet itself. Treat them
+# differently: "5 DOOS" probably needs a pallet (heuristic-per-pallet=24),
+# but "1 PAL" is already a pallet — one regel = one europallet, no qty
+# threshold. Keeps Duitse orders ("66 Paletten") from being silently
+# ignored just because the heuristic was built around DOOS.
+HEURISTIC_EENHEDEN = ("DOOS",)
+PALLET_EENHEDEN = ("PAL",)
+PALLET_MIN_QTY = 1.0
 PALLET_THRESHOLD = 0.5
 DEFAULT_CONFIDENCE = 0.7
 
@@ -60,7 +67,13 @@ def compute_europallet(state: dict, *, repo) -> Optional[dict]:
             # double-count if the input already carries one.
             continue
 
-        eenheid = (regel.get("eenheid") or "").upper()
+        # match_articles overwrites `eenheid` with the item's NAV base UoM
+        # (so the PATCH doesn't 400 on an unknown UoM). For pallet detection
+        # we want the ORIGINALLY extracted unit (where PAL/PALETTE shows up),
+        # falling back to the overwritten one for older state.
+        eenheid = (
+            regel.get("eenheid_origineel") or regel.get("eenheid") or ""
+        ).upper()
         try:
             qty = float(regel.get("hoeveelheid") or 0)
         except (TypeError, ValueError):
@@ -73,7 +86,10 @@ def compute_europallet(state: dict, *, repo) -> Optional[dict]:
             if kennis.pallet_required and kennis.per_pallet:
                 total += qty / max(kennis.per_pallet, 1)
         else:
-            if eenheid in HEURISTIC_EENHEDEN and qty >= HEURISTIC_MIN_QTY:
+            if eenheid in PALLET_EENHEDEN and qty >= PALLET_MIN_QTY:
+                # Each PAL unit IS a pallet — count 1:1, no division.
+                total += qty
+            elif eenheid in HEURISTIC_EENHEDEN and qty >= HEURISTIC_MIN_QTY:
                 total += qty / HEURISTIC_PER_PALLET
 
     if total < PALLET_THRESHOLD:
