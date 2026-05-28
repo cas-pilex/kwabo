@@ -770,12 +770,42 @@ async def upload_incoming_document(
     # if the upload didn't include one.
     safe_name = Path(file.filename or "document").name or "document"
 
-    target_dir = settings.incoming_documents_path / str(order_id)
-    target_dir.mkdir(parents=True, exist_ok=True)
-    target_path = target_dir / safe_name
-    target_path.write_bytes(content)
+    # Persist via Supabase first (canoniek, Railway-deploy-proof). Fall back
+    # to local disk when Supabase isn't configured — same pattern as
+    # _persist_source_eml.
+    from kwabo.integrations.supabase_storage import get_supabase_storage
+    from kwabo.utils.logging import log as _log
 
-    saved_path = str(target_path.resolve())
+    storage_client = get_supabase_storage()
+    storage_key: Optional[str] = None
+    saved_path: Optional[str] = None
+
+    if storage_client is not None:
+        try:
+            storage_key = f"by_order/{order_id}/{safe_name}"
+            storage_client.put_object(storage_key, content, content_type)
+            _log.info(
+                "incoming_doc_uploaded_supabase",
+                order_id=order_id,
+                storage_key=storage_key,
+                size_bytes=len(content),
+            )
+        except Exception as exc:  # noqa: BLE001
+            _log.error(
+                "incoming_doc_supabase_failed",
+                order_id=order_id,
+                error=str(exc)[:300],
+                hint="falling back to local disk",
+            )
+            storage_key = None
+
+    if storage_key is None:
+        target_dir = settings.incoming_documents_path / str(order_id)
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target_path = target_dir / safe_name
+        target_path.write_bytes(content)
+        saved_path = str(target_path.resolve())
+
     with Session(engine) as s:
         repo = OrderLogRepo(s)
         row = repo.get(order_id)
@@ -784,14 +814,141 @@ async def upload_incoming_document(
             # special-casing further than a clean 404.
             raise HTTPException(404, "Order not found")
         state = json.loads(row.order_state or "{}") if row.order_state else {}
-        state["incoming_document_path"] = saved_path
+        if storage_key:
+            state["incoming_document_storage_key"] = storage_key
+            # Clear any legacy disk-path so the download-resolver uses the
+            # new Supabase key, not a stale disk reference that may not even
+            # exist anymore after a Railway redeploy.
+            state.pop("incoming_document_path", None)
+        if saved_path:
+            state["incoming_document_path"] = saved_path
+        # Reviewer-facing filename for the dashboard + download-token route.
+        # Sentinel "incoming-doc" is the canonical token-naam for the new
+        # download route (one doc per order; bound to that literal).
+        state["incoming_document_filename"] = safe_name
+        state["incoming_document_content_type"] = content_type
         row.order_state = json.dumps(state, default=str)
         row.updated_at = utcnow()
         s.add(row)
         s.commit()
 
     return {
-        "saved_path": saved_path,
+        "saved_path": saved_path or storage_key or "",
+        "storage_key": storage_key,
         "file_size": len(content),
         "content_type": content_type,
+        "filename": safe_name,
     }
+
+
+# ---------------------------------------------------------------------------
+# /incoming-doc download (Fase 3): publieke route + token-mint
+# ---------------------------------------------------------------------------
+
+
+INCOMING_DOC_TOKEN_NAAM = "incoming-doc"
+"""Sentinel-naam voor de HMAC-token van de incoming-doc download. Per order
+is er maar één incoming-doc; vaste literal voorkomt dat het token mee
+verandert als de reviewer een nieuwe upload doet (token blijft geldig
+voor de hele upload-slot, niet voor één specifiek bestand)."""
+
+
+def _content_type_for(name: str, fallback: str | None = None) -> str:
+    """Detect content-type by file extension, with fallback for unknown types."""
+    ctype, _ = mimetypes.guess_type(name or "")
+    return ctype or fallback or "application/octet-stream"
+
+
+@router.post(
+    "/{order_id}/incoming-doc-token", response_model=AttachmentTokenResponse
+)
+def mint_incoming_doc_token(
+    order_id: int, body: AttachmentTokenRequest
+) -> AttachmentTokenResponse:
+    """Mint a short-lived signed URL token for the order's incoming document.
+
+    Token is bound to (order_id, INCOMING_DOC_TOKEN_NAAM, disposition). The
+    `naam` field on AttachmentTokenRequest is ignored — there's only one
+    incoming-doc per order, addressed via state.incoming_document_*."""
+    if body.disposition not in ("inline", "attachment"):
+        raise HTTPException(400, "disposition must be 'inline' or 'attachment'")
+    token, exp = _sign_attachment_token(
+        order_id,
+        INCOMING_DOC_TOKEN_NAAM,
+        body.disposition,
+        settings.signed_url_ttl_seconds,
+    )
+    return AttachmentTokenResponse(token=token, expires_at=exp)
+
+
+@router_public.get("/{order_id}/incoming-doc/file")
+def download_incoming_doc(
+    order_id: int,
+    disposition: str = Query("inline", pattern="^(inline|attachment)$"),
+    token: str = Query(..., description="Signed URL token van /incoming-doc-token"),
+) -> Response:
+    """Serve the reviewer-uploaded source document (PDF/JPG/EML).
+
+    Resolves bytes from Supabase Storage when `incoming_document_storage_key`
+    is set, otherwise from the legacy local-disk path. Returns the file with
+    correct content-type and disposition headers — same pattern as the
+    /bijlagen route but for losse uploads i.p.v. .eml-attachments.
+    """
+    if not _verify_attachment_token(
+        token, order_id, INCOMING_DOC_TOKEN_NAAM, disposition
+    ):
+        raise HTTPException(401, "Ongeldige of verlopen download-token")
+
+    with Session(engine) as s:
+        row = OrderLogRepo(s).get(order_id)
+        if not row:
+            raise HTTPException(404, "Order not found")
+        state = json.loads(row.order_state or "{}") if row.order_state else {}
+
+    storage_key = state.get("incoming_document_storage_key")
+    disk_path = state.get("incoming_document_path")
+    filename = state.get("incoming_document_filename") or "incoming-doc"
+    stored_ctype = state.get("incoming_document_content_type")
+
+    data: bytes | None = None
+    if storage_key:
+        try:
+            from kwabo.integrations.supabase_storage import get_supabase_storage
+
+            client = get_supabase_storage()
+            if client is not None:
+                data = client.get_object(storage_key)
+        except Exception:  # noqa: BLE001
+            from kwabo.utils.logging import log as _log
+            _log.warning(
+                "incoming_doc_supabase_get_failed",
+                order_id=order_id,
+                storage_key=storage_key,
+                hint="falling back to legacy disk path",
+            )
+    if data is None and disk_path:
+        p = Path(disk_path)
+        if p.exists():
+            try:
+                data = p.read_bytes()
+                # Filename fallback uit disk-path als state het niet kent.
+                if not state.get("incoming_document_filename"):
+                    filename = p.name
+            except OSError:
+                data = None
+
+    if data is None:
+        raise HTTPException(
+            404,
+            "Geen bron-document op deze order. Upload via 'Bron-document' "
+            "in het dashboard, of configureer SUPABASE_URL voor persistente "
+            "opslag.",
+        )
+
+    ctype = stored_ctype or _content_type_for(filename)
+    disp = f'{disposition}; filename="{filename}"; filename*=UTF-8\'\'{quote(filename)}'
+    return Response(
+        content=data,
+        media_type=ctype,
+        headers={"Content-Disposition": disp, "Cache-Control": "no-cache"},
+    )

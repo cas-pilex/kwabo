@@ -432,6 +432,23 @@ export const api = {
     );
     return `${API_BASE}/api/orders/${orderId}/bijlagen?naam=${encodeURIComponent(naam)}&disposition=${disposition}&token=${encodeURIComponent(token)}`;
   },
+  // Signed-URL voor de losse "Bron-document" upload (POST /incoming-doc).
+  // Aparte route dan bijlagen-in-eml want de bytes liggen niet binnen een
+  // .eml maar als losstaand bestand in Supabase / op disk. Token-bind is
+  // (order_id, "incoming-doc", disposition) — er is maar één per order.
+  incomingDocSignedUrl: async (
+    orderId: number,
+    disposition: "inline" | "attachment" = "inline",
+  ) => {
+    const { token } = await req<{ token: string; expires_at: number }>(
+      `/api/orders/${orderId}/incoming-doc-token`,
+      {
+        method: "POST",
+        body: JSON.stringify({ naam: "incoming-doc", disposition }),
+      },
+    );
+    return `${API_BASE}/api/orders/${orderId}/incoming-doc/file?disposition=${disposition}&token=${encodeURIComponent(token)}`;
+  },
   mailboxStatus: () =>
     req<{
       mode: string;

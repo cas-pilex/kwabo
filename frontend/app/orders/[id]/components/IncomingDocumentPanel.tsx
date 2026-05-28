@@ -52,6 +52,18 @@ export function IncomingDocumentPanel({
     }
   }
 
+  // "Open"/"Download" minten een signed URL per klik. De URL leeft 5 min;
+  // re-minten bij volgende klik is goedkoper dan een stale-URL bug.
+  async function openIncomingDoc(disposition: "inline" | "attachment") {
+    try {
+      const url = await api.incomingDocSignedUrl(orderId, disposition);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(`Openen mislukt: ${msg}`);
+    }
+  }
+
   return (
     <div
       data-testid="incoming-doc-panel"
@@ -77,7 +89,7 @@ export function IncomingDocumentPanel({
           </span>
         )}
       </div>
-      <div className="mt-2 flex items-center gap-2">
+      <div className="mt-2 flex flex-wrap items-center gap-2">
         <input
           ref={ref}
           type="file"
@@ -94,6 +106,26 @@ export function IncomingDocumentPanel({
         >
           {busy ? "Bezig…" : info?.saved_path ? "Vervang…" : "Kies bestand…"}
         </button>
+        {info?.saved_path && (
+          <>
+            <button
+              onClick={() => openIncomingDoc("inline")}
+              data-testid="incoming-doc-open-btn"
+              className="rounded-md border border-[var(--kwabo-border)] bg-white px-2 py-1 text-xs hover:bg-slate-100"
+              title="Open in nieuw tabblad"
+            >
+              🗗 Open
+            </button>
+            <button
+              onClick={() => openIncomingDoc("attachment")}
+              data-testid="incoming-doc-download-btn"
+              className="rounded-md border border-[var(--kwabo-border)] bg-white px-2 py-1 text-xs hover:bg-slate-100"
+              title="Download bestand"
+            >
+              📥 Download
+            </button>
+          </>
+        )}
         <span className="text-[10px] text-slate-500">
           .pdf, .eml of afbeelding
         </span>
