@@ -128,10 +128,15 @@ async def scan_inbox() -> dict:
                     state["incoming_document_save_failed"] = True
             from kwabo.graph.graph import get_ingest_app
             from kwabo.graph.runner import _run_extras
+            from kwabo.integrations.navision_api import nav_client_scope
             app = get_ingest_app()
             t0 = time.monotonic()
-            result = await app.ainvoke(state)
-            extras = await _run_extras(result, raw)
+            # Fase 4: één NAV-client + httpx.AsyncClient voor de héle
+            # pipeline-run (primary + alle sub-orders). Voorheen instantieerde
+            # elke node een verse client → socket-leak per request.
+            async with nav_client_scope():
+                result = await app.ainvoke(state)
+                extras = await _run_extras(result, raw)
             log_id = result.get("order_log_id")
             dt = time.monotonic() - t0
             log.info(
@@ -183,12 +188,15 @@ async def upload_eml(file: UploadFile) -> dict:
             state["incoming_document_save_failed"] = True
     from kwabo.graph.graph import get_ingest_app
     from kwabo.graph.runner import _run_extras
+    from kwabo.integrations.navision_api import nav_client_scope
     app = get_ingest_app()
-    result = await app.ainvoke(state)
-    # Multi-order mails: extract may emit a JSON array; spawn sub-orders for
-    # each extra. Without this, file-drop upload loses sub-orders entirely —
-    # /scan calls _run_extras but /upload did not.
-    extras = await _run_extras(result, raw)
+    # Fase 4: één NAV-client voor de hele upload-run, identiek aan /scan.
+    async with nav_client_scope():
+        result = await app.ainvoke(state)
+        # Multi-order mails: extract may emit a JSON array; spawn sub-orders
+        # for each extra. Without this, file-drop upload loses sub-orders
+        # entirely — /scan calls _run_extras but /upload did not.
+        extras = await _run_extras(result, raw)
     return {
         "email_id": raw.email_id,
         "log_id": result.get("order_log_id"),

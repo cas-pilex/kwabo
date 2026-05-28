@@ -86,7 +86,12 @@ async def validate_prices_node(state: OrderState) -> OrderState:
     steps = list(state.get("stappen_log") or [])
     steps.append(stap)
 
-    # Provenance per regel (prijs_per_eenheid)
+    # Provenance per regel (prijs_per_eenheid).
+    # Fase 4: hergebruik dezelfde DB-session als de regel-loop hierboven —
+    # een tweede `Session(engine)` opent (op pgbouncer transaction-mode +
+    # NullPool) een verse TCP+TLS handshake per pipeline-run, terwijl alle
+    # data al in de eerste sessie beschikbaar is. Mini-winst per request
+    # maar gratis.
     meta = dict(state.get("_meta") or {})
     regels_meta = list(meta.get("orderregels") or [])
     while len(regels_meta) < len(regels_out):

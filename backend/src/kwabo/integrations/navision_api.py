@@ -559,7 +559,11 @@ class MockNavisionClient:
         return any(u.get("code") == uom_code for u in alternates)
 
 
-def get_navision_client() -> NavisionClient:
+def _build_navision_client() -> NavisionClient:
+    """Factory zonder caching — bouw altijd een verse client. De scope-cache
+    zit in `get_navision_client` (zie hieronder) zodat tests die de factory
+    monkey-patchen en CLI-scripts zonder pipeline-scope onveranderd blijven
+    werken."""
     mode = settings.navision_mode
     if mode == "mock":
         return MockNavisionClient()
@@ -577,6 +581,70 @@ def get_navision_client() -> NavisionClient:
         from kwabo.integrations.navision_nav2018 import Nav2018ODataClient
         return Nav2018ODataClient()
     raise ValueError(f"Unknown NAVISION_MODE: {mode}")
+
+
+# Fase 4: per-pipeline-run client scope.
+# -----------------------------------------
+# Voorheen instantieerde elke node (match_customer, match_articles,
+# push_navision) zijn eigen client via get_navision_client(). Voor mode
+# nav2018 betekent dat: per pipeline-run 3+ verse httpx.AsyncClient
+# instances zonder aclose() → socket-leak + per-call TLS-handshake-cost.
+#
+# Door binnen `async with nav_client_scope():` éénmalig een client te
+# bouwen en die in een ContextVar te stoppen, krijgen alle node-aanroepen
+# diezelfde instance terug. Bij exit roepen we aclose() op de echte
+# client (als die methode heeft). Code in nodes verandert niet — die
+# blijft gewoon get_navision_client() aanroepen.
+#
+# Tests die `monkeypatch get_navision_client` doen overschrijven de
+# module-level functie en omzeilen de scope volledig (de cache wordt
+# nooit geraadpleegd). Dat is opzettelijk: je wilt in tests een
+# voorspelbare client, niet een scope-side-effect.
+import contextlib  # noqa: E402
+import contextvars  # noqa: E402
+from typing import AsyncIterator  # noqa: E402
+
+_nav_client_var: contextvars.ContextVar[Optional[NavisionClient]] = contextvars.ContextVar(
+    "nav_client_scoped", default=None
+)
+
+
+@contextlib.asynccontextmanager
+async def nav_client_scope() -> AsyncIterator[NavisionClient]:
+    """Wrap one pipeline-run zodat alle get_navision_client()-aanroepen
+    binnen dit blok dezelfde client krijgen. Aan het einde wordt de client
+    geclose'd (aclose() indien aanwezig). Veilig nest-bestendig: binnen
+    een actieve scope geneste `async with nav_client_scope():` hergebruikt
+    de bestaande client zonder dubbel aclose."""
+    existing = _nav_client_var.get()
+    if existing is not None:
+        # Geneste scope — geef de bestaande terug zonder dubbel aclose.
+        yield existing
+        return
+
+    client = _build_navision_client()
+    token = _nav_client_var.set(client)
+    try:
+        yield client
+    finally:
+        _nav_client_var.reset(token)
+        aclose = getattr(client, "aclose", None)
+        if aclose is not None:
+            try:
+                await aclose()
+            except Exception:  # noqa: BLE001
+                # aclose-fail mag de pipeline-respons niet kelderen.
+                pass
+
+
+def get_navision_client() -> NavisionClient:
+    """Within an active `nav_client_scope()`: return the scoped instance.
+    Outside (CLI scripts, tests, ad-hoc calls): bouw een verse client zoals
+    voorheen. Backward-compatible — geen call-site hoeft te wijzigen."""
+    scoped = _nav_client_var.get()
+    if scoped is not None:
+        return scoped
+    return _build_navision_client()
 
 
 # `build_sales_order_payload` removed in T9. Callers now use

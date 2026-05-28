@@ -98,15 +98,27 @@ async def run_on_eml(path: str | Path) -> OrderState:
     """Run ingest on a single .eml. Also processes extra sub-orders from multi-order mails.
 
     Returns the primary state (extras are persisted separately in order_log).
+    Fase 4: wraps the run in `nav_client_scope()` zodat alle nodes
+    één gedeelde httpx-client gebruiken i.p.v. één-per-node (socket-leak
+    + TLS-handshake-per-node fix).
     """
+    from kwabo.integrations.navision_api import nav_client_scope
+
     raw = parse_eml_file(path)
     state = _raw_email_to_state(raw)
     app = get_ingest_app()
-    primary = await app.ainvoke(state)
-    await _run_extras(primary, raw)
+    async with nav_client_scope():
+        primary = await app.ainvoke(state)
+        await _run_extras(primary, raw)
     return primary
 
 
 async def finalize(state: OrderState) -> OrderState:
+    """Run finalize-graph (push_navision → send_confirmation). Eigen scope
+    zodat een handmatige approve via dashboard ook één client deelt over
+    de finalize-nodes."""
+    from kwabo.integrations.navision_api import nav_client_scope
+
     app = get_finalize_app()
-    return await app.ainvoke(state)
+    async with nav_client_scope():
+        return await app.ainvoke(state)

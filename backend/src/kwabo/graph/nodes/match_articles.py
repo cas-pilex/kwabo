@@ -21,6 +21,17 @@ async def _match_single(regel: dict, klant_nr: str | None, nav: NavisionClient) 
     # 1) Exact Kwabo-nummer vermeld en bestaat in Nav
     kw = regel.get("artikelnummer_kwabo")
     if kw:
+        # Fase 4: mirror-first. Bij gevulde lokale artikelkaarten-mirror
+        # (NAV-master-sync) bespaart dit een NAV round-trip per regel met
+        # expliciet kwabo-artnr. Cache-miss (artikel niet gesynced, of mirror
+        # leeg) valt door naar live NAV zodat nieuwe artikelen niet onnodig
+        # de fuzzy-cascade in gaan.
+        with Session(engine) as s:
+            if ArtikelkaartRepo(s).get(kw) is not None:
+                result["artikelnummer_kwabo_matched"] = kw
+                result["match_confidence"] = 1.0
+                result["match_methode"] = "exact"
+                return result
         item = await nav.get_item(kw)
         if item:
             result["artikelnummer_kwabo_matched"] = kw
