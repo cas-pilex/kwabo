@@ -44,6 +44,19 @@ class MailboxStatus(BaseModel):
     last_error: Optional[str] = None
     account_email: Optional[str] = None
     expires_at: Optional[datetime] = None
+    # Observability — populated from kwabo.utils.mail_poll_status (in-process
+    # heartbeat). Lets the operator see at a glance whether the poll loop
+    # is actually running, what it did last, and when the Graph token was
+    # last refreshed — without grepping Railway logs.
+    poll_interval_seconds: int = 0
+    poll_enabled: bool = False
+    last_poll_at: Optional[datetime] = None
+    last_poll_status: Optional[str] = None      # "ok" | "error"
+    last_poll_processed: Optional[int] = None
+    last_poll_errors: Optional[int] = None
+    last_poll_partial: Optional[bool] = None
+    last_poll_error_msg: Optional[str] = None
+    last_token_refresh_at: Optional[datetime] = None
 
 
 class OAuthConfigIn(BaseModel):
@@ -88,9 +101,33 @@ def _token_is_valid(tok: Optional[OAuthToken]) -> bool:
 # ---------- Status ----------
 
 
+def _poll_observability_fields() -> dict:
+    """Build the poll/token-refresh observability fields for MailboxStatus.
+
+    Centralised so file_drop / graph / imap branches all return consistent
+    shapes. Reads from the in-process heartbeat dict.
+    """
+    from kwabo.utils import mail_poll_status
+
+    interval = settings.mail_poll_interval_seconds
+    snap = mail_poll_status.get_status()
+    return {
+        "poll_interval_seconds": interval,
+        "poll_enabled": bool(interval and interval >= 30),
+        "last_poll_at": snap.get("last_poll_at"),
+        "last_poll_status": snap.get("last_poll_status"),
+        "last_poll_processed": snap.get("last_poll_processed"),
+        "last_poll_errors": snap.get("last_poll_errors"),
+        "last_poll_partial": snap.get("last_poll_partial"),
+        "last_poll_error_msg": snap.get("last_poll_error_msg"),
+        "last_token_refresh_at": snap.get("last_token_refresh_at"),
+    }
+
+
 @router.get("/status", response_model=MailboxStatus)
 def get_status() -> MailboxStatus:
     mode = settings.email_mode
+    obs = _poll_observability_fields()
     if mode == "file_drop":
         inbox = Path(settings.inbox_dir).resolve()
         exists = inbox.exists()
@@ -106,6 +143,7 @@ def get_status() -> MailboxStatus:
             ),
             inbox_dir=str(inbox),
             inbox_pending=pending,
+            **obs,
         )
 
     if mode == "graph":
@@ -119,6 +157,7 @@ def get_status() -> MailboxStatus:
                 message=f"Graph verbonden als {tok.account_email or 'onbekend'}.",
                 account_email=tok.account_email,
                 expires_at=tok.expires_at,
+                **obs,
             )
         if tok and tok.refresh_token:
             return MailboxStatus(
@@ -127,12 +166,14 @@ def get_status() -> MailboxStatus:
                 state="degraded",
                 message="Access token verlopen — refresh nodig.",
                 account_email=tok.account_email,
+                **obs,
             )
         return MailboxStatus(
             mode="graph",
             connected=False,
             state="not_configured",
             message="Microsoft Graph-mode gekozen maar nog niet ingelogd. Klik 'Connect with Microsoft' op de E-mail-pagina.",
+            **obs,
         )
 
     if mode == "imap":
@@ -141,6 +182,7 @@ def get_status() -> MailboxStatus:
             connected=False,
             state="not_configured",
             message="IMAP-mode geselecteerd maar nog geen verbinding geconfigureerd.",
+            **obs,
         )
 
     return MailboxStatus(
@@ -148,6 +190,7 @@ def get_status() -> MailboxStatus:
         connected=False,
         state="error",
         message=f"Onbekende EMAIL_MODE: {mode}",
+        **obs,
     )
 
 

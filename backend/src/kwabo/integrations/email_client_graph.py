@@ -155,6 +155,15 @@ class GraphEmailClient:
             self._token = tok
 
         log.info("graph_token_refreshed", expires_in=expires_in)
+        # Heartbeat for /api/mailbox/status → dashboard so the operator sees
+        # "token werd N minuten geleden vernieuwd" without grepping logs.
+        try:
+            from kwabo.utils import mail_poll_status
+
+            mail_poll_status.record_token_refresh()
+        except Exception:  # noqa: BLE001
+            # Observability path must never break the refresh itself.
+            pass
 
     # ---------- EmailClient protocol ----------
 

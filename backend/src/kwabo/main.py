@@ -63,8 +63,12 @@ async def _mail_poll_loop(interval_seconds: int) -> None:
     Honours `mail_poll_interval_seconds`. Skips when email_mode='file_drop'
     (no remote inbox to poll). Catches all exceptions so a single failure
     doesn't kill the loop — Nico shouldn't have to re-deploy after one
-    network blip.
+    network blip. Each tick is recorded via `mail_poll_status.record_poll_tick`
+    so /api/mailbox/status can surface "is the poller actually running?"
+    without the operator having to grep Railway logs.
     """
+    from kwabo.utils import mail_poll_status
+
     if settings.email_mode == "file_drop":
         log.info("mail_poll_skipped", reason="email_mode=file_drop")
         return
@@ -74,16 +78,28 @@ async def _mail_poll_loop(interval_seconds: int) -> None:
         try:
             from kwabo.api.intake_trigger import scan_inbox
             result = await scan_inbox()
+            processed_n = len(result.get("processed") or [])
+            errors_n = len(result.get("errors") or [])
+            partial = bool(result.get("partial"))
             log.info(
                 "mail_poll_tick",
-                processed=len(result.get("processed") or []),
-                errors=len(result.get("errors") or []),
-                partial=result.get("partial"),
+                processed=processed_n,
+                errors=errors_n,
+                partial=partial,
+            )
+            mail_poll_status.record_poll_tick(
+                success=True,
+                processed=processed_n,
+                errors=errors_n,
+                partial=partial,
             )
         except asyncio.CancelledError:
             raise
         except Exception as exc:  # noqa: BLE001
             log.exception("mail_poll_tick_failed", error=str(exc)[:200])
+            mail_poll_status.record_poll_tick(
+                success=False, error_msg=str(exc)
+            )
         await asyncio.sleep(interval_seconds)
 
 
@@ -103,6 +119,20 @@ async def lifespan(app: FastAPI):
             "mail_poll_disabled",
             reason="interval too low (<30s)",
             requested=interval,
+        )
+    elif settings.email_mode == "graph":
+        # Loud warning: prod-config bug we hit before. With email_mode=graph
+        # and interval=0 the mailbox is unreachable to the user (nothing
+        # polls), but there's no error — just silence. Operator wonders why
+        # no orders come in. Make it impossible to miss.
+        log.warning(
+            "mail_poll_disabled_in_graph_mode",
+            interval=0,
+            hint=(
+                "MAIL_POLL_INTERVAL_SECONDS is 0 but EMAIL_MODE=graph. "
+                "Without a poller no mails will be fetched. Set the env "
+                "var to e.g. 300 (5 min) in Railway and redeploy."
+            ),
         )
     try:
         yield
