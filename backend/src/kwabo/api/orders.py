@@ -129,30 +129,62 @@ class AttachmentTokenResponse(BaseModel):
     expires_at: int
 
 
-def _find_eml_path(order_state: dict, email_id: str | None) -> Path | None:
-    """Locate the original .eml file for an order.
+def _resolve_eml_bytes(order_state: dict, email_id: str | None) -> bytes | None:
+    """Locate and return the raw .eml bytes for an order.
 
-    Lookup order:
-      1. state.incoming_document_path — set by intake_trigger for new orders
-         (auto-save under data/incoming_documents/by_email_id/<email_id>.eml).
-         This is the authoritative location for Graph-ingested mails.
-      2. state.source_path — file-drop / replay mails have this set to a
-         real filesystem path. Graph mails store "graph://<id>" here which
-         won't exist on disk — fall through.
-      3. inbox + processed dirs scanned by short-hash — legacy fallback for
-         file-drop pre-incoming-document era.
+    Lookup order (Fase 2 — Supabase Storage canoniek):
+      1. ``state.incoming_document_storage_key`` — Supabase Storage object.
+         Survives Railway redeploys (ephemere FS-fix). Authoritative for
+         orders created on or after Fase 2 deploy.
+      2. ``state.incoming_document_path`` — legacy local-disk path. Still
+         honored for orders created before Fase 2 + as dev/docker fallback
+         when Supabase isn't configured. Loses on Railway after redeploy.
+      3. ``state.source_path`` — file-drop / replay mails have a real path
+         here. Graph mails store ``graph://<id>`` which we skip on disk.
+      4. inbox + processed dirs scanned by short-hash — legacy file-drop
+         fallback (pre-incoming-document era).
+
+    Returns None when nothing works — caller surfaces a 404 with a honest
+    error message (not the misleading "verwijderd uit inbox/processed").
     """
     if isinstance(order_state, dict):
+        # 1) Supabase Storage — the new canonical source.
+        sk = order_state.get("incoming_document_storage_key")
+        if sk:
+            try:
+                from kwabo.integrations.supabase_storage import get_supabase_storage
+
+                client = get_supabase_storage()
+                if client is not None:
+                    return client.get_object(sk)
+            except Exception:  # noqa: BLE001
+                # Don't swallow silently — log and fall through to disk so
+                # an unhealthy Supabase doesn't take the dashboard down.
+                from kwabo.utils.logging import log as _log
+                _log.warning(
+                    "supabase_storage_get_failed",
+                    storage_key=sk,
+                    hint="falling back to legacy disk lookup",
+                )
+        # 2) Legacy disk path.
         idp = order_state.get("incoming_document_path")
         if idp:
             p = Path(idp)
             if p.exists():
-                return p
+                try:
+                    return p.read_bytes()
+                except OSError:
+                    pass
+        # 3) source_path (file-drop / replay).
         sp = order_state.get("source_path")
         if sp and not sp.startswith("graph://"):
             p = Path(sp)
             if p.exists():
-                return p
+                try:
+                    return p.read_bytes()
+                except OSError:
+                    pass
+    # 4) Short-hash scan of inbox / processed.
     for root in (settings.inbox_path, settings.processed_path):
         if not root.exists():
             continue
@@ -162,7 +194,7 @@ def _find_eml_path(order_state: dict, email_id: str | None) -> Path | None:
             except OSError:
                 continue
             if email_id and email_id in _short_hash(raw):
-                return candidate
+                return raw
     return None
 
 
@@ -172,13 +204,15 @@ def _short_hash(b: bytes) -> str:
     return hashlib.sha256(b).hexdigest()[:16]
 
 
-def _extract_attachment_bytes(eml_path: Path, wanted_name: str) -> tuple[bytes, str] | None:
-    """Walk the .eml and return (bytes, content_type) matching `wanted_name`.
+def _extract_attachment_bytes(raw_eml: bytes, wanted_name: str) -> tuple[bytes, str] | None:
+    """Walk the .eml bytes and return (bytes, content_type) matching `wanted_name`.
 
-    Handles direct attachments and files inside ZIP attachments (name "archive.zip:inner.pdf").
+    Handles direct attachments and files inside ZIP attachments (name
+    "archive.zip:inner.pdf"). Takes bytes (not a Path) so callers that
+    resolve the source from Supabase Storage don't need to round-trip
+    through a tempfile.
     """
-    raw = eml_path.read_bytes()
-    msg = email.message_from_bytes(raw, policy=email.policy.default)
+    msg = email.message_from_bytes(raw_eml, policy=email.policy.default)
 
     zip_outer = None
     zip_inner = None
@@ -509,14 +543,20 @@ def download_attachment(
         state = json.loads(row.order_state or "{}") if row.order_state else {}
         email_id = row.email_id
 
-    eml = _find_eml_path(state, email_id)
-    if not eml:
+    raw_eml = _resolve_eml_bytes(state, email_id)
+    if not raw_eml:
+        # Honest message: voor Graph-mails op een net-gedeployde Railway
+        # zonder Supabase Storage ligt het bestand er gewoon niet meer.
+        # Onderscheid 'no source at all' van 'attachment niet in source'.
         raise HTTPException(
             404,
-            "Originele .eml niet gevonden — bestand verwijderd uit inbox/processed?",
+            "Bron-document niet meer beschikbaar (storage leeg of niet "
+            "geconfigureerd). Configureer SUPABASE_URL + "
+            "SUPABASE_SERVICE_ROLE_KEY voor persistente .eml-opslag, of "
+            "upload het document opnieuw via 'Bron-document'.",
         )
 
-    result = _extract_attachment_bytes(eml, naam)
+    result = _extract_attachment_bytes(raw_eml, naam)
     if not result:
         raise HTTPException(404, f"Bijlage '{naam}' niet gevonden in e-mail")
 

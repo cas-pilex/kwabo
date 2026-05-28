@@ -57,6 +57,15 @@ class Settings(BaseSettings):
     # ever moves the SKU.
     europallet_artikelnr: str = "19820"
 
+    # --- Supabase Storage (canonieke .eml + incoming-doc opslag) ---
+    # Productie: Railway env-vars zetten zodat .eml-bestanden de ephemere
+    # Railway-FS overleven. Lokaal/docker dev mag leeg blijven — dan valt
+    # de code netjes terug op disk-persist onder INCOMING_DOCUMENTS_DIR.
+    supabase_url: str = ""
+    supabase_service_role_key: str = ""
+    supabase_bucket_incoming_docs: str = "incoming-docs"
+    supabase_signed_url_ttl_seconds: int = 600
+
     # --- Frontend ---
     # Public origin of the Next.js app. Used by the OAuth callback HTML
     # page to redirect the user back to the dashboard after Microsoft sign-in.

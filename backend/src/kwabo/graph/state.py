@@ -109,6 +109,11 @@ class OrderState(TypedDict, total=False):
     # to `create_sales_order_stepwise` and stores the per-op outcome plus the
     # union of NAV-side autofilled fields back into state for the audit trail.
     incoming_document_path: Optional[str]
+    # Supabase Storage object-key voor de bron-mail/PDF. Canoniek vanaf
+    # Fase 2 (zie productie-ready plan): vervangt `incoming_document_path`
+    # voor nieuwe orders. Path blijft voor legacy/back-compat — orders die
+    # vóór Supabase-storage zijn aangemaakt hebben alleen `_path`.
+    incoming_document_storage_key: Optional[str]
     nav_operations: list[dict]
     nav_operation_results: list[dict]
     nav_autofilled: dict

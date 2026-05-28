@@ -23,16 +23,20 @@ from kwabo.utils.pallet_logic import compute_europallet
 # --- Fix 1: _persist_source_eml fail-loud ---
 
 
-def test_persist_source_eml_returns_none_on_failure(monkeypatch, tmp_path, caplog):
-    """When write_bytes raises, return None and log at ERROR."""
+def test_persist_source_eml_returns_none_tuple_on_failure(monkeypatch, tmp_path, caplog):
+    """When BOTH Supabase AND write_bytes fail, return (None, None) so the
+    caller sets the `incoming_document_save_failed` marker.
+
+    Fase 2 wijziging: return-type is nu (storage_key, local_path). Origineel
+    was alleen `str | None`. Beide None = totaal-failure."""
+    # No Supabase configured → Supabase pad slaat over en gaat direct naar disk.
+    monkeypatch.setattr(intake_trigger.settings, "supabase_url", "")
+    monkeypatch.setattr(intake_trigger.settings, "supabase_service_role_key", "")
     monkeypatch.setattr(
         intake_trigger.settings,
         "incoming_documents_dir",
         str(tmp_path / "incoming"),
     )
-
-    class BoomBytes(bytes):
-        pass
 
     # Force the write path to fail by monkeypatching Path.write_bytes.
     from pathlib import Path
@@ -46,22 +50,26 @@ def test_persist_source_eml_returns_none_on_failure(monkeypatch, tmp_path, caplo
         result = intake_trigger._persist_source_eml(b"some-eml-bytes", "test-id-001")
     finally:
         monkeypatch.setattr(Path, "write_bytes", orig)
-    assert result is None
-    # Logger output is structured; assert at least one error event mentioned.
-    # caplog might not be wired to structlog setup — just check we returned None.
+    assert result == (None, None)
 
 
 def test_persist_source_eml_success_returns_path(monkeypatch, tmp_path):
+    """Disk-fallback succeeds when Supabase isn't configured."""
+    monkeypatch.setattr(intake_trigger.settings, "supabase_url", "")
+    monkeypatch.setattr(intake_trigger.settings, "supabase_service_role_key", "")
     monkeypatch.setattr(
         intake_trigger.settings,
         "incoming_documents_dir",
         str(tmp_path / "incoming"),
     )
-    result = intake_trigger._persist_source_eml(b"some-eml-bytes", "ok-id-002")
-    assert result is not None
-    assert result.endswith("ok-id-002.eml")
+    storage_key, local_path = intake_trigger._persist_source_eml(
+        b"some-eml-bytes", "ok-id-002"
+    )
+    assert storage_key is None  # no Supabase configured
+    assert local_path is not None
+    assert local_path.endswith("ok-id-002.eml")
     from pathlib import Path as _P
-    assert _P(result).read_bytes() == b"some-eml-bytes"
+    assert _P(local_path).read_bytes() == b"some-eml-bytes"
 
 
 # --- Fix 2: _run_extras isolates per-sub-order crashes ---

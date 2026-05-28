@@ -20,37 +20,71 @@ from kwabo.utils.logging import log
 router = APIRouter(prefix="/api/intake", tags=["intake"])
 
 
-def _persist_source_eml(raw_eml: bytes, email_id: str) -> str | None:
-    """Write the .eml to data/incoming_documents/by_email_id/{email_id}.eml.
+def _safe_eml_id(email_id: str | None) -> str:
+    """Sanitize an email_id for use as a storage key / filename. Keeps the
+    32-char alnum/-/_ rule that the legacy disk path used so existing tests
+    and DB rows keep matching."""
+    return "".join(c for c in (email_id or "") if c.isalnum() or c in ("-", "_"))[:32] or "source"
 
-    Called BEFORE app.ainvoke() so the path is on state when compose_order
-    runs — otherwise compose wouldn't emit the /incomingDocuments ops and
-    push_navision would not attach the source mail. Indexed by email_id
-    (stable, content-derived) instead of log_id (only known after intake)
-    to avoid a chicken-and-egg with the LangGraph pipeline.
 
-    On failure we log at ERROR (not warning) so disk-full / permission
-    issues are visible in alerting, and return None. Callers must check
-    the return value and decide whether to abort or continue without the
-    attachment — never silently proceed as if the file exists.
+def _persist_source_eml(raw_eml: bytes, email_id: str) -> tuple[str | None, str | None]:
+    """Persist the source .eml. Returns (storage_key, local_path).
+
+    Fase 2: Supabase Storage is the canonical store; local disk is fallback
+    (lokaal/docker dev). For each intake we try Supabase first; on success
+    the storage_key is canonical and we DON'T also write to disk (saves IO
+    on Railway's ephemere FS). On Supabase fail OR no Supabase configured,
+    we write to local disk so the legacy `_find_eml_path` branch keeps
+    working — at least until the container restarts.
+
+    Both return-values may be None: that signals total persist-failure and
+    the caller MUST set `state["incoming_document_save_failed"]=True` so
+    compose/push/UI know the source mail is not retrievable.
     """
+    from kwabo.integrations.supabase_storage import get_supabase_storage
+
+    safe_id = _safe_eml_id(email_id)
+    storage_client = get_supabase_storage()
+    storage_key: str | None = None
+
+    if storage_client is not None:
+        try:
+            storage_key = f"by_email_id/{safe_id}.eml"
+            storage_client.put_object(storage_key, raw_eml, "message/rfc822")
+            log.info(
+                "intake_source_eml_persisted",
+                email_id=email_id,
+                storage_key=storage_key,
+                size_bytes=len(raw_eml),
+            )
+            # Canonical store succeeded — skip disk write to save the
+            # ephemere-FS shuffle.
+            return storage_key, None
+        except Exception as exc:  # noqa: BLE001
+            log.error(
+                "intake_source_eml_supabase_failed",
+                email_id=email_id,
+                error=str(exc)[:300],
+                hint="falling back to local disk; check SUPABASE_URL / SERVICE_ROLE_KEY",
+            )
+            storage_key = None  # don't claim a key we didn't write
+
+    # Disk fallback path (dev / Supabase-unavailable). Keeps Railway-mode
+    # working in degraded form: PDFs are openable until the next restart.
     try:
         target_dir = settings.incoming_documents_path / "by_email_id"
         target_dir.mkdir(parents=True, exist_ok=True)
-        safe_id = "".join(c for c in (email_id or "") if c.isalnum() or c in ("-", "_"))[:32] or "source"
         target_path = target_dir / f"{safe_id}.eml"
         target_path.write_bytes(raw_eml)
-        return str(target_path.resolve())
+        return storage_key, str(target_path.resolve())
     except Exception as exc:  # noqa: BLE001
-        # ERROR level so monitoring picks it up. Marker is set by the caller
-        # on state so compose_order/push_navision know to skip attachment ops.
         log.error(
             "intake_source_eml_save_failed",
             email_id=email_id,
             error=str(exc)[:300],
             target_dir=str(settings.incoming_documents_path / "by_email_id"),
         )
-        return None
+        return storage_key, None
 
 # Stop processing new emails once the scan has been running this long.
 # Railway request timeout is ~5 min; we cut at 4 min so we can return a
@@ -82,13 +116,15 @@ async def scan_inbox() -> dict:
             # emits the /incomingDocuments ops. The file lives under
             # by_email_id/ — stable across retries and not log_id-dependent.
             if raw.raw_eml:
-                saved_path = _persist_source_eml(raw.raw_eml, raw.email_id)
+                storage_key, saved_path = _persist_source_eml(raw.raw_eml, raw.email_id)
+                if storage_key:
+                    state["incoming_document_storage_key"] = storage_key
                 if saved_path:
                     state["incoming_document_path"] = saved_path
-                else:
+                if not storage_key and not saved_path:
                     # Mark explicitly so compose / push / UI can show that
-                    # the source mail is missing on disk. Mail still gets
-                    # processed (header + lines) — only attachment skipped.
+                    # the source mail is missing. Mail still gets processed
+                    # (header + lines) — only attachment retrieval skipped.
                     state["incoming_document_save_failed"] = True
             from kwabo.graph.graph import get_ingest_app
             from kwabo.graph.runner import _run_extras
@@ -136,12 +172,14 @@ async def upload_eml(file: UploadFile) -> dict:
     raw = parse_eml_bytes(content)
     state = _raw_email_to_state(raw)
     # Save the .eml BEFORE the pipeline so compose_order picks up
-    # incoming_document_path and emits the /incomingDocuments ops.
+    # incoming_document_path/storage_key and emits the /incomingDocuments ops.
     if raw.raw_eml:
-        saved_path = _persist_source_eml(raw.raw_eml, raw.email_id)
+        storage_key, saved_path = _persist_source_eml(raw.raw_eml, raw.email_id)
+        if storage_key:
+            state["incoming_document_storage_key"] = storage_key
         if saved_path:
             state["incoming_document_path"] = saved_path
-        else:
+        if not storage_key and not saved_path:
             state["incoming_document_save_failed"] = True
     from kwabo.graph.graph import get_ingest_app
     from kwabo.graph.runner import _run_extras
