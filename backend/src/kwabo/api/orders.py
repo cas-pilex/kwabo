@@ -561,13 +561,16 @@ def download_attachment(
         raise HTTPException(404, f"Bijlage '{naam}' niet gevonden in e-mail")
 
     data, ctype = result
-    # Voor veilige Content-Disposition headers met non-ASCII filenames: RFC5987
+    # Voor veilige Content-Disposition headers met non-ASCII filenames: RFC5987.
+    # Plus: non-safe-inline content-types worden force-downloaded (zie
+    # _safe_response_headers — defense-in-depth tegen stored-XSS via
+    # reviewer-uploaded HTML/SVG).
     display_name = naam.split(":")[-1] if ":" in naam else naam
-    disp = f'{disposition}; filename="{display_name}"; filename*=UTF-8\'\'{quote(display_name)}'
+    _, headers = _safe_response_headers(ctype, disposition, display_name)
     return Response(
         content=data,
         media_type=ctype,
-        headers={"Content-Disposition": disp, "Cache-Control": "no-cache"},
+        headers=headers,
     )
 
 
@@ -859,6 +862,50 @@ def _content_type_for(name: str, fallback: str | None = None) -> str:
     return ctype or fallback or "application/octet-stream"
 
 
+# Types we trust to render inline in a same-origin browser tab. Everything
+# else is force-downloaded (Content-Disposition: attachment) regardless of
+# what the caller asked for, plus nosniff + sandbox CSP to neutralise any
+# HTML/SVG/JS that slipped through upload validation. Defense-in-depth
+# against stored-XSS via reviewer-uploaded bron-documenten.
+SAFE_INLINE_CONTENT_TYPES = {
+    "application/pdf",
+    "image/png",
+    "image/jpeg",
+    "image/jpg",
+    "image/gif",
+    "image/webp",
+}
+
+
+def _safe_response_headers(
+    content_type: str, disposition: str, filename: str
+) -> tuple[str, dict[str, str]]:
+    """Build (resolved_disposition, headers) for a same-origin file serve.
+
+    - Non-safe-inline content-types are force-downgraded to 'attachment'
+      so the browser saves instead of rendering (kills stored-XSS via
+      uploaded text/html, image/svg+xml, etc.).
+    - X-Content-Type-Options: nosniff prevents Chrome from sniffing a
+      "text/plain" file as HTML even when contents look like markup.
+    - Content-Security-Policy: sandbox isolates any embedded iframe view
+      (no scripts, no same-origin requests).
+    """
+    effective_disposition = disposition
+    ct_lower = (content_type or "").lower().split(";", 1)[0].strip()
+    if effective_disposition == "inline" and ct_lower not in SAFE_INLINE_CONTENT_TYPES:
+        effective_disposition = "attachment"
+    disp_header = (
+        f'{effective_disposition}; filename="{filename}"; '
+        f"filename*=UTF-8''{quote(filename)}"
+    )
+    return effective_disposition, {
+        "Content-Disposition": disp_header,
+        "Cache-Control": "no-cache",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "sandbox; default-src 'none'",
+    }
+
+
 @router.post(
     "/{order_id}/incoming-doc-token", response_model=AttachmentTokenResponse
 )
@@ -945,10 +992,14 @@ def download_incoming_doc(
             "opslag.",
         )
 
-    ctype = stored_ctype or _content_type_for(filename)
-    disp = f'{disposition}; filename="{filename}"; filename*=UTF-8\'\'{quote(filename)}'
+    # Use extension-derived content-type, not the stored one — the upload
+    # endpoint stored whatever Content-Type the browser sent, which is
+    # client-controllable. Extension-derived is server-decided. Stored
+    # value only used as fallback for application/octet-stream extensions.
+    ctype = _content_type_for(filename, fallback=stored_ctype)
+    _, headers = _safe_response_headers(ctype, disposition, filename)
     return Response(
         content=data,
         media_type=ctype,
-        headers={"Content-Disposition": disp, "Cache-Control": "no-cache"},
+        headers=headers,
     )
