@@ -100,6 +100,12 @@ async def _mail_poll_loop(interval_seconds: int) -> None:
             mail_poll_status.record_poll_tick(
                 success=False, error_msg=str(exc)
             )
+            from kwabo.utils.alerts import alert
+            alert(
+                "mail_poll_tick_failed",
+                "high",
+                {"error": str(exc)[:300]},
+            )
         await asyncio.sleep(interval_seconds)
 
 
@@ -111,6 +117,25 @@ async def lifespan(app: FastAPI):
     log.info("app_started", routes=len(app.routes))
     poll_task: asyncio.Task | None = None
     interval = settings.mail_poll_interval_seconds
+    # Fase 5: multi-worker guard. De poll-task draait per Python-proces;
+    # bij `WEB_CONCURRENCY > 1` (gunicorn met N workers) ploft hij N keer
+    # tegelijk de Graph-mailbox. `mark_seen` is voor Graph idempotent
+    # (PATCH isRead=true), maar Claude API-quotum is dat niet. Log een
+    # luide WARNING en SKIP de poll-task in deze worker als WEB_CONCURRENCY
+    # > 1 — operator moet dan in Railway óf 1 replica gebruiken óf een
+    # dedicated single-worker process voor de poller opzetten.
+    web_concurrency = int(os.environ.get("WEB_CONCURRENCY", "1") or "1")
+    if web_concurrency > 1 and interval and interval >= 30:
+        log.warning(
+            "mail_poll_skipped_multi_worker",
+            web_concurrency=web_concurrency,
+            hint=(
+                "WEB_CONCURRENCY>1 zou N-voudige Graph-scans veroorzaken. "
+                "Zet WEB_CONCURRENCY=1 in Railway of run de poller in een "
+                "aparte service. Skip poll-task in deze worker."
+            ),
+        )
+        interval = 0  # neutraliseer de spawn-branch hieronder
     if interval and interval >= 30:
         poll_task = asyncio.create_task(_mail_poll_loop(interval))
         log.info("mail_poll_started", interval_seconds=interval)

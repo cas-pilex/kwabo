@@ -84,6 +84,12 @@ def _persist_source_eml(raw_eml: bytes, email_id: str) -> tuple[str | None, str 
             error=str(exc)[:300],
             target_dir=str(settings.incoming_documents_path / "by_email_id"),
         )
+        from kwabo.utils.alerts import alert
+        alert(
+            "intake_source_eml_save_failed",
+            "high",
+            {"email_id": email_id, "error": str(exc)[:200]},
+        )
         return storage_key, None
 
 # Stop processing new emails once the scan has been running this long.

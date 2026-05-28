@@ -1,10 +1,10 @@
 # Kwabo Order Intake AI
 
-AI-gestuurd systeem dat inkomende order-e-mails op `info@kwabo.nl` automatisch verwerkt tot conceptverkooporders in Microsoft Dynamics NAV 2018. Zie `../kwabo_technische_beschrijving.md.pdf` voor de volledige specificatie.
+AI-gestuurd systeem dat inkomende order-e-mails op `info@kwabo.nl` automatisch verwerkt tot conceptverkooporders in Microsoft Dynamics NAV 2018. Zie `KWABO_TECHNISCHE_AUDIT.md` voor de actuele, evidence-based technische beschrijving.
 
 ## Status (huidige implementatie)
 
-- ✅ **Python backend:** LangGraph-pipeline van 7 nodes (intake → classify → extract → match_customer → match_articles → validate_prices → compose_order) + finalize (push_navision → send_confirmation)
+- ✅ **Python backend:** LangGraph-pipeline van 10 nodes (intake → classify → extract → match_customer → select_ship_to → match_articles → apply_mixprijzen → compute_europallet → validate_prices → compose_order) + finalize (push_navision → send_confirmation)
 - ✅ **LLM-extractie:** Claude Sonnet 4.5 met prompt voor NL/DE/EN orders; robuuste JSON-parser die truncatie repareert
 - ✅ **Mock Navision:** in-memory met persist naar `data/navision_mock/orders/*.json`
 - ✅ **File-drop mailbox:** `.eml` bestanden in `data/inbox/` → `POST /api/intake/scan`
@@ -128,8 +128,25 @@ Daarna eenmalig `python backend/scripts/sync_navision_masters.py --full` om klan
 - `EMAIL_MODE=graph`
 - Doorloop OAuth via dashboard → `/api/mailbox/oauth/start`
 
-**File-drop fallback** (huidige standaard, geen wijziging vereist):
+**File-drop fallback** (alleen dev/docker; productie draait op Graph):
 - `EMAIL_MODE=file_drop` + drop `.eml` files in `data/inbox/`
+
+**Productie poll-cadence**: zet `MAIL_POLL_INTERVAL_SECONDS=300` in Railway
+(default 0 = poller UIT). De poller draait per Python-proces — bij
+`WEB_CONCURRENCY > 1` wordt hij in elke worker behalve de eerste
+geskipt (zie `mail_poll_skipped_multi_worker` log-event). Houd het op
+1 replica óf zet de poller in een aparte service.
+
+**Persistente .eml-opslag** (productie verplicht — anders 404 op PDF-viewer
+na elke Railway-deploy ivm ephemere filesystem): zet `SUPABASE_URL` +
+`SUPABASE_SERVICE_ROLE_KEY` + `SUPABASE_BUCKET_INCOMING_DOCS=incoming-docs`
+en maak de private bucket aan in Supabase Studio. Backfill van bestaande
+order_log rijen via `python backend/scripts/backfill_incoming_docs_to_supabase.py`.
+
+**Alerting** (optioneel maar aanbevolen): zet `KWABO_SLACK_WEBHOOK_URL`
+zodat silent-failure events (`intake_source_eml_save_failed`,
+`nav2018_stepwise_failure`, `mail_poll_tick_failed`, `state_json_large`)
+in een Slack-channel landen i.p.v. alleen in Railway-logs.
 
 **IMAP** — niet geïmplementeerd. `EMAIL_MODE=imap` geeft een duidelijke `NotImplementedError` zodat configuratiefouten zichtbaar zijn.
 

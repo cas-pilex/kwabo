@@ -187,6 +187,15 @@ async def push_navision_node(state: OrderState) -> OrderState:
                         order_log_id=state["order_log_id"],
                         size_kb=round(size_kb, 1),
                     )
+                    from kwabo.utils.alerts import alert
+                    alert(
+                        "state_json_large",
+                        "warning",
+                        {
+                            "order_log_id": state["order_log_id"],
+                            "size_kb": round(size_kb, 1),
+                        },
+                    )
                 row.order_state = serialized
                 row.navision_order_nr = sales_order_number
                 row.status = "pushed"

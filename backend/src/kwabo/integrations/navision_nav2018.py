@@ -758,6 +758,18 @@ class Nav2018ODataClient:
                     error_type=type(exc).__name__,
                     error=err_msg,
                 )
+                from kwabo.utils.alerts import alert
+                alert(
+                    "nav2018_stepwise_failure",
+                    "high",
+                    {
+                        "op_index": idx,
+                        "op_label": op.get("label"),
+                        "op_method": method,
+                        "status": response_status,
+                        "error": err_msg[:300],
+                    },
+                )
                 return StepwiseResult(
                     sales_order_id=sales_order_no,
                     sales_order_number=sales_order_no,
