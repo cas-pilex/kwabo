@@ -52,6 +52,16 @@ FORWARD_MARKERS = re.compile(
 SUBJECT_PREFIX = re.compile(r"^\s*(fw|fwd|wg|rv|re|aw|doorg\.)\s*:", re.IGNORECASE)
 
 
+def _as_text(value) -> str:
+    """Coerce naar str zodat een per ongeluk bytes-veld (zie email_client
+    `_as_text` / de prod-crash 29-05-2026) nooit een str-regex laat crashen."""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (bytes, bytearray)):
+        return bytes(value).decode("utf-8", errors="replace")
+    return str(value or "")
+
+
 @dataclass
 class ForwardInfo:
     is_forwarded: bool
@@ -73,6 +83,12 @@ def detect_forward(
       (b) OR the subject starts with Fw:/Fwd:/Wg:/Doorg.: AND body contains a From-line,
       (c) OR the body contains an explicit "Forwarded message" marker.
     """
+    # Defensief: nooit een str-regex op bytes draaien (prod-crash 29-05-2026).
+    email_from = _as_text(email_from)
+    email_subject = _as_text(email_subject)
+    email_body = _as_text(email_body)
+    bijlagen_content = _as_text(bijlagen_content)
+
     outer_email_match = EMAIL_RE.search(email_from or "")
     outer_email = outer_email_match.group(0).lower() if outer_email_match else ""
     outer_is_kwabo = outer_email.endswith(f"@{KWABO_DOMAIN}")

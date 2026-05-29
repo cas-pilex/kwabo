@@ -44,6 +44,11 @@ def setup_logging() -> None:
             structlog.contextvars.merge_contextvars,
             structlog.processors.add_log_level,
             structlog.processors.TimeStamper(fmt="iso", utc=False),
+            # Render exc_info (van log.exception(...)) als 'exception=<traceback>'
+            # in de logregel. Zonder deze processor schreef KeyValueRenderer
+            # alleen 'exc_info=True' weg — geen stackframes — waardoor we de
+            # prod-crash van 29-05-2026 blind moesten debuggen.
+            structlog.processors.format_exc_info,
             structlog.processors.KeyValueRenderer(key_order=["event"], sort_keys=True),
         ],
         wrapper_class=structlog.make_filtering_bound_logger(level),

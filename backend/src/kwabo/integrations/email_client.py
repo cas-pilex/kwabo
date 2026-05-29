@@ -45,6 +45,22 @@ class EmailClient(Protocol):
     def mark_seen(self, email_id: str) -> None: ...
 
 
+def _as_text(value) -> str:
+    """Coerce wat `get_content()` ook teruggeeft naar str.
+
+    `Message.get_content()` levert *bytes* bij een non-text content-type
+    (kale PDF, application/octet-stream, …). Die bytes mogen nooit als
+    `email_body` doorlekken: downstream regex-stappen (detect_forward,
+    match_customer) draaien een str-pattern en crashen dan met
+    "cannot use a string pattern on a bytes-like object" — de prod-crash
+    van 29-05-2026 die élke mail in een poison-pill loop duwde."""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (bytes, bytearray)):
+        return bytes(value).decode("utf-8", errors="replace")
+    return str(value or "")
+
+
 def _plain_body(msg: Message) -> str:
     if msg.is_multipart():
         plain = []
@@ -55,14 +71,14 @@ def _plain_body(msg: Message) -> str:
                 continue
             if ctype == "text/plain":
                 try:
-                    plain.append(part.get_content())
+                    plain.append(_as_text(part.get_content()))
                 except Exception:  # noqa: BLE001
                     payload = part.get_payload(decode=True)
                     if payload:
                         plain.append(payload.decode("utf-8", errors="replace"))
             elif ctype == "text/html":
                 try:
-                    html.append(part.get_content())
+                    html.append(_as_text(part.get_content()))
                 except Exception:  # noqa: BLE001
                     payload = part.get_payload(decode=True)
                     if payload:
@@ -73,7 +89,7 @@ def _plain_body(msg: Message) -> str:
             return _strip_html(html[0])
         return ""
     try:
-        body = msg.get_content()
+        body = _as_text(msg.get_content())
     except Exception:  # noqa: BLE001
         payload = msg.get_payload(decode=True)
         body = payload.decode("utf-8", errors="replace") if payload else ""

@@ -79,19 +79,32 @@ async def _mail_poll_loop(interval_seconds: int) -> None:
             from kwabo.api.intake_trigger import scan_inbox
             result = await scan_inbox()
             processed_n = len(result.get("processed") or [])
-            errors_n = len(result.get("errors") or [])
+            err_list = result.get("errors") or []
+            errors_n = len(err_list)
             partial = bool(result.get("partial"))
+            # Surface the distinct per-mail error texts in the heartbeat so
+            # /api/mailbox/status toont de OORZAAK (niet alleen een telling).
+            # Zonder dit zagen we live errors=10 met last_poll_error_msg=null
+            # en moesten we blind Railway-logs graven.
+            err_summary = None
+            if err_list:
+                distinct = list(dict.fromkeys(
+                    (e.get("error") or "") for e in err_list if e.get("error")
+                ))
+                err_summary = "; ".join(distinct)[:300] or None
             log.info(
                 "mail_poll_tick",
                 processed=processed_n,
                 errors=errors_n,
                 partial=partial,
+                error_sample=err_summary,
             )
             mail_poll_status.record_poll_tick(
                 success=True,
                 processed=processed_n,
                 errors=errors_n,
                 partial=partial,
+                error_msg=err_summary,
             )
         except asyncio.CancelledError:
             raise

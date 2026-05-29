@@ -181,4 +181,16 @@ def config_summary() -> dict:
             else "sqlite" if settings.database_url.startswith("sqlite")
             else "other"
         ),
+        "supabase": {
+            # Presence-only zodat we "is Railway de Supabase-vars echt gaan
+            # laden?" in één GET kunnen verifiëren zonder secrets te lekken.
+            "url_set": bool(settings.supabase_url),
+            "url": settings.supabase_url,  # niet geheim (publiek project-endpoint)
+            "service_role_key": _mask(settings.supabase_service_role_key),
+            "bucket_incoming_docs": settings.supabase_bucket_incoming_docs,
+            "signed_url_ttl_seconds": settings.supabase_signed_url_ttl_seconds,
+            "storage_active": bool(
+                settings.supabase_url and settings.supabase_service_role_key
+            ),
+        },
     }

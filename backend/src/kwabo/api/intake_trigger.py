@@ -97,6 +97,14 @@ def _persist_source_eml(raw_eml: bytes, email_id: str) -> tuple[str | None, str 
 # meaningful response with partial=true and the reviewer can re-scan.
 SCAN_WALL_CLOCK_BUDGET_SECONDS = 240
 
+# Poison-pill guard. Een mail die telkens crasht VÓÓR mark_seen blijft
+# ongelezen en faalt élke poll-tick opnieuw — dat verbrandt Anthropic-budget
+# en blokkeert de queue (precies de prod-situatie van 29-05-2026). Na zoveel
+# opeenvolgende fouten quarantainen we de mail (mark_seen + luide alert) zodat
+# de loop stopt. In-process teller: herstart reset 'm, dat is acceptabel.
+MAX_INTAKE_RETRIES = 3
+_intake_failures: dict[str, int] = {}
+
 
 @router.post("/scan")
 async def scan_inbox() -> dict:
@@ -157,9 +165,40 @@ async def scan_inbox() -> dict:
                 "sub_orders": [e.get("order_log_id") for e in extras],
             })
             client.mark_seen(raw.email_id)
+            _intake_failures.pop(raw.email_id, None)  # geslaagd → teller reset
         except Exception as e:  # noqa: BLE001
             log.exception("intake_scan_email_failed", email_id=raw.email_id)
             errors.append({"email_id": raw.email_id, "error": str(e)[:200]})
+            n_fail = _intake_failures.get(raw.email_id, 0) + 1
+            _intake_failures[raw.email_id] = n_fail
+            if n_fail >= MAX_INTAKE_RETRIES:
+                # Quarantine: stop de poison-pill loop. mark_seen markeert de
+                # mail als gelezen (blijft in de mailbox, dus terugvindbaar),
+                # zodat hij niet elke tick opnieuw faalt. Luide alert zodat een
+                # mens 'm handmatig kan oppakken.
+                try:
+                    client.mark_seen(raw.email_id)
+                    _intake_failures.pop(raw.email_id, None)
+                    log.error(
+                        "intake_mail_quarantined",
+                        email_id=raw.email_id,
+                        failures=n_fail,
+                        error=str(e)[:200],
+                    )
+                    from kwabo.utils.alerts import alert
+                    alert(
+                        "intake_mail_quarantined",
+                        "high",
+                        {
+                            "email_id": raw.email_id,
+                            "failures": n_fail,
+                            "error": str(e)[:200],
+                        },
+                    )
+                except Exception:  # noqa: BLE001
+                    # mark_seen-fail mag de scan niet kelderen; volgende tick
+                    # probeert opnieuw te quarantainen.
+                    pass
     log.info(
         "intake_scan_done",
         processed=len(processed),
