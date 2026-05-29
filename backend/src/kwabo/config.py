@@ -66,6 +66,14 @@ class Settings(BaseSettings):
     supabase_bucket_incoming_docs: str = "incoming-docs"
     supabase_signed_url_ttl_seconds: int = 600
 
+    # --- Demo-seed ---
+    # De seed (db/seed.py) zet 16 demo-klanten (10001-10016) met de
+    # e-mailadressen van echte order-mails. In PRODUCTIE vervuilt dat
+    # match_customer: een echte mail matcht op het demo-nummer i.p.v. de
+    # NAV-klant, en de push faalt (nummer bestaat niet in NAV). Daarom seeden
+    # we alleen in dev/test (sqlite). Deze flag is een expliciete override.
+    seed_demo_data: bool = True
+
     # --- Frontend ---
     # Public origin of the Next.js app. Used by the OAuth callback HTML
     # page to redirect the user back to the dashboard after Microsoft sign-in.

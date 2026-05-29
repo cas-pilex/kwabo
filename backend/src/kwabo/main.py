@@ -125,8 +125,20 @@ async def _mail_poll_loop(interval_seconds: int) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    with Session(engine) as s:
-        seed(s)
+    # Demo-seed ALLEEN in dev/test (sqlite). In productie (postgres) zou het
+    # 16 demo-klanten (10001-10016) inschieten die de e-mailadressen van echte
+    # order-mails dragen → match_customer matcht op een NAV-nummer dat niet in
+    # de live company bestaat → push faalt. Zie config.seed_demo_data.
+    if settings.seed_demo_data and settings.database_url.startswith("sqlite"):
+        with Session(engine) as s:
+            seed(s)
+        log.info("seed_applied", reason="sqlite_dev_or_test")
+    else:
+        log.info(
+            "seed_skipped",
+            seed_demo_data=settings.seed_demo_data,
+            db_kind="postgres" if settings.database_url.startswith("postgresql") else "other",
+        )
     log.info("app_started", routes=len(app.routes))
     poll_task: asyncio.Task | None = None
     interval = settings.mail_poll_interval_seconds

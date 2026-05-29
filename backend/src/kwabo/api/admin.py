@@ -466,6 +466,20 @@ def db_counts() -> DbCounts:
     )
 
 
+@router.post("/purge-demo-seed")
+def purge_demo_seed_endpoint() -> dict:
+    """Verwijder de demo-seed klanten (10001-10016) + mappings/prijzen uit de
+    DB. Nodig in productie: die demo-klanten dragen de e-mailadressen van echte
+    order-mails en routeren de match naar een NAV-nummer dat niet bestaat →
+    push faalt. Idempotent."""
+    from kwabo.db.seed import purge_demo_seed
+
+    with Session(engine) as s:
+        removed = purge_demo_seed(s)
+    log.info("purge_demo_seed", **removed)
+    return {"ok": True, "removed": removed}
+
+
 async def _run_sync_job(job_id: str, selected: set[str], dry_run: bool) -> None:
     """Background worker. Updates _JOBS[job_id] as it goes; never raises
     to caller (errors are recorded on the job)."""

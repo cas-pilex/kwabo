@@ -97,6 +97,44 @@ PRIJS_SEED = [
 ]
 
 
+DEMO_NAV_KLANTNRS = [k[0] for k in KLANTEN_SEED]
+
+
+def purge_demo_seed(session: Session) -> dict:
+    """Verwijder de demo-seed rijen (klanten 10001-10016 + hun artikelmappings
+    en prijsafspraken).
+
+    In productie vervuilen die match_customer: ze dragen de e-mailadressen van
+    echte order-mails, waardoor een mail op het demo-NAV-nummer matcht dat NIET
+    in de live NAV-company bestaat → Approve→push faalt met
+    Internal_InvalidTableRelation. Echte NAV-klanten zitten in de 5xxxx/6xxxx-
+    range, dus klant_nr 10001-10016 is exclusief demo en veilig te verwijderen.
+    Idempotent: tweede run verwijdert 0.
+    """
+    from sqlmodel import select
+
+    nrs = set(DEMO_NAV_KLANTNRS)
+    counts = {"klanten": 0, "artikelmappings": 0, "prijsafspraken": 0}
+
+    for k in session.exec(
+        select(Klantenkaart).where(Klantenkaart.nav_klantnr.in_(nrs))
+    ).all():
+        session.delete(k)
+        counts["klanten"] += 1
+    for a in session.exec(
+        select(KlantenkaartArtikel).where(KlantenkaartArtikel.klant_nr.in_(nrs))
+    ).all():
+        session.delete(a)
+        counts["artikelmappings"] += 1
+    for p in session.exec(
+        select(Prijsafspraak).where(Prijsafspraak.klant_nr.in_(nrs))
+    ).all():
+        session.delete(p)
+        counts["prijsafspraken"] += 1
+    session.commit()
+    return counts
+
+
 def seed(session: Session) -> None:
     from sqlmodel import select
 
