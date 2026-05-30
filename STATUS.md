@@ -1,5 +1,46 @@
 # Status & Testrapport — Kwabo Order Intake AI
 
+> ⚠️ De secties hieronder vanaf "De app draait" zijn van **2026-04-14** en
+> beschrijven de vroege lokale mock-opzet (7 nodes, mock-Navision, demo-seed als
+> model). Ze zijn historisch — de actuele productie-status staat hieronder.
+
+## Productie-status — 2026-05-30 (live geverifieerd)
+
+Backend op Railway (`kwabo-production.up.railway.app`), frontend op Vercel
+(`kwabo-pilex.vercel.app`), Postgres + Storage op Supabase. **Pipeline = 10
+nodes**, `EMAIL_MODE=graph`, `NAVISION_MODE=nav2018` (live NAV 2018 OData,
+company `Kopie 2026`).
+
+### Wat live werkt (met bewijs)
+- **Mailbox-intake**: Graph-poller elke 5 min, `last_poll_status: ok`,
+  `errors: 0`. Mails → review-queue automatisch.
+- **AI-pijplijn**: classify → extract → klant/artikelen/prijzen matchen →
+  compose. NAV-mirror gevuld (1787 klanten, 3757 artikelen, 3000
+  kruisverwijzingen, 2506 ship-to).
+- **Bron-.eml/PDF persistent** in Supabase Storage (overleeft Railway-deploys).
+- **Approve → Navision push** end-to-end bewezen: order 120 (Würth 61030) →
+  `VO2606194` aangemaakt in `Kopie 2026`.
+
+### Fixes in deze sessie (29-30 mei)
+- `dc9946a` — **crash-fix**: bytes-`email_body` sloopte élke mail in
+  `match_customer` (regex-op-bytes) → poison-pill loop. Nu `_plain_body` +
+  `detect_forward` str-coercie. Plus poison-pill quarantine (na 3 fouten),
+  error-oorzaak in `/api/mailbox/status`, en tracebacks in de logs.
+- `c4e3563` — **seed-fix**: demo-klanten (10001-10016) werden in prod geseed mét
+  echte order-emailadressen → matchten op niet-bestaande NAV-nummers → push
+  faalde. Nu: seed alleen in dev/test; `POST /api/admin/purge-demo-seed`
+  verwijderde de 16 demo-klanten uit prod (1803→1787).
+
+### Bekende restpunten (geen blokkades)
+- Review-orders verwerkt vóór `c4e3563` dragen nog het foute klantnummer in hun
+  state → reviewer corrigeert handmatig vóór Approve.
+- TABS/Dietrich-mails matchen mogelijk naar "review" i.p.v. automatisch (hun
+  order-e-mailadres wijkt af van het adres in NAV-master) — correct gedrag.
+- Tests: 397 passed, 17 skipped (skips = live-LLM regressie, vereist
+  `ANTHROPIC_API_KEY`).
+
+---
+
 Laatste run: 2026-04-14. Alles getest op Windows 11 / Python 3.14 / Node 24 / pnpm 10.
 
 ## De app draait. Dit is hoe je erin komt:

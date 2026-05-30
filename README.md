@@ -145,8 +145,17 @@ order_log rijen via `python backend/scripts/backfill_incoming_docs_to_supabase.p
 
 **Alerting** (optioneel maar aanbevolen): zet `KWABO_SLACK_WEBHOOK_URL`
 zodat silent-failure events (`intake_source_eml_save_failed`,
-`nav2018_stepwise_failure`, `mail_poll_tick_failed`, `state_json_large`)
-in een Slack-channel landen i.p.v. alleen in Railway-logs.
+`nav2018_stepwise_failure`, `mail_poll_tick_failed`, `state_json_large`,
+`intake_mail_quarantined`) in een Slack-channel landen i.p.v. alleen in
+Railway-logs.
+
+**Demo-seed** — `db/seed.py` zet 16 demo-klanten (10001-10016) met de
+e-mailadressen van de voorbeeld-orders. Die draaien **alleen in dev/test
+(sqlite)**; in productie (postgres) seedt de app niets (`seed_demo_data` flag +
+DB-check in `main.py`). Stonden er nog demo-klanten in een prod-DB van vóór deze
+guard? Verwijder ze eenmalig met `POST /api/admin/purge-demo-seed` (auth-gated,
+idempotent) — anders matchen echte order-mails op een NAV-nummer dat niet in de
+live company bestaat en faalt de Approve→push met `Internal_InvalidTableRelation`.
 
 **IMAP** — niet geïmplementeerd. `EMAIL_MODE=imap` geeft een duidelijke `NotImplementedError` zodat configuratiefouten zichtbaar zijn.
 
@@ -180,6 +189,7 @@ Bij elke NAV-error tijdens go-live worden request body, response body+status, er
    - `EMAIL_MODE=graph` + `GRAPH_*` wanneer je echte mailbox koppelt
 5. Bij eerste deploy: zet `EMAIL_MODE=file_drop` en `NAVISION_MODE=mock` om de boel in mock-mode te smoke-testen, daarna omschakelen.
 6. Health check: Railway pingt `/api/health` (al ingebouwd in `railway.toml`).
+7. **Build faalt op `mise ERROR ... No GitHub artifact attestations found for python`?** Een nieuwe Railpack/mise-versie verifieert sinds mei 2026 artifact-attestations die voor de Python-build (nog) niet bestaan. Zet env `MISE_PYTHON_GITHUB_ATTESTATIONS=false` in Railway en redeploy — dit zet alleen die verificatie van de Python-download uit, niet je app/security.
 
 ### 3. Vercel (frontend)
 
