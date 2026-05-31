@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import date, datetime
 from typing import Any, Optional
 
@@ -22,6 +23,15 @@ from kwabo.db.models import (
     OrderLog,
     Prijsafspraak,
 )
+
+
+def _split_emails(raw: str | None) -> set[str]:
+    """NAV stores several addresses in one field, separated by ; , / or
+    whitespace (e.g. "purchaseorders@ferney.nl; magazijn@ferney.nl"). Split
+    into a normalized set of individual addresses."""
+    if not raw:
+        return set()
+    return {p.strip().lower() for p in re.split(r"[;,/\s]+", raw) if "@" in p}
 
 
 class KlantRepo:
@@ -49,6 +59,26 @@ class KlantRepo:
         ).first()
         if alias:
             return self.by_nav_nr(alias.klant_nr)
+        # Fallback: the address may be one entry in a multi-address field that
+        # exact equality missed (Ferney 50262 stores three addresses in one
+        # field). Narrow with LIKE, then verify it is a real token. Only accept
+        # an UNAMBIGUOUS single customer — a shared address such as
+        # confirmation@tabsholland.nl belongs to many customers and must go to
+        # manual review instead of an arbitrary pick.
+        like = f"%{normalized}%"
+        candidates = self.s.exec(
+            select(Klantenkaart).where(
+                func.lower(Klantenkaart.email).like(like)
+                | func.lower(Klantenkaart.email_bestelling).like(like)
+            )
+        ).all()
+        matches = [
+            c
+            for c in candidates
+            if normalized in (_split_emails(c.email) | _split_emails(c.email_bestelling))
+        ]
+        if len(matches) == 1:
+            return matches[0]
         return None
 
     def list_aliases(self, nav_klantnr: str) -> list[KlantEmailAlias]:
