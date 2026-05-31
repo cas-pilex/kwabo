@@ -6,7 +6,6 @@ from typing import Optional
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
-from sqlalchemy.pool import NullPool
 from sqlmodel import Session, SQLModel, create_engine
 
 from kwabo.config import settings
@@ -16,10 +15,15 @@ def _build_engine(url: str) -> Engine:
     """Engine factory with dialect-specific knobs.
 
     sqlite — share connection across threads (FastAPI dev server).
-    postgres on Supabase pgbouncer (port 6543, transaction mode) — disable
-        SQLAlchemy pooling (pgbouncer already pools) and disable psycopg3
-        server-side prepared statements (incompatible with transaction-mode
-        bouncer).
+    postgres on Supabase pgbouncer (port 6543, transaction mode) — keep a
+        CLIENT-SIDE connection pool. The app is a long-running Railway process,
+        so reusing the app->bouncer connection avoids a fresh TCP+TLS+auth
+        handshake on every request (that NullPool tax was ~1.3s per DB call in
+        production). pgbouncer still pools server connections per transaction;
+        the only requirement for transaction mode is no server-side prepared
+        statements (prepare_threshold=None). pool_pre_ping validates a pooled
+        connection before use so a bouncer-dropped socket is transparently
+        replaced instead of erroring.
     """
     if url.startswith("sqlite"):
         return create_engine(url, echo=False, connect_args={"check_same_thread": False})
@@ -27,7 +31,10 @@ def _build_engine(url: str) -> Engine:
         return create_engine(
             url,
             echo=False,
-            poolclass=NullPool,
+            pool_pre_ping=True,
+            pool_size=5,
+            max_overflow=10,
+            pool_recycle=1800,
             connect_args={"prepare_threshold": None},
         )
     return create_engine(url, echo=False)
