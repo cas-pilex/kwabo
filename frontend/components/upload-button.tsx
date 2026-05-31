@@ -1,8 +1,7 @@
 "use client";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
-
-const API = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+import { API_BASE, getAuthToken } from "@/lib/api";
 
 export function UploadButton({ onDone }: { onDone?: () => void }) {
   const [busy, setBusy] = useState(false);
@@ -12,10 +11,16 @@ export function UploadButton({ onDone }: { onDone?: () => void }) {
     if (!files || files.length === 0) return;
     setBusy(true);
     try {
+      const token = await getAuthToken();
+      const authHeader = token ? { Authorization: `Bearer ${token}` } : undefined;
       for (const f of Array.from(files)) {
         const fd = new FormData();
         fd.append("file", f);
-        const r = await fetch(`${API}/api/intake/upload`, { method: "POST", body: fd });
+        const r = await fetch(`${API_BASE}/api/intake/upload`, {
+          method: "POST",
+          body: fd,
+          headers: authHeader,
+        });
         if (!r.ok) {
           let msg = `HTTP ${r.status}`;
           try {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { API_BASE } from "@/lib/api";
+import { API_BASE, getAuthToken } from "@/lib/api";
 
 export default function LogsPage() {
   const [lines, setLines] = useState<string[]>([]);
@@ -15,7 +15,10 @@ export default function LogsPage() {
     console.log("[logs] useEffect init fetch");
     (async () => {
       try {
-        const r = await fetch(`${API_BASE}/api/logs/tail?lines=500`);
+        const token = await getAuthToken();
+        const r = await fetch(`${API_BASE}/api/logs/tail?lines=500`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
         const d = await r.json();
         console.log("[logs] got", d?.lines?.length, "lines");
         setLines(d.lines || []);
@@ -33,17 +36,29 @@ export default function LogsPage() {
       esRef.current = null;
       return;
     }
-    const es = new EventSource(`${API_BASE}/api/logs/stream`);
-    esRef.current = es;
-    es.onmessage = (ev) => {
-      if (!ev.data || ev.data.startsWith(":")) return;
-      setLines((prev) => [...prev.slice(-1999), ev.data]);
-    };
-    es.onerror = () => {
-      es.close();
+    let cancelled = false;
+    let es: EventSource | null = null;
+    (async () => {
+      // EventSource kan geen Authorization-header sturen → token via ?token=.
+      const token = await getAuthToken();
+      if (cancelled) return;
+      const url = `${API_BASE}/api/logs/stream${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+      es = new EventSource(url);
+      esRef.current = es;
+      es.onmessage = (ev) => {
+        if (!ev.data || ev.data.startsWith(":")) return;
+        setLines((prev) => [...prev.slice(-1999), ev.data]);
+      };
+      es.onerror = () => {
+        es?.close();
+        esRef.current = null;
+      };
+    })();
+    return () => {
+      cancelled = true;
+      es?.close();
       esRef.current = null;
     };
-    return () => es.close();
   }, [live]);
 
   // Auto-scroll

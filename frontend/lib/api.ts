@@ -109,7 +109,7 @@ export const AUTH_COOKIE = "kwabo_admin";
 // Returns null when no token is set — req() turns that into a /login bounce
 // for browsers, or just lets the request go un-authenticated for SSR (the
 // backend then 401s and the page boundary surfaces that to middleware).
-async function getAuthToken(): Promise<string | null> {
+export async function getAuthToken(): Promise<string | null> {
   if (typeof window === "undefined") {
     try {
       const mod = await import("next/headers");
