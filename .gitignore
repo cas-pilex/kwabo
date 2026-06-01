@@ -34,6 +34,15 @@ backend/reports/*.md
 frontend/test-results/
 frontend/playwright-report/
 frontend/tests/fixtures/*.eml.backup
+.playwright-mcp/
+
+# local verification artefacts (screenshots, snapshots)
+_screenshots/
+
+# npm lockfile — project uses pnpm (pnpm-lock.yaml); a stray package-lock.json
+# would risk Vercel switching package managers and a non-deterministic build
+frontend/package-lock.json
+package-lock.json
 
 # OS / editor
 .DS_Store
