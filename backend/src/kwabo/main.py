@@ -14,7 +14,7 @@ from kwabo.api.audit import router as audit_router
 from kwabo.api.auth import require_admin, router as auth_router
 from kwabo.api.intake_trigger import router as intake_router
 from kwabo.api.klanten import router as klanten_router
-from kwabo.api.logs import router as logs_router, stream_router as logs_stream_router
+from kwabo.api.logs import router as logs_router
 from kwabo.api.mailbox import (
     router as mailbox_router,
     router_public as mailbox_public_router,
@@ -234,7 +234,6 @@ def create_app() -> FastAPI:
     app.include_router(artikelen_router, dependencies=auth_gate)
     app.include_router(audit_router, dependencies=auth_gate)
     app.include_router(intake_router, dependencies=auth_gate)
-    app.include_router(logs_stream_router)  # ungated: SSE auth via ?token= in-handler
     app.include_router(logs_router, dependencies=auth_gate)
     app.include_router(mailbox_router, dependencies=auth_gate)
     app.include_router(preview_router, dependencies=auth_gate)

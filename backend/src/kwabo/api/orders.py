@@ -434,6 +434,17 @@ async def approve_order(order_id: int, body: ApproveRequest, force: bool = False
             if isinstance(err, str) and err.startswith("push_navision:"):
                 first_error = err[len("push_navision:"):].strip()[:500]
                 break
+
+    # Self-learning: a successful push means a human approved these mappings.
+    # Record them so future identical lines auto-match. Never let a learning
+    # write break the (already-succeeded) push response.
+    if nav_status != "failed":
+        try:
+            with Session(engine) as s2:
+                _learn_from_approved(s2, final_state)
+        except Exception:  # noqa: BLE001
+            log.exception("learn_from_approved_failed", order_id=order_id)
+
     return {
         "ok": nav_status != "failed",
         "navision_order_nr": final_state.get("navision_order_nr"),
@@ -572,6 +583,28 @@ def download_attachment(
         media_type=ctype,
         headers=headers,
     )
+
+
+def _learn_from_approved(session: Session, state: dict) -> None:
+    """Feed the self-learning loop from the FINAL approved state.
+
+    The dashboard applies reviewer article-edits via /patch-field (it does NOT
+    send an approve `corrections` body), so the authoritative klant-SKU -> kwabo
+    mappings live in order_state.orderregels. Record every line that has both a
+    customer SKU and a matched kwabo article so the next identical line
+    auto-matches via klantenkaart/history instead of falling back to fuzzy.
+    Reuses _save_corrections (klant_nr guard included)."""
+    correcties = [
+        {
+            "artikelnummer_klant": r.get("artikelnummer_klant"),
+            "artikelnummer_kwabo_matched": r.get("artikelnummer_kwabo_matched"),
+            "omschrijving": r.get("omschrijving"),
+        }
+        for r in (state.get("orderregels") or [])
+        if r.get("artikelnummer_klant") and r.get("artikelnummer_kwabo_matched")
+    ]
+    if correcties:
+        _save_corrections(session, state, {"artikel_correcties": correcties})
 
 
 def _save_corrections(session: Session, state: dict, corrections: dict) -> None:

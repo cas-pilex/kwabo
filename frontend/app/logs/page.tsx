@@ -8,7 +8,6 @@ export default function LogsPage() {
   const [live, setLive] = useState(true);
   const [filter, setFilter] = useState("");
   const logRef = useRef<HTMLDivElement>(null);
-  const esRef = useRef<EventSource | null>(null);
 
   // Initial tail fetch
   useEffect(() => {
@@ -31,34 +30,41 @@ export default function LogsPage() {
 
   // SSE stream
   useEffect(() => {
-    if (!live) {
-      esRef.current?.close();
-      esRef.current = null;
-      return;
-    }
-    let cancelled = false;
-    let es: EventSource | null = null;
+    if (!live) return;
+    // fetch()+ReadableStream i.p.v. EventSource: zo gaat de Bearer-token via een
+    // Authorization-header en NOOIT in de URL (security). AbortController stopt
+    // de stream bij toggle/unmount.
+    const ctrl = new AbortController();
     (async () => {
-      // EventSource kan geen Authorization-header sturen → token via ?token=.
       const token = await getAuthToken();
-      if (cancelled) return;
-      const url = `${API_BASE}/api/logs/stream${token ? `?token=${encodeURIComponent(token)}` : ""}`;
-      es = new EventSource(url);
-      esRef.current = es;
-      es.onmessage = (ev) => {
-        if (!ev.data || ev.data.startsWith(":")) return;
-        setLines((prev) => [...prev.slice(-1999), ev.data]);
-      };
-      es.onerror = () => {
-        es?.close();
-        esRef.current = null;
-      };
+      try {
+        const res = await fetch(`${API_BASE}/api/logs/stream`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          signal: ctrl.signal,
+          cache: "no-store",
+        });
+        if (!res.ok || !res.body) return;
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const frames = buf.split("\n\n");
+          buf = frames.pop() ?? "";
+          for (const frame of frames) {
+            const dataLine = frame.split("\n").find((l) => l.startsWith("data: "));
+            if (!dataLine) continue;
+            const data = dataLine.slice(6);
+            if (data) setLines((prev) => [...prev.slice(-1999), data]);
+          }
+        }
+      } catch {
+        // afgebroken (toggle/unmount) of netwerk-drop — her-arm via de toggle
+      }
     })();
-    return () => {
-      cancelled = true;
-      es?.close();
-      esRef.current = null;
-    };
+    return () => ctrl.abort();
   }, [live]);
 
   // Auto-scroll
