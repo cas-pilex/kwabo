@@ -62,11 +62,13 @@ def _seed_order(
 
 @pytest.fixture
 def bind_engine(session, monkeypatch):
-    """Point the orders-module engine at the test session's bind."""
+    """Point the db.session engine at the test session's bind.
+
+    orders.py reads `db_session.engine` at call time, so patching this single
+    source is sufficient.
+    """
     from kwabo.db import session as db_session_mod
     monkeypatch.setattr(db_session_mod, "engine", session.get_bind())
-    import kwabo.api.orders as orders_module
-    monkeypatch.setattr(orders_module, "engine", session.get_bind())
 
 
 @pytest.fixture

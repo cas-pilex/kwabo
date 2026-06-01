@@ -265,8 +265,8 @@ async def test_navision_preview_endpoint_returns_operations_shape(session, monke
     monkeypatch.setattr(db_session_mod, "engine", session.get_bind())
     import kwabo.graph.nodes.compose_order as compose_mod
     monkeypatch.setattr(compose_mod, "engine", session.get_bind())
-    import kwabo.api.preview as preview_mod
-    monkeypatch.setattr(preview_mod, "engine", session.get_bind())
+    # preview.py reads db_session.engine at call time — the db_session patch
+    # above already covers it.
 
     # Drive compose_order so a row exists with nav_operations on state.
     state = _synthetic_state(email_id="preview-e2e-1")

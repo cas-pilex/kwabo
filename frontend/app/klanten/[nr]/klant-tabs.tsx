@@ -18,17 +18,40 @@ export function KlantTabs({
   initialMappings: Array<{ id: number; klant_artikelnr: string; kwabo_artikelnr: string; omschrijving: string | null }>;
 }) {
   const [tab, setTab] = useState<Tab>("algemeen");
-  const [mappings] = useState(initialMappings);
+  const [mappings, setMappings] = useState(initialMappings);
   const [importMsg, setImportMsg] = useState<string>("");
+  const [mapErr, setMapErr] = useState<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  async function reloadMappings() {
+    try {
+      setMappings(await api.listMappings(nr));
+    } catch (e) {
+      setMapErr(e instanceof Error ? e.message : String(e));
+    }
+  }
 
   async function doImport(file: File) {
     setImportMsg("Bezig…");
     try {
       const r = await api.importExcel(nr, file);
       setImportMsg(`✓ ${r.mappings_upserted} mappings + ${r.prijzen_upserted} prijzen (${r.errors.length} fouten)`);
+      await reloadMappings();
     } catch (e) {
       setImportMsg(`Fout: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  async function deleteMapping(id: number, label: string) {
+    if (!window.confirm(`Mapping "${label}" verwijderen? De koppeling wordt niet meer gebruikt bij toekomstige orders.`)) {
+      return;
+    }
+    setMapErr("");
+    try {
+      await api.deleteMapping(nr, id);
+      await reloadMappings();
+    } catch (e) {
+      setMapErr(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -71,8 +94,15 @@ export function KlantTabs({
 
         {tab === "mappings" && (
           <div>
+            {mapErr && <div className="mb-2 text-sm text-rose-600">{mapErr}</div>}
             {mappings.length === 0 ? (
-              <div className="text-sm text-[var(--kwabo-muted)]">Nog geen mappings. Import via Excel of voeg toe via correcties in review.</div>
+              <div className="text-sm text-[var(--kwabo-muted)]">
+                Nog geen artikelmappings. Voeg ze bulksgewijs toe via de tab{" "}
+                <button type="button" onClick={() => setTab("import")} className="font-medium text-[var(--kwabo-navy)] underline">
+                  Import Excel
+                </button>
+                . Ze ontstaan ook automatisch wanneer je in een order-review een artikel handmatig koppelt.
+              </div>
             ) : (
               <table className="min-w-full divide-y divide-[var(--kwabo-border)] text-sm">
                 <thead className="bg-slate-50 text-xs uppercase text-[var(--kwabo-muted)]">
@@ -80,6 +110,7 @@ export function KlantTabs({
                     <th className="px-3 py-1.5 text-left">Klant-artnr</th>
                     <th className="px-3 py-1.5 text-left">Kwabo-artnr</th>
                     <th className="px-3 py-1.5 text-left">Omschrijving</th>
+                    <th className="px-3 py-1.5"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--kwabo-border)]">
@@ -88,6 +119,14 @@ export function KlantTabs({
                       <td className="px-3 py-1.5 font-mono text-xs">{m.klant_artikelnr}</td>
                       <td className="px-3 py-1.5 font-mono text-xs">{m.kwabo_artikelnr}</td>
                       <td className="px-3 py-1.5 text-[var(--kwabo-muted)]">{m.omschrijving ?? ""}</td>
+                      <td className="px-3 py-1.5 text-right">
+                        <button
+                          onClick={() => deleteMapping(m.id, `${m.klant_artikelnr} → ${m.kwabo_artikelnr}`)}
+                          className="text-xs text-rose-600 hover:underline"
+                        >
+                          verwijder
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

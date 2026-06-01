@@ -30,8 +30,8 @@ from kwabo.api.schemas import (
 )
 from kwabo.config import settings
 from kwabo.db.models import ArtikelPalletKennis
-from kwabo.db.repository import ArtikelRepo, OrderLogRepo, PalletKennisRepo
-from kwabo.db.session import engine
+from kwabo.db.repository import ArtikelRepo, KlantRepo, OrderLogRepo, PalletKennisRepo
+from kwabo.db import session as db_session
 from kwabo.graph.runner import finalize
 from kwabo.utils import utcnow
 from kwabo.utils.pallet_logic import PALLET_ARTIKELNR, compute_europallet
@@ -274,7 +274,7 @@ def _to_summary(row) -> OrderSummary:
 
 @router.get("", response_model=list[OrderSummary])
 def list_orders(status: Optional[str] = None) -> list[OrderSummary]:
-    with Session(engine) as s:
+    with Session(db_session.engine) as s:
         repo = OrderLogRepo(s)
         rows = repo.list_by_status(status) if status else repo.list_all()
         return [_to_summary(r) for r in rows]
@@ -282,7 +282,7 @@ def list_orders(status: Optional[str] = None) -> list[OrderSummary]:
 
 @router.get("/{order_id}", response_model=OrderDetail)
 def get_order(order_id: int) -> OrderDetail:
-    with Session(engine) as s:
+    with Session(db_session.engine) as s:
         row = OrderLogRepo(s).get(order_id)
         if not row:
             raise HTTPException(404, "Order not found")
@@ -317,16 +317,18 @@ def get_order(order_id: int) -> OrderDetail:
 
 @router.patch("/{order_id}")
 def patch_order(order_id: int, body: PatchOrderRequest) -> dict:
-    with Session(engine) as s:
+    with Session(db_session.engine) as s:
         repo = OrderLogRepo(s)
         row = repo.get(order_id)
         if not row:
             raise HTTPException(404, "Order not found")
         state = json.loads(row.order_state or "{}") if row.order_state else {}
         if body.klant_nr is not None:
+            k = KlantRepo(s).by_nav_nr(body.klant_nr)
             state["klant_match"] = {
                 **(state.get("klant_match") or {}),
                 "navision_klantnr": body.klant_nr,
+                "klantnaam": k.naam if k else (state.get("klant_match") or {}).get("klantnaam") or "",
                 "match_confidence": 1.0,
                 "match_bron": "manual",
             }
@@ -353,7 +355,7 @@ async def approve_order(order_id: int, body: ApproveRequest, force: bool = False
     from kwabo.api.preview import _all_needs_review_paths
     from kwabo.utils.logging import log
 
-    with Session(engine) as s:
+    with Session(db_session.engine) as s:
         repo = OrderLogRepo(s)
         row = repo.get(order_id)
         if not row:
@@ -440,7 +442,7 @@ async def approve_order(order_id: int, body: ApproveRequest, force: bool = False
     # write break the (already-succeeded) push response.
     if nav_status != "failed":
         try:
-            with Session(engine) as s2:
+            with Session(db_session.engine) as s2:
                 _learn_from_approved(s2, final_state)
         except Exception:  # noqa: BLE001
             log.exception("learn_from_approved_failed", order_id=order_id)
@@ -468,7 +470,7 @@ def delete_order(order_id: int, confirm: bool = False) -> dict:
             "Hard delete vereist ?confirm=true. Overweeg POST /reject voor "
             "productie-orders zodat de audit-trail behouden blijft.",
         )
-    with Session(engine) as s:
+    with Session(db_session.engine) as s:
         row = OrderLogRepo(s).get(order_id)
         if not row:
             raise HTTPException(404, "Order not found")
@@ -485,7 +487,7 @@ def nav_debug(order_id: int) -> dict:
     push, to see the exact POST/PATCH chain that ran). Auth-gated; only the
     reviewer should see this depth of detail.
     """
-    with Session(engine) as s:
+    with Session(db_session.engine) as s:
         row = OrderLogRepo(s).get(order_id)
         if not row:
             raise HTTPException(404, "Order not found")
@@ -503,7 +505,7 @@ def nav_debug(order_id: int) -> dict:
 
 @router.post("/{order_id}/reject")
 def reject_order(order_id: int, body: RejectRequest) -> dict:
-    with Session(engine) as s:
+    with Session(db_session.engine) as s:
         repo = OrderLogRepo(s)
         row = repo.get(order_id)
         if not row:
@@ -547,7 +549,7 @@ def download_attachment(
 ) -> Response:
     if not _verify_attachment_token(token, order_id, naam, disposition):
         raise HTTPException(401, "Ongeldige of verlopen download-token")
-    with Session(engine) as s:
+    with Session(db_session.engine) as s:
         row = OrderLogRepo(s).get(order_id)
         if not row:
             raise HTTPException(404, "Order not found")
@@ -772,7 +774,7 @@ async def upload_incoming_document(
     matching how ``state["source_path"]`` is stored. The push_navision
     pipeline (T9) reads this slot when composing /incomingDocuments ops.
     """
-    with Session(engine) as s:
+    with Session(db_session.engine) as s:
         repo = OrderLogRepo(s)
         row = repo.get(order_id)
         if not row:
@@ -842,7 +844,7 @@ async def upload_incoming_document(
         target_path.write_bytes(content)
         saved_path = str(target_path.resolve())
 
-    with Session(engine) as s:
+    with Session(db_session.engine) as s:
         repo = OrderLogRepo(s)
         row = repo.get(order_id)
         if not row:
@@ -979,7 +981,7 @@ def download_incoming_doc(
     ):
         raise HTTPException(401, "Ongeldige of verlopen download-token")
 
-    with Session(engine) as s:
+    with Session(db_session.engine) as s:
         row = OrderLogRepo(s).get(order_id)
         if not row:
             raise HTTPException(404, "Order not found")

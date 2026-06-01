@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { api, type OrderSummary } from "@/lib/api";
+import { statusLabel } from "@/lib/status";
 import { QueueFilters } from "./queue-filters";
 import { ReloadOnDone } from "@/components/reload-on-done";
 
@@ -18,7 +19,7 @@ function StatusBadge({ status }: { status: string }) {
   const cls = map[status] ?? "bg-slate-100 text-slate-700 ring-slate-200";
   return (
     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${cls}`}>
-      {status.replace("_", " ")}
+      {statusLabel(status)}
     </span>
   );
 }
@@ -121,7 +122,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
               <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider">Afzender</th>
               <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider">Onderwerp</th>
               <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider">Klant</th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider">Conf.</th>
+              <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider" title="Match-zekerheid: hoe zeker het systeem is van de gekoppelde klant">Conf.</th>
               <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wider">Regels</th>
               <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wider">Mist</th>
               <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wider">Warn</th>

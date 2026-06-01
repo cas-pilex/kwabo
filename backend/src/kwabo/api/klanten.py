@@ -105,6 +105,15 @@ def add_mapping(nav_nr: str, body: MappingIn) -> MappingOut:
         )
 
 
+@router.delete("/{nav_nr}/artikelen/{mapping_id}")
+def delete_mapping(nav_nr: str, mapping_id: int) -> dict:
+    with Session(engine) as s:
+        ok = ArtikelRepo(s).delete_mapping(nav_nr, mapping_id)
+        if not ok:
+            raise HTTPException(404, "Mapping niet gevonden")
+        return {"ok": True}
+
+
 @router.get("/{nav_nr}/aliases", response_model=list[AliasOut])
 def list_aliases(nav_nr: str) -> list[AliasOut]:
     with Session(engine) as s:

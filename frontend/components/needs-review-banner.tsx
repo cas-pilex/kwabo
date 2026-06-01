@@ -49,13 +49,16 @@ export function NeedsReviewBanner({
             → {pretty(f)}
           </button>
         ))}
-        <label className="ml-auto flex items-center gap-1.5 text-xs">
+        <label
+          className="ml-auto flex items-center gap-1.5 text-xs"
+          title="Stuurt de order tóch naar Navision ondanks de ontbrekende velden. Deze actie wordt gelogd en is later te auditen."
+        >
           <input
             type="checkbox"
             checked={forceArmed}
             onChange={(e) => onToggleForce(e.target.checked)}
           />
-          <span>Force approve (gelogd)</span>
+          <span>Tóch goedkeuren ondanks ontbrekende velden (gelogd)</span>
         </label>
       </div>
     </div>

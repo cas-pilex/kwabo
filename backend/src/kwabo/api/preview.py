@@ -12,8 +12,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session
 
-from kwabo.db.repository import OrderLogRepo
-from kwabo.db.session import engine
+from kwabo.db import session as db_session
+from kwabo.db.repository import KlantRepo, OrderLogRepo
 from kwabo.integrations.navision_steps import compose_navision_operations
 from kwabo.utils.logging import log
 
@@ -109,7 +109,7 @@ def _all_needs_review_paths(state: dict) -> list[str]:
 
 def _load(order_id: int) -> tuple[dict, Any]:
     """Load order + parsed state. Returns (state, row)."""
-    with Session(engine) as s:
+    with Session(db_session.engine) as s:
         row = OrderLogRepo(s).get(order_id)
         if not row:
             raise HTTPException(404, "Order niet gevonden")
@@ -118,7 +118,7 @@ def _load(order_id: int) -> tuple[dict, Any]:
 
 
 def _save(order_id: int, state: dict, **extra_fields: Any) -> None:
-    with Session(engine) as s:
+    with Session(db_session.engine) as s:
         repo = OrderLogRepo(s)
         row = repo.get(order_id)
         if not row:
@@ -176,9 +176,21 @@ def patch_field(order_id: int, body: PatchFieldBody) -> dict:
     # Special-case top-level fields with klant_match shorthand
     if body.path == "klant_match":
         kn = body.value if isinstance(body.value, str) else (body.value or {}).get("navision_klantnr")
+        # Verrijk met de NAAM uit de klantenkaart zodat de reviewer een naam
+        # ziet i.p.v. alleen een nummer. Lukt de lookup niet (klant niet in de
+        # mirror), val terug op de bestaande naam ALS het nummer ongewijzigd is,
+        # anders leeg (de UI toont dan het nummer).
+        prev = state.get("klant_match") or {}
+        naam = ""
+        if kn:
+            with Session(db_session.engine) as s:
+                k = KlantRepo(s).by_nav_nr(kn)
+                naam = k.naam if k else ""
+        if not naam and prev.get("navision_klantnr") == kn:
+            naam = prev.get("klantnaam") or ""
         state["klant_match"] = {
             "navision_klantnr": kn,
-            "klantnaam": (state.get("klant_match") or {}).get("klantnaam") or "",
+            "klantnaam": naam,
             "match_confidence": 1.0,
             "match_bron": "manual",
         }

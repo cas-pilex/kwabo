@@ -66,6 +66,25 @@ def session(test_db_url):
 
 
 @pytest.fixture
+def client(session):
+    """TestClient backed by the seeded test DB (engine rebound to the test session)."""
+    from kwabo.db import session as db_session_mod
+
+    original_engine = db_session_mod.engine
+    db_session_mod.engine = session.get_bind()
+
+    from kwabo.main import create_app
+
+    app = create_app()
+    from fastapi.testclient import TestClient
+
+    with TestClient(app) as c:
+        yield c
+
+    db_session_mod.engine = original_engine
+
+
+@pytest.fixture
 def eml_dir() -> Path:
     return ROOT / "tests" / "test_data" / "emails"
 

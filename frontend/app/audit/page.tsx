@@ -1,4 +1,5 @@
 import { api } from "@/lib/api";
+import { statusLabel } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +59,7 @@ export default async function AuditPage() {
                     {o.warnings_count} warn
                   </span>
                 )}
-                <span className="rounded bg-slate-100 px-2 py-0.5 text-xs">{o.status}</span>
+                <span className="rounded bg-slate-100 px-2 py-0.5 text-xs">{statusLabel(o.status)}</span>
               </div>
             </summary>
             <div className="border-t border-[var(--kwabo-border)] p-4 text-xs">

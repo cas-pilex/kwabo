@@ -186,6 +186,16 @@ class ArtikelRepo:
         self.s.refresh(new)
         return new
 
+    def delete_mapping(self, klant_nr: str, mapping_id: int) -> bool:
+        """Verwijder één mapping op id. Geeft False als hij niet bestaat of
+        niet bij deze klant hoort (voorkomt cross-klant delete)."""
+        row = self.s.get(KlantenkaartArtikel, mapping_id)
+        if not row or row.klant_nr != klant_nr:
+            return False
+        self.s.delete(row)
+        self.s.commit()
+        return True
+
     def best_history(
         self, klant_nr: str, klant_artikelnr: str
     ) -> Optional[ArtikelMatchingHistory]:

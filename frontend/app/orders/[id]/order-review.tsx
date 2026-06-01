@@ -149,6 +149,9 @@ export function OrderReview({ order, items }: Props) {
   }
 
   async function reject() {
+    if (!window.confirm("Deze order afwijzen? Hij verdwijnt uit de review-wachtrij en wordt niet naar Navision gepusht.")) {
+      return;
+    }
     setSaving(true);
     try {
       await api.reject(order.id, { reviewer: "dashboard", reason: "Manual reject" });
@@ -235,6 +238,11 @@ export function OrderReview({ order, items }: Props) {
           {/* Klant */}
           <div className="mb-4 rounded-lg border border-[var(--kwabo-border)] bg-slate-50 p-3">
             <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--kwabo-muted)]">Klant</div>
+            {initialState.klant_match?.klantnaam && (
+              <div className="mb-1.5 text-sm font-semibold text-[var(--kwabo-navy)]" data-testid="klant-naam">
+                {initialState.klant_match.klantnaam}
+              </div>
+            )}
             <FieldInput
               label="Navision klantnr."
               path="klant_match"
@@ -245,7 +253,6 @@ export function OrderReview({ order, items }: Props) {
             />
             {initialState.klant_match?.klantnaam && (
               <div className="mt-1 flex items-center gap-2 text-xs text-[var(--kwabo-muted)]">
-                <span>{initialState.klant_match.klantnaam}</span>
                 {initialState.klant_match?.is_4plus === true && (
                   <span className="inline-flex rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
                     4+ lid

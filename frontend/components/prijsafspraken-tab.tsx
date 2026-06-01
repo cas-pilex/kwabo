@@ -123,7 +123,7 @@ export function PrijsafsprakenTab({ klantNr }: { klantNr: string }) {
                 <td className="px-3 py-1.5 font-mono text-xs">{p.kwabo_artikelnr}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">€ {p.prijs.toFixed(2)}</td>
                 <td className="px-3 py-1.5 text-xs">{p.type}</td>
-                <td className="px-3 py-1.5 text-xs">{p.geldig_tot ?? "—"}</td>
+                <td className="px-3 py-1.5 text-xs">{p.geldig_tot ?? <span className="text-[var(--kwabo-muted)]">Onbeperkt</span>}</td>
                 <td className="px-3 py-1.5 text-right">
                   <button
                     onClick={() => handleDelete(p.id)}

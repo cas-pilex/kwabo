@@ -404,6 +404,8 @@ export const api = {
     req<Array<{ id: number; klant_nr: string; klant_artikelnr: string; kwabo_artikelnr: string; omschrijving: string | null }>>(
       `/api/klanten/${nr}/artikelen`
     ),
+  deleteMapping: (nr: string, mappingId: number) =>
+    req<{ ok: boolean }>(`/api/klanten/${nr}/artikelen/${mappingId}`, { method: "DELETE" }),
   searchItems: (q?: string) =>
     req<Item[]>(`/api/artikelen/search${q ? `?q=${encodeURIComponent(q)}` : ""}`),
   listAudit: () => req<OrderDetail[]>("/api/audit"),

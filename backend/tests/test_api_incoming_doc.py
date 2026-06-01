@@ -19,13 +19,11 @@ from kwabo.api import orders as orders_module
 @pytest.fixture
 def client(session, tmp_path, monkeypatch):
     """TestClient backed by the seeded test DB + a tmp incoming_documents dir."""
-    # `orders.py` imports `engine` at module load time (`from kwabo.db.session
-    # import engine`), so rebinding `db_session_mod.engine` alone does NOT
-    # propagate — the local name in `orders` still points at the old engine.
-    # Monkeypatch both names so the handler reads from our test DB.
+    # `orders.py` reads the engine via `db_session.engine` at call time, so
+    # patching the single source `kwabo.db.session.engine` is enough for the
+    # handler to read from our test DB.
     test_engine = session.get_bind()
     monkeypatch.setattr("kwabo.db.session.engine", test_engine, raising=True)
-    monkeypatch.setattr(orders_module, "engine", test_engine, raising=True)
 
     # Pin the incoming-documents dir to tmp so we don't pollute the real
     # data dir during tests.

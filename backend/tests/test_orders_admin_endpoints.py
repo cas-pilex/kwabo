@@ -11,7 +11,6 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from kwabo.api import orders as orders_module
 from kwabo.main import create_app
 
 
@@ -19,13 +18,12 @@ from kwabo.main import create_app
 def client(session, monkeypatch):
     """TestClient backed by the seeded test DB.
 
-    Mirror the engine-binding fix from test_api_incoming_doc: patch BOTH
-    the orders module symbol and the db.session module symbol so handlers
-    inside `with Session(engine) as s:` blocks see the test DB.
+    orders.py reads the engine via ``db_session.engine`` at call time, so
+    patching the single source ``kwabo.db.session.engine`` is sufficient for
+    handlers inside ``with Session(db_session.engine) as s:`` blocks.
     """
     test_engine = session.get_bind()
     monkeypatch.setattr("kwabo.db.session.engine", test_engine, raising=True)
-    monkeypatch.setattr(orders_module, "engine", test_engine, raising=True)
     app = create_app()
     with TestClient(app) as c:
         yield c
