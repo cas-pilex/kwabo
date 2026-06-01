@@ -48,6 +48,26 @@ def _serialise_op_results(results: list[dict]) -> list[dict]:
     return out
 
 
+def _skipped_attachment_warning(op_results: list[dict]) -> str | None:
+    """Return a reviewer-facing warning when the NAV client SKIPPED the
+    incoming-document attachment instead of executing it.
+
+    NAV 2018 has no published PLX_IncomingDocument page, so its stepwise
+    client logs a warning and continues — the order is created without the
+    bestelling linked. That must not be silent: without this the reviewer
+    sees 'pushed' and assumes the document is attached in NAV. Returns None
+    on a clean push (and on clients that DO attach, e.g. the mock)."""
+    for r in op_results or []:
+        af = r.get("autofilled") or {}
+        if any("incomingDocuments" in str(v) for v in af.values()):
+            return (
+                "Bron-document is NIET als inkomend document aan de NAV-order "
+                "gekoppeld (PLX_IncomingDocument niet beschikbaar in NAV 2018) — "
+                "koppel het document handmatig in Navision."
+            )
+    return None
+
+
 def _mark_failed(state: OrderState, reason: str, op_results: list[dict]) -> OrderState:
     """Common path for failed pushes: log row update, audit step, state echo."""
     serialised = _serialise_op_results(op_results)
@@ -159,6 +179,13 @@ async def push_navision_node(state: OrderState) -> OrderState:
     steps.append(stap)
 
     serialised_ops = _serialise_op_results(op_results)
+    attach_warn = _skipped_attachment_warning(op_results)
+    if attach_warn:
+        log.warning(
+            "push_navision_attachment_skipped",
+            email_id=state.get("email_id"),
+            navision_order_nr=sales_order_number,
+        )
     if state.get("order_log_id"):
         # Persist the full operation trail + autofill to order_state. Without
         # this, /api/orders/{id}/nav-debug shows an empty list because the
@@ -196,6 +223,14 @@ async def push_navision_node(state: OrderState) -> OrderState:
                             "size_kb": round(size_kb, 1),
                         },
                     )
+                # Surface a skipped attachment to the reviewer via row.warnings
+                # (the column the dashboard reads — order_state warnings are not
+                # shown). Merge, don't clobber the validation warnings.
+                if attach_warn:
+                    existing_warns = _json.loads(row.warnings or "[]") if row.warnings else []
+                    if attach_warn not in existing_warns:
+                        existing_warns.append(attach_warn)
+                        row.warnings = _json.dumps(existing_warns, default=str)
                 row.order_state = serialized
                 row.navision_order_nr = sales_order_number
                 row.status = "pushed"
