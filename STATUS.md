@@ -4,6 +4,87 @@
 > beschrijven de vroege lokale mock-opzet (7 nodes, mock-Navision, demo-seed als
 > model). Ze zijn historisch — de actuele productie-status staat hieronder.
 
+## Productie-status — 2026-05-31/06-01 (uitputtende test-en-fix-campagne)
+
+Volledige sweep van backend (alle ~62 routes), frontend (alle pagina's) en pipeline
+(edge cases), met systematic-debugging + verification-before-completion. Drie échte
+bugs gevonden én gefixt+gedeployd+live-geverifieerd:
+
+- `6ab965f` — **perf/sloomheid breed**: DB-engine gebruikte `NullPool` → elke
+  DB-request opende een verse Supabase-connectie (~1,3s tax). Live bewijs: elke
+  DB-endpoint ~1,67s, non-DB ~0,3s, geen warmup. Client-side pool → broad sneller
+  (queue 3,56→1,69s, audit-stats 3,73→1,08s, klant-detail 1,68→0,91s, mailbox 0,91s).
+- `8c15c63` — **/logs + upload-knop 401**: tail-fetch/upload zonder Bearer +
+  EventSource zonder header. Fix: token via header. Live: /logs toont regels,
+  0 console-401's; upload-knop maakt order.
+- `8cd174b` — **security (HIGH) + self-learning loop**: (a) de /logs-stream zette de
+  admin-token in de EventSource-URL (lekt via logs/history) → vervangen door
+  fetch()+ReadableStream met Authorization-header, stream weer Bearer-gated; (b) de
+  self-learning loop werd nooit gevoed (UI stuurt geen artikel-correcties) →
+  `_learn_from_approved` registreert nu klant-SKU→kwabo-mappings na elke geslaagde push.
+
+**Bevindingen zonder bug:** alle 27 GET-endpoints 200; alle pagina's 0 console-401's;
+pipeline edge cases correct — Kirchner multi-PDF spawnt sub-order (522→523), ZIP→PDF
+werkt (526), Dietrich-"Lieferschein" terecht `not_order` (524, pakbon = geen order).
+Enige restpunt: Engelse "FW:"-forward-sender-detectie mist (→ review, geen crash).
+
+**Artikel-automatch ~23% = DATA, geen logica-bug**: NAV-cross-refs missen klant-SKUs;
+klantenkaart/history leeg. De learning-loop is nu gefixt (`8cd174b`) en bouwt mappings
+op bij elke goedkeuring — live bewezen (klant 50000: 0→2 mappings na push).
+
+**Productie-acceptatietest (UAT, 01-06) — alle gebruikers-workflows GO:** login,
+queue (filter-tabs/scan/upload), order-review (velden+klant+artikel bewerken met
+herlaad-bevestigde persistentie), approve→push (VO2606403 in NAV geverifieerd),
+self-learning (0→2 mappings live), bron-document, afwijzen, klantbeheer
+(aliases/prijs/documenten/Excel-import: add→check→delete), audit, logs, e-mailstatus.
+Geen blokkers. Restpunten (niet-blokkerend): handmatig gezette klant toont nr+conf
+maar niet de naam; artikel-mappings hebben geen verwijder-endpoint.
+
+**NAV-pushes test-Drafts (in NAV geverifieerd, door Cas te verwijderen):** VO2606400
+(Dietrich), VO2606401 (TABS→PontMeyer), VO2606402 (Kirchner, auto via forward),
+VO2606403 (Groenhart, via UI-edit + self-learning).
+
+Tests: 413 passed, 17 skipped (incl. nieuwe regressietests: multi-adres-match,
+artikel-search-mirror, db-pooling, logs-stream-gate, learn-from-approved).
+
+---
+
+## Productie-status — 2026-05-31 (5 E2E-runs live geverifieerd)
+
+Volledige hertest in productie met 5 geïnjecteerde test-.eml's (Ferney, Dietrich,
+TABS, Isero-fwd, Omtzigt). Resultaat:
+
+- **Mailbox/poller gezond**: `state:active`, `last_poll_status:ok`, `errors:0`,
+  token geldig; orders gegroeid 130→480+ sinds vorige sessie met 0 poll-errors.
+- **Pijplijn**: alle 5 mails geclassificeerd als order, geëxtraheerd, artikelen +
+  klant gematcht, in DB (Postgres) gepersisteerd met volledige `order_state` +
+  `stappen_log`. Bron-.eml/PDF persistent in Supabase (opent in de UI).
+- **2 NAV-pushes via de UI-knop** ("Goedkeuren & Push Navision"):
+  - `VO2606400` — Dietrich, klant 60103, extDoc 4401054959
+  - `VO2606401` — TABS→PontMeyer, klant 61793, extDoc 4506782407
+  Beide read-only geverifieerd in NAV (`Kopie 2026`); 0 gefaalde operaties;
+  bevestigingsmail verzonden (`send_confirmation mail_sent=True`).
+- **UI-laadtijden**: queue ~4.5s, audit ~5.4s, order-detail **2.6s** (was 15s — zie fix).
+
+### Fixes deze sessie (31 mei)
+- `7b3e7b5` — **auto-match-fix**: NAV bewaart meerdere e-mailadressen in één veld
+  (`a@x; b@y; c@z`); `KlantRepo.by_email` deed exact-equality en miste die →
+  élke multi-adres-klant viel uit op handmatige review. Nu split-token-match,
+  alleen bij ondubbelzinnige enkele klant. Live bewezen: Ferney
+  `purchaseorders@ferney.nl` → 50262 auto (100%).
+- `0ad2c99` — **perf-fix ("app sloom")**: `/api/artikelen/search` deed bij élke
+  order-detailpagina een live NAV OData-dump van de volledige itemcatalogus
+  (~15s, zonder $top). Nu bediend uit de lokale Artikelkaart-mirror (Postgres) →
+  **order-detailpagina 15s → 2.6s**.
+
+### Openstaand restpunt (geen blokkade)
+- **/logs-pagina** authenticeert niet (tail-fetch zonder Bearer-header +
+  EventSource kan geen headers sturen) → 401, blijft leeg. Backend-endpoint werkt
+  wél (200 met token). Geïsoleerd diagnose-scherm; fix vereist frontend (+ klein
+  backend voor SSE-token).
+
+---
+
 ## Productie-status — 2026-05-30 (live geverifieerd)
 
 Backend op Railway (`kwabo-production.up.railway.app`), frontend op Vercel
