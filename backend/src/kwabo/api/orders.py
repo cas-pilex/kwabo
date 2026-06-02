@@ -9,7 +9,10 @@ import hmac
 import io
 import json
 import mimetypes
+import os
+import re
 import time
+import unicodedata
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -204,6 +207,21 @@ def _short_hash(b: bytes) -> str:
     return hashlib.sha256(b).hexdigest()[:16]
 
 
+def _norm_name(s: str) -> str:
+    """Normalise a filename for tolerant comparison: Unicode NFC, collapse
+    whitespace, strip, casefold. Different mail clients / Graph MIME exports
+    can render the same attachment name with NBSP vs space, NFD vs NFC, or
+    case differences — an exact byte match then 404s even though the file is
+    right there. Normalising both sides fixes that without matching the
+    wrong file."""
+    s = unicodedata.normalize("NFC", s or "")
+    return re.sub(r"\s+", " ", s).strip().casefold()
+
+
+def _basename(s: str) -> str:
+    return (s or "").rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+
+
 def _extract_attachment_bytes(raw_eml: bytes, wanted_name: str) -> tuple[bytes, str] | None:
     """Walk the .eml bytes and return (bytes, content_type) matching `wanted_name`.
 
@@ -211,7 +229,15 @@ def _extract_attachment_bytes(raw_eml: bytes, wanted_name: str) -> tuple[bytes, 
     "archive.zip:inner.pdf"). Takes bytes (not a Path) so callers that
     resolve the source from Supabase Storage don't need to round-trip
     through a tempfile.
+
+    Matching is tolerant: exact first, then Unicode/whitespace/case
+    normalised, then basename, then — only when the mail has exactly one
+    attachment of the requested extension — that single attachment. This
+    fixes the prod 404 "Bijlage ... niet gevonden" where the stored name and
+    the MIME part name differed only by encoding/whitespace.
     """
+    from kwabo.utils.logging import log
+
     msg = email.message_from_bytes(raw_eml, policy=email.policy.default)
 
     zip_outer = None
@@ -219,6 +245,8 @@ def _extract_attachment_bytes(raw_eml: bytes, wanted_name: str) -> tuple[bytes, 
     if ":" in wanted_name:
         zip_outer, zip_inner = wanted_name.split(":", 1)
 
+    # Collect all attachment parts once (filename + decoded bytes).
+    parts: list[tuple[str, "email.message.Message", bytes]] = []
     for part in msg.walk():
         fname = part.get_filename()
         if not fname:
@@ -229,20 +257,72 @@ def _extract_attachment_bytes(raw_eml: bytes, wanted_name: str) -> tuple[bytes, 
             content = None
         if not content:
             continue
+        parts.append((fname, part, content))
 
-        if zip_outer and fname == zip_outer and fname.lower().endswith(".zip"):
+    # --- ZIP inner attachment (name "archive.zip:inner.pdf") ---------------
+    if zip_outer is not None and zip_inner is not None:
+        want_outer = _norm_name(zip_outer)
+        want_inner = _norm_name(zip_inner)
+        for fname, _part, content in parts:
+            if not fname.lower().endswith(".zip"):
+                continue
+            if fname != zip_outer and _norm_name(fname) != want_outer:
+                continue
             try:
                 with zipfile.ZipFile(io.BytesIO(content)) as zf:
-                    for zn in zf.namelist():
-                        if zn == zip_inner:
-                            inner_bytes = zf.read(zn)
-                            ctype, _ = mimetypes.guess_type(zn)
-                            return inner_bytes, ctype or "application/octet-stream"
+                    names = zf.namelist()
+                    match = next(
+                        (
+                            zn for zn in names
+                            if zn == zip_inner
+                            or _norm_name(zn) == want_inner
+                            or _norm_name(_basename(zn)) == _norm_name(_basename(zip_inner))
+                        ),
+                        None,
+                    )
+                    if match is not None:
+                        inner_bytes = zf.read(match)
+                        ctype, _ = mimetypes.guess_type(match)
+                        return inner_bytes, ctype or "application/octet-stream"
             except zipfile.BadZipFile:
                 return None
-        elif fname == wanted_name:
-            ctype = part.get_content_type() or "application/octet-stream"
-            return content, ctype
+        log.warning(
+            "attachment_zip_not_found",
+            wanted=wanted_name,
+            available=[f for f, _, _ in parts],
+        )
+        return None
+
+    # --- Direct attachment -------------------------------------------------
+    # 1) exact
+    for fname, part, content in parts:
+        if fname == wanted_name:
+            return content, part.get_content_type() or "application/octet-stream"
+    # 2) normalised / basename
+    want_norm = _norm_name(wanted_name)
+    want_base_norm = _norm_name(_basename(wanted_name))
+    for fname, part, content in parts:
+        if _norm_name(fname) == want_norm or _norm_name(_basename(fname)) == want_base_norm:
+            return content, part.get_content_type() or "application/octet-stream"
+    # 3) single-attachment-of-this-extension fallback
+    want_ext = os.path.splitext(want_base_norm)[1]
+    ext_matches = [
+        (fname, part, content)
+        for fname, part, content in parts
+        if os.path.splitext(_norm_name(fname))[1] == want_ext
+    ]
+    if len(ext_matches) == 1:
+        fname, part, content = ext_matches[0]
+        log.warning(
+            "attachment_single_fallback_match", wanted=wanted_name, matched=fname
+        )
+        return content, part.get_content_type() or "application/octet-stream"
+
+    log.warning(
+        "attachment_not_found",
+        wanted=wanted_name,
+        available=[f for f, _, _ in parts],
+    )
     return None
 
 
