@@ -201,6 +201,12 @@ def compose_navision_operations(state: dict) -> list[NavOperation]:
                 "label": f"Verzendadres kiezen (Ship-to Code {ship_to_code})",
                 # Re-GET so we can audit which address fields NAV autofilled.
                 "expects": {"shipToAddress": "auto"},
+                # Best-effort: if NAV rejects this ship-to (unknown code for the
+                # customer, read-only field, …) the order is still valid with the
+                # default sell-to address. Don't abort the whole push — the NAV
+                # client records the failure and the reviewer gets a loud warning
+                # to set the ship-to manually. Mirrors the incoming-doc skip.
+                "optional": True,
             }
         )
 

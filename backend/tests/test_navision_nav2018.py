@@ -137,8 +137,9 @@ async def test_stepwise_patch_uses_record_url_with_composite_key():
         "/PLX_SalesOrder(Document_Type='Order',No='SO12345')"
     )
     assert sent.url.params.get("company") == COMPANY
-    # Field rename applied.
-    assert b'"Ship_to_Code":"MAIN"' in sent.content
+    # Field rename applied: the published page exposes ship-to code as the
+    # OData-encoded `<Ship-to Code 2>`, not a plain `Ship_to_Code`.
+    assert b'"_x003C_Ship_to_Code_2_x003E_":"MAIN"' in sent.content
     # No errors on either op.
     errors = [r for r in result["operation_results"] if r.get("error")]
     assert errors == []
@@ -181,6 +182,55 @@ async def test_stepwise_skips_incoming_documents_op():
     # Header op succeeded.
     successful = [r for r in result["operation_results"] if r.get("status") == 201]
     assert len(successful) == 1
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_stepwise_optional_ship_to_failure_does_not_abort():
+    """A best-effort op (optional=True) that NAV rejects with 400 must not
+    fail the whole order: it's recorded with a `_optional_failed` marker
+    (no `error`) and the push completes. Regression for the ship-to 400
+    'Invalid Request Body' that blocked every complete order in prod."""
+    post_url = f"{BASE}/PLX_SalesOrder"
+    patch_url_base = f"{BASE}/PLX_SalesOrder(Document_Type='Order',No='SO12345')"
+    respx.post(url__startswith=post_url).mock(
+        return_value=httpx.Response(201, json={"No": "SO12345"}),
+    )
+    respx.patch(url__startswith=patch_url_base).mock(
+        return_value=httpx.Response(
+            400, json={"error": {"code": "BadRequest", "message": "Invalid Request Body"}}
+        ),
+    )
+    async with httpx.AsyncClient() as raw:
+        client = _client(raw)
+        ops: list[NavOperation] = [
+            {
+                "op": "POST",
+                "path": "/salesOrders",
+                "body": {"customerNumber": "10009"},
+                "label": "header",
+            },
+            {
+                "op": "PATCH",
+                "path": "/salesOrders({id})",
+                "body": {"shipToCode": "8447 GH"},
+                "label": "Verzendadres kiezen (Ship-to Code 8447 GH)",
+                "optional": True,
+            },
+        ]
+        result = await client.create_sales_order_stepwise(ops)
+
+    # Order was still created.
+    assert result["sales_order_number"] == "SO12345"
+    # No hard errors → push_navision will mark the order 'pushed'.
+    errors = [r for r in result["operation_results"] if r.get("error")]
+    assert errors == []
+    # The optional failure is recorded for the reviewer warning.
+    optional_failed = [
+        r for r in result["operation_results"]
+        if (r.get("autofilled") or {}).get("_optional_failed")
+    ]
+    assert len(optional_failed) == 1
 
 
 @pytest.mark.asyncio

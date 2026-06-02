@@ -68,6 +68,27 @@ def _skipped_attachment_warning(op_results: list[dict]) -> str | None:
     return None
 
 
+def _optional_op_warnings(op_results: list[dict]) -> list[str]:
+    """Reviewer-facing warnings for best-effort ops that NAV rejected.
+
+    An optional op (e.g. ship-to) that fails leaves a `_optional_failed`
+    marker in its autofilled dict (set by the NAV client) instead of an
+    `error`, so the push still succeeds. Surface it loudly so the reviewer
+    knows to fix it manually in NAV — silent skips are exactly what bit us
+    before. Returns [] on a clean push."""
+    warns: list[str] = []
+    for r in op_results or []:
+        af = r.get("autofilled") or {}
+        if "_optional_failed" in af:
+            label = af.get("_optional_label") or "een optionele stap"
+            detail = str(af.get("_optional_failed") or "")[:200]
+            warns.append(
+                f"NAV weigerde '{label}' — order is aangemaakt zónder deze "
+                f"stap (controleer/zet handmatig in Navision). NAV-melding: {detail}"
+            )
+    return warns
+
+
 def _mark_failed(state: OrderState, reason: str, op_results: list[dict]) -> OrderState:
     """Common path for failed pushes: log row update, audit step, state echo."""
     serialised = _serialise_op_results(op_results)
@@ -180,11 +201,20 @@ async def push_navision_node(state: OrderState) -> OrderState:
 
     serialised_ops = _serialise_op_results(op_results)
     attach_warn = _skipped_attachment_warning(op_results)
+    optional_warns = _optional_op_warnings(op_results)
+    reviewer_warns = ([attach_warn] if attach_warn else []) + optional_warns
     if attach_warn:
         log.warning(
             "push_navision_attachment_skipped",
             email_id=state.get("email_id"),
             navision_order_nr=sales_order_number,
+        )
+    if optional_warns:
+        log.warning(
+            "push_navision_optional_op_failed",
+            email_id=state.get("email_id"),
+            navision_order_nr=sales_order_number,
+            count=len(optional_warns),
         )
     if state.get("order_log_id"):
         # Persist the full operation trail + autofill to order_state. Without
@@ -223,14 +253,16 @@ async def push_navision_node(state: OrderState) -> OrderState:
                             "size_kb": round(size_kb, 1),
                         },
                     )
-                # Surface a skipped attachment to the reviewer via row.warnings
-                # (the column the dashboard reads — order_state warnings are not
-                # shown). Merge, don't clobber the validation warnings.
-                if attach_warn:
+                # Surface skipped/failed best-effort ops (attachment, ship-to)
+                # to the reviewer via row.warnings (the column the dashboard
+                # reads — order_state warnings are not shown). Merge, don't
+                # clobber the validation warnings.
+                if reviewer_warns:
                     existing_warns = _json.loads(row.warnings or "[]") if row.warnings else []
-                    if attach_warn not in existing_warns:
-                        existing_warns.append(attach_warn)
-                        row.warnings = _json.dumps(existing_warns, default=str)
+                    for w in reviewer_warns:
+                        if w not in existing_warns:
+                            existing_warns.append(w)
+                    row.warnings = _json.dumps(existing_warns, default=str)
                 row.order_state = serialized
                 row.navision_order_nr = sales_order_number
                 row.status = "pushed"

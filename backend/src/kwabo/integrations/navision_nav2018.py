@@ -62,7 +62,15 @@ from kwabo.utils.logging import log
 _DEFAULT_FIELD_MAP = {
     # Header fields
     "customerNumber": "Sell_to_Customer_No",
-    "shipToCode": "Ship_to_Code",
+    # NB: the published PLX_SalesOrder page does NOT expose a plain
+    # `Ship_to_Code`. Verified live against prod NAV (Kopie 2026) on
+    # 2026-06-02: the Ship-to Code column comes back OData-encoded as
+    # `_x003C_Ship_to_Code_2_x003E_` (= `<Ship-to Code 2>`). PATCHing the
+    # non-existent `Ship_to_Code` returned HTTP 400 "Invalid Request Body"
+    # and aborted every complete order at the ship-to step. Use the real
+    # property name. (The ship-to op is also marked optional in the composer
+    # so a bad value can't kill the whole order — see navision_steps.py.)
+    "shipToCode": "_x003C_Ship_to_Code_2_x003E_",
     "externalDocumentNumber": "External_Document_No",
     "requestedDeliveryDate": "Requested_Delivery_Date",
     "shipmentDate": "Shipment_Date",
@@ -736,6 +744,36 @@ class Nav2018ODataClient:
                         response_body_text = resp.text
                     except Exception:  # noqa: BLE001
                         response_body_text = ""
+
+                # Best-effort ops (e.g. ship-to): record the failure but do NOT
+                # set `error` and do NOT abort. push_navision treats any op with
+                # `error` as a hard failure; for optional ops we instead leave a
+                # `_optional_failed` marker so the order still pushes and the
+                # reviewer gets a warning (see _optional_op_warning there).
+                if op.get("optional"):
+                    log.warning(
+                        "nav2018_optional_op_failed",
+                        op_index=idx,
+                        op_label=op.get("label"),
+                        op_method=method,
+                        op_path=raw_path,
+                        response_status=response_status,
+                        response_body=response_body_text[:500],
+                        error=err_msg,
+                    )
+                    results.append(
+                        NavOpResult(
+                            operation=op,
+                            status=response_status,
+                            response_body={},
+                            autofilled={
+                                "_optional_failed": err_msg,
+                                "_optional_label": op.get("label") or "",
+                            },
+                        )
+                    )
+                    continue
+
                 results.append(
                     NavOpResult(
                         operation=op,
