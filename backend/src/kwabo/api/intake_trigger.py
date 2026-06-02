@@ -1,6 +1,7 @@
 """Trigger intake on emails dropped into inbox_dir OR upload direct."""
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 from dataclasses import asdict
@@ -21,10 +22,24 @@ router = APIRouter(prefix="/api/intake", tags=["intake"])
 
 
 def _safe_eml_id(email_id: str | None) -> str:
-    """Sanitize an email_id for use as a storage key / filename. Keeps the
-    32-char alnum/-/_ rule that the legacy disk path used so existing tests
-    and DB rows keep matching."""
-    return "".join(c for c in (email_id or "") if c.isalnum() or c in ("-", "_"))[:32] or "source"
+    """Sanitize an email_id for use as a storage key / filename.
+
+    CRITICAL: must be COLLISION-FREE. The old version truncated to 32 chars,
+    but Microsoft Graph message-ids share a long common prefix per mailbox
+    (the store/folder id), so virtually every mail produced the SAME 32-char
+    key — each intake overwrote the previous order's source .eml in Supabase.
+    Net effect in prod: all orders pointed at one (the most-recent) .eml, so
+    bijlagen 404'd / showed the wrong document. Verified live 2026-06-02:
+    36/36 sampled orders shared one storage key.
+
+    Fix: keep a readable prefix but append a hash of the FULL id so the key
+    is unique per message yet stable across retries of the same message."""
+    eid = email_id or ""
+    cleaned = "".join(c for c in eid if c.isalnum() or c in ("-", "_"))
+    if not cleaned:
+        return "source"
+    digest = hashlib.sha256(eid.encode("utf-8")).hexdigest()[:16]
+    return f"{cleaned[:32]}-{digest}"
 
 
 def _persist_source_eml(raw_eml: bytes, email_id: str) -> tuple[str | None, str | None]:

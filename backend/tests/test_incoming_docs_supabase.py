@@ -143,17 +143,18 @@ def test_persist_source_eml_uses_supabase_when_configured(supabase_env, tmp_path
     """With Supabase available: storage_key returned, no disk write."""
     monkeypatch.setattr(settings, "incoming_documents_dir", str(tmp_path))
 
+    key = _safe_eml_id("test123")
     route = respx.post(
-        "https://test.supabase.co/storage/v1/object/incoming-docs/by_email_id/test123.eml"
+        f"https://test.supabase.co/storage/v1/object/incoming-docs/by_email_id/{key}.eml"
     ).mock(return_value=httpx.Response(200, json={}))
 
     storage_key, local_path = _persist_source_eml(b"From: a@b\n\nhi", "test123")
 
     assert route.called
-    assert storage_key == "by_email_id/test123.eml"
+    assert storage_key == f"by_email_id/{key}.eml"
     # Bij Supabase success: GEEN disk write (saves Railway ephemere FS).
     assert local_path is None
-    assert not (tmp_path / "by_email_id" / "test123.eml").exists()
+    assert not (tmp_path / "by_email_id" / f"{key}.eml").exists()
 
 
 @respx.mock
@@ -163,8 +164,9 @@ def test_persist_source_eml_falls_back_to_disk_on_supabase_fail(
     """Supabase 500 → still try local disk. Don't fail the intake."""
     monkeypatch.setattr(settings, "incoming_documents_dir", str(tmp_path))
 
+    key = _safe_eml_id("test123")
     respx.post(
-        "https://test.supabase.co/storage/v1/object/incoming-docs/by_email_id/test123.eml"
+        f"https://test.supabase.co/storage/v1/object/incoming-docs/by_email_id/{key}.eml"
     ).mock(return_value=httpx.Response(500, text="Supabase exploded"))
 
     storage_key, local_path = _persist_source_eml(b"raw", "test123")
@@ -211,11 +213,20 @@ def test_persist_source_eml_returns_none_none_when_everything_fails(
         monkeypatch.setattr(pathlib.Path, "write_bytes", orig)
 
 
-def test_safe_eml_id_strips_unsafe_chars():
-    assert _safe_eml_id("graph://AAMkAGI=1234?$top") == "graphAAMkAGI1234top"
+def test_safe_eml_id_strips_unsafe_chars_and_is_collision_free():
+    # Readable prefix preserved (sanitised, first 32 chars) + hash suffix.
+    k = _safe_eml_id("graph://AAMkAGI=1234?$top")
+    assert k.startswith("graphAAMkAGI1234top-")
     assert _safe_eml_id("") == "source"
     assert _safe_eml_id(None) == "source"
-    assert len(_safe_eml_id("a" * 100)) == 32
+    # REGRESSION: Graph message-ids share a long common prefix. Two ids that
+    # agree on the first 32+ chars MUST map to different keys (the old [:32]
+    # truncation collided them onto one key → overwritten source .eml).
+    a = "AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1h" + "A" * 80
+    b = "AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1h" + "B" * 80
+    assert _safe_eml_id(a) != _safe_eml_id(b)
+    # Stable across retries of the same id (idempotent overwrite).
+    assert _safe_eml_id(a) == _safe_eml_id(a)
 
 
 # ---------- _resolve_eml_bytes ----------

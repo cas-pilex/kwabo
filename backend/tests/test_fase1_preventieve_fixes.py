@@ -67,7 +67,10 @@ def test_persist_source_eml_success_returns_path(monkeypatch, tmp_path):
     )
     assert storage_key is None  # no Supabase configured
     assert local_path is not None
-    assert local_path.endswith("ok-id-002.eml")
+    # Key is collision-free: readable prefix + hash suffix (see _safe_eml_id).
+    expected = intake_trigger._safe_eml_id("ok-id-002") + ".eml"
+    assert local_path.endswith(expected)
+    assert expected.startswith("ok-id-002-")
     from pathlib import Path as _P
     assert _P(local_path).read_bytes() == b"some-eml-bytes"
 
