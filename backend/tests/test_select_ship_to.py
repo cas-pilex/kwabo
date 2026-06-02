@@ -163,6 +163,91 @@ async def test_two_records_equally_weak_flags_review(session):
     assert out["needs_review_count"] == 1
 
 
+def _add_pontmeyer(session) -> None:
+    # Arnhem is the DEFAULT — picking it for a Heerenveen order is the bug.
+    _add(session, klant_nr="20001", ship_to_code="ARN", naam="Pontmeyer Arnhem",
+         straat="Westervoortsedijk 1", postcode="6827 AT", plaats="Arnhem",
+         land="NL", is_default=True)
+    _add(session, klant_nr="20001", ship_to_code="HRV", naam="Pontmeyer Heerenveen",
+         straat="Marktweg 1", postcode="8444 AB", plaats="Heerenveen",
+         land="NL", is_default=False)
+
+
+@pytest.mark.asyncio
+async def test_multi_location_city_in_pdf_text_picks_right_branch(session):
+    """The vestiging is named in the order/PDF text — pick THAT location's
+    ship-to code, not the (default) other one."""
+    _add_pontmeyer(session)
+    repo = ShipToRepo(session)
+    state = {
+        "email_id": "p1",
+        "klant_match": {"navision_klantnr": "20001"},
+        "afleveradres": None,
+        "email_subject": "Bestelling",
+        "bijlagen": [{"naam": "po.pdf", "type": "pdf",
+                      "inhoud_tekst": "Pontmeyer Heerenveen\nMarktweg 1\nBestelnr 123"}],
+        "needs_review_fields": [],
+    }
+    out = await select_ship_to_node(state, repo=repo)
+    assert out["ship_to_gekozen"] == "HRV"
+    assert "ship_to_gekozen" not in (out.get("needs_review_fields") or [])
+
+
+@pytest.mark.asyncio
+async def test_multi_location_name_token_in_subject_picks_branch(session):
+    """Distinguishing name token (not the city) appears in the subject."""
+    _add_pontmeyer(session)
+    repo = ShipToRepo(session)
+    state = {
+        "email_id": "p2",
+        "klant_match": {"navision_klantnr": "20001"},
+        "afleveradres": None,
+        "email_subject": "Order voor Heerenveen vestiging",
+        "email_body": "",
+        "bijlagen": [],
+        "needs_review_fields": [],
+    }
+    out = await select_ship_to_node(state, repo=repo)
+    assert out["ship_to_gekozen"] == "HRV"
+
+
+@pytest.mark.asyncio
+async def test_multi_location_both_cities_named_flags_review(session):
+    """Both locations mentioned → genuinely ambiguous → flag, do NOT guess."""
+    _add_pontmeyer(session)
+    repo = ShipToRepo(session)
+    state = {
+        "email_id": "p3",
+        "klant_match": {"navision_klantnr": "20001"},
+        "afleveradres": None,
+        "email_subject": "Pontmeyer Heerenveen en Arnhem",
+        "bijlagen": [],
+        "needs_review_fields": [],
+    }
+    out = await select_ship_to_node(state, repo=repo)
+    assert out["ship_to_gekozen"] is None
+    assert "ship_to_gekozen" in out["needs_review_fields"]
+
+
+@pytest.mark.asyncio
+async def test_multi_location_no_signal_does_not_pick_default(session):
+    """No location signal at all → flag for review; never silently use the
+    default branch."""
+    _add_pontmeyer(session)
+    repo = ShipToRepo(session)
+    state = {
+        "email_id": "p4",
+        "klant_match": {"navision_klantnr": "20001"},
+        "afleveradres": None,
+        "email_subject": "Bestelling",
+        "bijlagen": [{"naam": "po.pdf", "type": "pdf", "inhoud_tekst": "Artikel 123 x 5"}],
+        "needs_review_fields": [],
+    }
+    out = await select_ship_to_node(state, repo=repo)
+    assert out["ship_to_gekozen"] is None
+    assert "ship_to_gekozen" in out["needs_review_fields"]
+
+
 @pytest.mark.asyncio
 async def test_needs_review_field_not_duplicated(session):
     _add(
