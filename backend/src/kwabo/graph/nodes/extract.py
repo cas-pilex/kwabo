@@ -160,6 +160,10 @@ def _build_state_from_extract(parsed: dict, raw: RawEmail) -> tuple[dict, dict, 
 
     flat["orderregels"] = regels_out
     meta["orderregels"] = regels_meta
+    # Leverdatum is informatief — wél tonen in het reviewscherm, maar NOOIT
+    # blokkeren/als 'mist' markeren (Cas: "leverdatum bij order invullen is
+    # overbodig"). Houd 'm dus uit de needs_review-set.
+    needs_review = [p for p in needs_review if p != "gewenste_leverdatum"]
     return flat, meta, needs_review
 
 
