@@ -14,7 +14,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from sqlmodel import Session, select, func
+from sqlmodel import Session, select, func, delete
 
 from kwabo.config import settings
 from kwabo.db.models import (
@@ -58,6 +58,7 @@ class DbCounts(BaseModel):
     artikelen: int
     kruisverwijzingen: int
     ship_to_adressen: int
+    artikel_eenheden: int = 0
 
 
 class JobStartResponse(BaseModel):
@@ -478,9 +479,9 @@ def _item_uom_keys(r: dict) -> tuple[Optional[str], Optional[str]]:
 
 def _ingest_item_uoms(rows: list[dict], dry_run: bool, sample_keys: list[str]) -> SyncReport:
     """BLOCKING DB ingest for item_uoms — runs in a worker thread via
-    asyncio.to_thread with its OWN Session, so the ~13k synchronous Supabase
-    round-trips never block the event loop (and /api/health stays responsive,
-    so Railway doesn't restart the container mid-sync).
+    asyncio.to_thread with its OWN Session, so the DB write never blocks the
+    event loop (and /api/health stays responsive, so Railway doesn't restart
+    the container mid-sync). Uses a bulk clear+insert for speed.
     """
     skipped = {"no_artikelnr": 0, "no_code": 0, "error": 0}
     upserted = 0
@@ -500,41 +501,42 @@ def _ingest_item_uoms(rows: list[dict], dry_run: bool, sample_keys: list[str]) -
             sample_keys=sample_keys,
         )
 
-    with Session(engine) as s:
-        # Prefetch ALL existing rows in ONE query (dict keyed by PK) instead of
-        # a per-row session.get — that turned a ~13k-row sync into ~13k blocking
-        # SELECTs (20+ min). With the prefetch it's a single SELECT + chunked
-        # commits = seconds.
-        existing_by_key: dict[tuple[str, str], ArtikelEenheid] = {
-            (e.kwabo_artikelnr, e.eenheid_code): e
-            for e in s.exec(select(ArtikelEenheid)).all()
-        }
-        pending = 0
-        for r in rows:
-            artikelnr, code = _item_uom_keys(r)
-            if not artikelnr:
-                skipped["no_artikelnr"] += 1
-                continue
-            if not code:
-                skipped["no_code"] += 1
-                continue
-            try:
-                obj = _item_uom_to_record(r, existing_by_key.get((artikelnr, code)))
-                if obj is None:
-                    skipped["error"] += 1
-                    continue
-                s.add(obj)
-                upserted += 1
-                pending += 1
-            except Exception:  # noqa: BLE001
-                log.exception(
-                    "nav_sync_item_uom_row_failed", artikelnr=artikelnr, code=code
-                )
+    # Build the desired rows in memory first, de-duplicated by PK (NAV can
+    # return the same (item, code) twice — last wins, matching the old
+    # session.get upsert). Then write in BULK: one DELETE + one executemany
+    # INSERT. Per-row ORM get/add issued ~13k individual statements to
+    # Supabase (15-20 min, lock-prone); the bulk path is a short transaction
+    # of seconds.
+    by_key: dict[tuple[str, str], ArtikelEenheid] = {}
+    for r in rows:
+        artikelnr, code = _item_uom_keys(r)
+        if not artikelnr:
+            skipped["no_artikelnr"] += 1
+            continue
+        if not code:
+            skipped["no_code"] += 1
+            continue
+        try:
+            obj = _item_uom_to_record(r, None)
+            if obj is None:
                 skipped["error"] += 1
-            if pending >= SYNC_CHUNK_SIZE:
-                s.commit()
-                pending = 0
+                continue
+            by_key[(artikelnr, code)] = obj
+        except Exception:  # noqa: BLE001
+            log.exception(
+                "nav_sync_item_uom_row_failed", artikelnr=artikelnr, code=code
+            )
+            skipped["error"] += 1
+
+    objs = list(by_key.values())
+    with Session(engine) as s:
+        # Full-mirror refresh: clear then bulk-insert. Brief empty window is
+        # safe — match_articles falls back to the base unit + review if a UoM
+        # isn't found, and the window is only the few seconds of this write.
+        s.exec(delete(ArtikelEenheid))
+        s.bulk_save_objects(objs)
         s.commit()
+    upserted = len(objs)
 
     return SyncReport(
         domain="item_uoms", fetched=len(rows), upserted=upserted,
@@ -630,8 +632,10 @@ def db_counts() -> DbCounts:
         n_a = s.exec(select(func.count()).select_from(Artikelkaart)).one()
         n_x = s.exec(select(func.count()).select_from(ArtikelKruisverwijzing)).one()
         n_st = s.exec(select(func.count()).select_from(KlantenkaartShipTo)).one()
+        n_uom = s.exec(select(func.count()).select_from(ArtikelEenheid)).one()
     return DbCounts(
-        klanten=n_k, artikelen=n_a, kruisverwijzingen=n_x, ship_to_adressen=n_st
+        klanten=n_k, artikelen=n_a, kruisverwijzingen=n_x, ship_to_adressen=n_st,
+        artikel_eenheden=n_uom,
     )
 
 
