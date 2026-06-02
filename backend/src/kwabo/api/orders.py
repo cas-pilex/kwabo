@@ -201,6 +201,24 @@ def _resolve_eml_bytes(order_state: dict, email_id: str | None) -> bytes | None:
     return None
 
 
+def _refetch_graph_eml(email_id: str | None) -> bytes | None:
+    """Re-fetch the source MIME straight from the Graph mailbox by message-id.
+
+    Self-heals attachment downloads for orders whose persisted .eml is gone or
+    stale — notably everything created before the storage-key collision fix,
+    where every order shared one (overwritten) .eml. For Graph mails the
+    mailbox is the canonical source and the message is still there (mark_seen
+    only flips isRead). Returns None when not applicable / on any failure."""
+    if not email_id or settings.email_mode != "graph":
+        return None
+    try:
+        from kwabo.integrations.email_client_graph import GraphEmailClient
+
+        return GraphEmailClient().fetch_raw(email_id)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _short_hash(b: bytes) -> str:
     import hashlib
 
@@ -637,20 +655,31 @@ def download_attachment(
         email_id = row.email_id
 
     raw_eml = _resolve_eml_bytes(state, email_id)
-    if not raw_eml:
-        # Honest message: voor Graph-mails op een net-gedeployde Railway
-        # zonder Supabase Storage ligt het bestand er gewoon niet meer.
-        # Onderscheid 'no source at all' van 'attachment niet in source'.
-        raise HTTPException(
-            404,
-            "Bron-document niet meer beschikbaar (storage leeg of niet "
-            "geconfigureerd). Configureer SUPABASE_URL + "
-            "SUPABASE_SERVICE_ROLE_KEY voor persistente .eml-opslag, of "
-            "upload het document opnieuw via 'Bron-document'.",
-        )
+    result = _extract_attachment_bytes(raw_eml, naam) if raw_eml else None
 
-    result = _extract_attachment_bytes(raw_eml, naam)
     if not result:
+        # Self-heal: the persisted .eml is missing (never stored) or stale (an
+        # older storage-key collision overwrote it with a different mail). For
+        # Graph mails the mailbox is canonical — re-fetch the original MIME by
+        # message-id and try again. Recovers every order created before the
+        # collision fix.
+        fresh = _refetch_graph_eml(email_id)
+        if fresh:
+            result = _extract_attachment_bytes(fresh, naam)
+            if result:
+                from kwabo.utils.logging import log as _log
+                _log.info("attachment_recovered_via_graph_refetch", order_id=order_id, naam=naam)
+
+    if not result:
+        if not raw_eml:
+            raise HTTPException(
+                404,
+                "Bron-document niet meer beschikbaar (storage leeg of niet "
+                "geconfigureerd, en niet meer in de mailbox op te halen). "
+                "Configureer SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY voor "
+                "persistente .eml-opslag, of upload het document opnieuw via "
+                "'Bron-document'.",
+            )
         raise HTTPException(404, f"Bijlage '{naam}' niet gevonden in e-mail")
 
     data, ctype = result

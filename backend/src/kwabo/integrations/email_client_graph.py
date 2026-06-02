@@ -211,6 +211,33 @@ class GraphEmailClient:
 
         return emails
 
+    def fetch_raw(self, message_id: str) -> bytes | None:
+        """Re-fetch a single message's raw MIME by id. Used to self-heal
+        attachment downloads when the persisted .eml is missing/stale (e.g.
+        the old storage-key collision). Returns None on any failure — the
+        caller falls back to a clean 404."""
+        if not message_id:
+            return None
+        try:
+            access = self._access_token()
+        except Exception:  # noqa: BLE001
+            return None
+        headers = {"Authorization": f"Bearer {access}"}
+        try:
+            with httpx.Client(timeout=60.0, headers=headers) as client:
+                r = client.get(f"{GRAPH_BASE}/me/messages/{message_id}/$value")
+                if r.status_code == 401:
+                    self._refresh_token()
+                    client.headers["Authorization"] = f"Bearer {self._token.access_token}"
+                    r = client.get(f"{GRAPH_BASE}/me/messages/{message_id}/$value")
+                if r.status_code >= 400:
+                    log.warning("graph_fetch_raw_failed", message_id=message_id, status=r.status_code)
+                    return None
+                return r.content
+        except Exception as e:  # noqa: BLE001
+            log.warning("graph_fetch_raw_error", message_id=message_id, error=str(e)[:200])
+            return None
+
     def mark_seen(self, email_id: str) -> None:
         access = self._access_token()
         headers = {

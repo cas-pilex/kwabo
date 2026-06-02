@@ -101,6 +101,61 @@ def test_mint_token_endpoint_rejects_invalid_disposition(client):
     assert r.status_code == 400
 
 
+def _build_eml_with_pdf(naam: str, pdf_bytes: bytes) -> bytes:
+    import email.message
+
+    m = email.message.EmailMessage()
+    m["From"] = "a@b.nl"
+    m["To"] = "c@d.nl"
+    m["Subject"] = "Order"
+    m.set_content("body")
+    m.add_attachment(pdf_bytes, maintype="application", subtype="pdf", filename=naam)
+    return m.as_bytes()
+
+
+def test_bijlagen_self_heals_via_graph_refetch(client, monkeypatch):
+    """When the persisted .eml is gone/stale (e.g. the old storage-key
+    collision), a Graph mail's attachment is recovered by re-fetching the
+    original MIME from the mailbox by message-id. Regression for 'po17830.pdf
+    niet gevonden' on pre-fix orders."""
+    import json
+
+    from sqlmodel import Session
+
+    from kwabo.db import session as db_session
+    from kwabo.db.repository import OrderLogRepo
+    from kwabo.integrations import email_client_graph
+
+    pdf = b"%PDF-1.4 fake-bytes"
+    naam = "po17830.pdf"
+    with Session(db_session.engine) as s:
+        row = OrderLogRepo(s).create(
+            email_id="graph-msg-xyz", email_from="x@y.nl",
+            email_subject="Bestelnummer 17830", status="review",
+        )
+        # No storage key / source_path → _resolve_eml_bytes returns None, so the
+        # download must fall back to the Graph re-fetch.
+        row.order_state = json.dumps({"bijlagen": [{"naam": naam, "type": "pdf"}]})
+        s.add(row)
+        s.commit()
+        oid = row.id
+
+    monkeypatch.setattr(settings, "email_mode", "graph")
+    eml = _build_eml_with_pdf(naam, pdf)
+    monkeypatch.setattr(
+        email_client_graph.GraphEmailClient, "fetch_raw", lambda self, mid: eml
+    )
+
+    token, _ = _sign_attachment_token(oid, naam, "inline", 60)
+    r = client.get(
+        f"/api/orders/{oid}/bijlagen",
+        params={"naam": naam, "disposition": "inline", "token": token},
+    )
+    assert r.status_code == 200
+    assert r.content == pdf
+    assert "pdf" in r.headers.get("content-type", "")
+
+
 def test_signed_url_secret_isolation_via_jwt_secret_rotation(monkeypatch):
     """Rotating jwt_secret must invalidate tokens minted under the previous
     secret (because signed_url_secret falls back to jwt_secret)."""
