@@ -501,7 +501,16 @@ def _ingest_item_uoms(rows: list[dict], dry_run: bool, sample_keys: list[str]) -
         )
 
     with Session(engine) as s:
-        for i, r in enumerate(rows):
+        # Prefetch ALL existing rows in ONE query (dict keyed by PK) instead of
+        # a per-row session.get — that turned a ~13k-row sync into ~13k blocking
+        # SELECTs (20+ min). With the prefetch it's a single SELECT + chunked
+        # commits = seconds.
+        existing_by_key: dict[tuple[str, str], ArtikelEenheid] = {
+            (e.kwabo_artikelnr, e.eenheid_code): e
+            for e in s.exec(select(ArtikelEenheid)).all()
+        }
+        pending = 0
+        for r in rows:
             artikelnr, code = _item_uom_keys(r)
             if not artikelnr:
                 skipped["no_artikelnr"] += 1
@@ -509,21 +518,22 @@ def _ingest_item_uoms(rows: list[dict], dry_run: bool, sample_keys: list[str]) -
             if not code:
                 skipped["no_code"] += 1
                 continue
-            existing = s.get(ArtikelEenheid, (artikelnr, code))
             try:
-                obj = _item_uom_to_record(r, existing)
+                obj = _item_uom_to_record(r, existing_by_key.get((artikelnr, code)))
                 if obj is None:
                     skipped["error"] += 1
                     continue
                 s.add(obj)
                 upserted += 1
+                pending += 1
             except Exception:  # noqa: BLE001
                 log.exception(
                     "nav_sync_item_uom_row_failed", artikelnr=artikelnr, code=code
                 )
                 skipped["error"] += 1
-            if (i + 1) % SYNC_CHUNK_SIZE == 0:
+            if pending >= SYNC_CHUNK_SIZE:
                 s.commit()
+                pending = 0
         s.commit()
 
     return SyncReport(
