@@ -13,6 +13,7 @@ from sqlmodel import Session, select
 from kwabo.utils import utcnow
 
 from kwabo.db.models import (
+    ArtikelEenheid,
     ArtikelKruisverwijzing,
     ArtikelMatchingHistory,
     ArtikelPalletKennis,
@@ -394,6 +395,29 @@ class ArtikelkaartRepo:
         return list(
             self.s.exec(select(Artikelkaart).where(Artikelkaart.mixprijzen.is_(True))).all()
         )
+
+    def list_eenheden(self, artikelnr: str) -> list[ArtikelEenheid]:
+        """All Item-Unit-of-Measure rows for an article (from the NAV sync)."""
+        return list(
+            self.s.exec(
+                select(ArtikelEenheid).where(
+                    ArtikelEenheid.kwabo_artikelnr == artikelnr
+                )
+            ).all()
+        )
+
+    def valid_uom_codes(self, artikelnr: str) -> set[str]:
+        """Upper-cased set of unit codes NAV accepts for this article.
+
+        Empty when the item-UOM table hasn't been synced for this article —
+        callers must treat "empty" as "unknown" (fall back to base unit),
+        not as "no valid units".
+        """
+        return {
+            e.eenheid_code.strip().upper()
+            for e in self.list_eenheden(artikelnr)
+            if e.eenheid_code
+        }
 
 
 class ShipToRepo:

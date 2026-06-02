@@ -22,15 +22,15 @@ from typing import Optional
 
 from sqlmodel import Session
 
-from kwabo.db.repository import PalletKennisRepo
+from kwabo.db.repository import ArtikelkaartRepo, PalletKennisRepo
 from kwabo.db.session import engine
 from kwabo.utils.logging import log
 from kwabo.utils.pallet_logic import PALLET_ARTIKELNR, compute_europallet
 
 
-def _evaluate(state: dict, repo: PalletKennisRepo) -> dict:
+def _evaluate(state: dict, repo: PalletKennisRepo, uom_repo=None) -> dict:
     new_state = dict(state)
-    regel = compute_europallet(state, repo=repo)
+    regel = compute_europallet(state, repo=repo, uom_repo=uom_repo)
     new_state["europallet_regel"] = regel
 
     log.info(
@@ -59,4 +59,6 @@ async def compute_europallet_node(
         return _evaluate(state, repo)
 
     with Session(engine) as s:
-        return _evaluate(state, PalletKennisRepo(s))
+        # Same session feeds the item-UOM lookup so stuks/rol lines can be
+        # converted to pallets via the article's units-per-pallet.
+        return _evaluate(state, PalletKennisRepo(s), uom_repo=ArtikelkaartRepo(s))

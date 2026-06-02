@@ -13,6 +13,13 @@ from kwabo.db.session import engine
 from kwabo.graph.state import OrderState
 from kwabo.integrations.forwarded_parser import detect_forward
 from kwabo.integrations.navision_api import NavisionClient, get_navision_client
+# Reuse the proven location-signal helpers from select_ship_to (the order's
+# delivery address can name a vestiging in subject/body/PDF/afleveradres).
+from kwabo.graph.nodes.select_ship_to import (
+    _normalize_postcode,
+    _order_signal_text,
+    _word_in,
+)
 from kwabo.utils.logging import log
 
 EMAIL_RE = re.compile(r"[\w\.\-\+]+@[\w\.\-]+")
@@ -29,6 +36,74 @@ def _extract_domain_name(addr: str) -> str:
         return ""
     domain = email.split("@", 1)[1]
     return domain.split(".")[0]
+
+
+def _candidate_address(cand: dict) -> tuple[str, str, str]:
+    """(postcode, plaats, straat) from a NAV customer candidate. The nav2018
+    client preserves raw PLX_Customer fields; be tolerant of name variants."""
+    postcode = cand.get("Post_Code") or cand.get("PostCode") or ""
+    plaats = cand.get("City") or cand.get("Plaats") or ""
+    straat = (
+        cand.get("Address")
+        or cand.get("Address_1")
+        or cand.get("Address_Line_1")
+        or ""
+    )
+    return str(postcode), str(plaats), str(straat)
+
+
+def _score_customer(cand: dict, signal: str, afleveradres: dict) -> int:
+    """Score one candidate against the order's delivery location:
+    postcode exact (5) > plaats named in order text (3) > straat substring (1).
+    Mirrors select_ship_to's weighting so customer- and ship-to disambiguation
+    behave consistently."""
+    postcode, plaats, straat = _candidate_address(cand)
+    score = 0
+
+    addr_pc = _normalize_postcode(afleveradres.get("postcode"))
+    cand_pc = _normalize_postcode(postcode)
+    if cand_pc and addr_pc and cand_pc == addr_pc:
+        score += 5
+
+    if plaats and _word_in(signal, plaats):
+        score += 3
+
+    s = straat.strip().lower()
+    if s and s in signal:
+        score += 1
+
+    return score
+
+
+def _pick_customer(
+    res: list[dict], state: dict
+) -> tuple[dict | None, bool, str]:
+    """Choose the right candidate from a NAV search result.
+
+    Returns ``(chosen, ambiguous, matched_on)``. With one candidate we accept
+    it. With several (a franchise with one card per branch), we score on the
+    delivery address and accept ONLY a single clear winner; otherwise we
+    refuse to guess (``ambiguous=True``) so a human picks — shipping
+    Heerenveen's order to the Arnhem card is worse than asking.
+    """
+    if not res:
+        return None, False, "none"
+    if len(res) == 1:
+        return res[0], False, "single"
+
+    signal = _order_signal_text(state)
+    afleveradres = state.get("afleveradres") or {}
+    scored = sorted(
+        ((c, _score_customer(c, signal, afleveradres)) for c in res),
+        key=lambda x: x[1],
+        reverse=True,
+    )
+    top, top_score = scored[0]
+    second_score = scored[1][1]
+    if top_score > 0 and second_score < top_score:
+        matched_on = "postcode" if top_score >= 5 else "plaats"
+        return top, False, matched_on
+    return None, True, "ambiguous"
 
 
 async def match_customer_node(state: OrderState) -> OrderState:
@@ -69,35 +144,60 @@ async def match_customer_node(state: OrderState) -> OrderState:
                 "betalingsconditie": klant.betalingsconditie,
             }
 
+    # NAV search fallbacks. Both can return SEVERAL candidates (a franchise
+    # like Pontmeyer has one customer card per branch). Never blindly take
+    # res[0] — disambiguate on the order's delivery address; flag if unclear.
+    ambiguous_candidates: list[dict] | None = None
+    ambiguous_term: str | None = None
+
     if not match and effective_email:
-        # Nav email search
         res = await nav.search_customers(email=effective_email)
-        if res:
+        chosen, ambiguous, matched_on = _pick_customer(res, state)
+        if chosen:
             match = {
-                "navision_klantnr": res[0]["number"],
-                "klantnaam": res[0]["displayName"],
-                "match_confidence": 0.95,
+                "navision_klantnr": chosen["number"],
+                "klantnaam": chosen["displayName"],
+                "match_confidence": 0.95 if matched_on == "single" else 0.9,
                 "match_bron": "navision_email",
             }
+        elif ambiguous:
+            ambiguous_candidates = res
+            ambiguous_term = effective_email
 
-    if not match:
+    if not match and ambiguous_candidates is None:
         # Name fuzzy search via Nav — gebruik forward-domein indien aanwezig
         effective_from = fwd.original_from_email or email_from
         domain = _extract_domain_name(effective_from)
         if domain:
             res = await nav.search_customers(naam=domain)
-            if res:
+            chosen, ambiguous, matched_on = _pick_customer(res, state)
+            if chosen:
                 match = {
-                    "navision_klantnr": res[0]["number"],
-                    "klantnaam": res[0]["displayName"],
-                    "match_confidence": 0.7,
+                    "navision_klantnr": chosen["number"],
+                    "klantnaam": chosen["displayName"],
+                    # Disambiguated by address → trust it (0.85); a lone name
+                    # hit stays the cautious 0.7 as before.
+                    "match_confidence": 0.7 if matched_on == "single" else 0.85,
                     "match_bron": "navision_name",
                 }
+            elif ambiguous:
+                ambiguous_candidates = res
+                ambiguous_term = domain
 
     warnings = list(state.get("validatie_warnings") or [])
     if forward_note:
         warnings.append(forward_note)
-    if not match:
+    if not match and ambiguous_candidates:
+        namen = ", ".join(
+            f"{c.get('number')} ({c.get('displayName')})"
+            for c in ambiguous_candidates[:6]
+        )
+        warnings.append(
+            f"⚠ MEERDERE KLANTEN gevonden voor '{ambiguous_term}' "
+            f"({len(ambiguous_candidates)}) — geen eenduidige adres-match. "
+            f"Handmatige selectie nodig. Kandidaten: {namen}"
+        )
+    elif not match:
         warnings.append(f"KLANT NIET GEVONDEN: {email_from}. Handmatige selectie nodig.")
 
     # 4+ signalering + kredietcheck

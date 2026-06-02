@@ -45,22 +45,59 @@ PALLET_THRESHOLD = 0.5
 DEFAULT_CONFIDENCE = 0.7
 
 
-def compute_europallet(state: dict, *, repo) -> Optional[dict]:
+def _pallet_base_units(eenheden: list) -> Optional[float]:
+    """Base units that fit on one physical pallet for this article, read from
+    the synced item-UOM rows (ArtikelEenheid). Returns ``None`` when it can't
+    be determined unambiguously — prefer a plain ``PAL`` row, else a single
+    PAL-prefixed row; multiple variants (PAL30/PAL35) are ambiguous so we
+    don't guess and let the caller fall back to the heuristic."""
+    pals = [
+        e for e in eenheden
+        if (e.eenheid_code or "").strip().upper().startswith("PAL")
+        and (e.qty_per_base or 0) > 0
+    ]
+    if not pals:
+        return None
+    exact = [e for e in pals if (e.eenheid_code or "").strip().upper() == "PAL"]
+    if exact:
+        return float(exact[0].qty_per_base)
+    if len(pals) == 1:
+        return float(pals[0].qty_per_base)
+    return None
+
+
+def _qty_per_base(eenheden: list, code: str) -> float:
+    """Base units contained in one of the ORDERED unit. Defaults to 1.0 when
+    the unit isn't in the table (i.e. it's the base unit itself)."""
+    cu = (code or "").strip().upper()
+    for e in eenheden:
+        if (e.eenheid_code or "").strip().upper() == cu and (e.qty_per_base or 0) > 0:
+            return float(e.qty_per_base)
+    return 1.0
+
+
+def compute_europallet(state: dict, *, repo, uom_repo=None) -> Optional[dict]:
     """Compute the europallet (artikelnr 19820) regel based on the order's lines.
 
     Returns a regel-dict ready to insert into ``state["orderregels"]``, OR
     ``None`` if no europallet is needed.
 
-    Rules:
-      - For each regel with a matched ``kwabo_artikelnr``, check
-        ``PalletKennisRepo.lookup(artikelnr, eenheid)``.
-      - If known: when ``pallet_required`` and ``per_pallet > 0``, add
-        ``hoeveelheid / per_pallet`` to ``total_pallets``.
-      - If unknown: fall back to heuristic — if ``eenheid in {"DOOS", "PAL"}``
-        and ``hoeveelheid >= 5``, ``total_pallets += hoeveelheid / 24``.
-      - If ``total_pallets < 0.5`` -> return ``None``.
-      - Otherwise return a regel-dict with ``artikelnummer_kwabo="19820"``,
-        ``hoeveelheid=ceil(total_pallets)``, ``eenheid="STUK"``.
+    Per line (skipping unmatched lines and the europallet line itself), the
+    pallet contribution is decided in priority order:
+
+      1. Learned ``ArtikelPalletKennis`` (repo.lookup) wins — when
+         ``pallet_required`` and ``per_pallet > 0``, add ``qty / per_pallet``.
+      2. Else, if ``uom_repo`` is supplied and the article has unambiguous
+         item-UOM data: convert via the article's units-per-pallet. A line
+         ordered in a PAL-unit counts 1:1; a line in stuks/rol/etc. counts
+         ``(qty * base_per_orderedunit) / base_per_pallet`` — this is Cas'
+         "60 stuks, 60 per pallet -> 1 pallet". stuks/rol therefore do NOT
+         map 1:1; small quantities consolidate onto a pallet.
+      3. Else legacy heuristic: PAL counts 1:1, DOOS ~1 pallet per 24 units,
+         everything else contributes nothing.
+
+    ``total < 0.5`` -> ``None``; otherwise a regel with
+    ``hoeveelheid=ceil(total)``, ``eenheid="STUK"``.
     """
     regels = state.get("orderregels") or []
     total = 0.0
@@ -72,10 +109,9 @@ def compute_europallet(state: dict, *, repo) -> Optional[dict]:
             # double-count if the input already carries one.
             continue
 
-        # match_articles overwrites `eenheid` with the item's NAV base UoM
-        # (so the PATCH doesn't 400 on an unknown UoM). For pallet detection
-        # we want the ORIGINALLY extracted unit (where PAL/PALETTE shows up),
-        # falling back to the overwritten one for older state.
+        # match_articles preserves the customer's ORIGINALLY ordered unit in
+        # `eenheid_origineel` (where PAL/STUK/ROL shows up), falling back to
+        # the NAV-facing `eenheid` for older state.
         eenheid = (
             regel.get("eenheid_origineel") or regel.get("eenheid") or ""
         ).upper()
@@ -90,12 +126,21 @@ def compute_europallet(state: dict, *, repo) -> Optional[dict]:
         if kennis is not None:
             if kennis.pallet_required and kennis.per_pallet:
                 total += qty / max(kennis.per_pallet, 1)
-        else:
-            if eenheid in PALLET_EENHEDEN and qty >= PALLET_MIN_QTY:
-                # Each PAL unit IS a pallet — count 1:1, no division.
-                total += qty
-            elif eenheid in HEURISTIC_EENHEDEN and qty >= HEURISTIC_MIN_QTY:
-                total += qty / HEURISTIC_PER_PALLET
+            continue
+
+        # A PAL-unit line is already expressed in pallets — count 1:1.
+        if (eenheid in PALLET_EENHEDEN or eenheid.startswith("PAL")) and qty >= PALLET_MIN_QTY:
+            total += qty
+            continue
+
+        eenheden = uom_repo.list_eenheden(kwabo_nr) if uom_repo is not None else []
+        pal_base = _pallet_base_units(eenheden)
+        if pal_base:
+            # Convert the ordered unit to base units, then to pallets.
+            per_unit_base = _qty_per_base(eenheden, eenheid)
+            total += (qty * per_unit_base) / pal_base
+        elif eenheid in HEURISTIC_EENHEDEN and qty >= HEURISTIC_MIN_QTY:
+            total += qty / HEURISTIC_PER_PALLET
 
     if total < PALLET_THRESHOLD:
         return None

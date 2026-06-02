@@ -145,37 +145,65 @@ async def match_articles_node(state: OrderState) -> OrderState:
             f"artikel-matches crashten. Re-run de pipeline of vul handmatig in."
         )
 
-    # Enrich each matched line with the item's NAV base-UoM from the synced
-    # artikelkaarten mirror. The LLM extractor guesses a UoM from the mail
-    # text (often "STUK", "M1", "PC" etc.) but NAV rejects any UoM that is
-    # not in the item's PLX_ItemUnitOfMeasure table (HTTP 400 "Unit of
-    # Measure Code ... cannot be found in the related table").
+    # Resolve the NAV-facing unit of measure per line. The LLM extractor
+    # guesses a UoM from the mail text (e.g. "STUK", "PAL", "ROL") but NAV
+    # rejects any UoM that is not in the item's PLX_ItemUnitOfMeasure table
+    # (HTTP 400 "Unit of Measure Code ... cannot be found").
     #
-    # The base_eenheid synced from PLX_Item.Base_Unit_of_Measure is the one
-    # UoM that is ALWAYS valid for an item (NAV requires it). Until we also
-    # mirror PLX_ItemUnitOfMeasure and can validate alternative UoMs, the
-    # safe contract is: overwrite the line's eenheid with the base. This
-    # makes _line_uom_to_emit a no-op (eenheid == eenheid_default) so NAV
-    # falls through to the item default during line POST. apply_mixprijzen
-    # can still override later via mix_uom_gekozen for mix-priced items —
-    # that path knows which UoM is valid for the mix discount.
+    # The fix for the "60 stuks -> 60 pallets" bug: do NOT blindly overwrite
+    # the customer's ordered unit with the article's base unit. Validate the
+    # ordered unit against the synced ArtikelEenheid (item-UOM mirror):
+    #   * ordered unit is empty               -> use base (NAV default).
+    #   * ordered unit == base unit           -> use base (nothing to convert).
+    #   * ordered unit is a VALID item UoM    -> honour it, so "60 STUK" stays
+    #     60 pieces and NAV does the pallet/price conversion itself.
+    #   * ordered unit unknown OR item-UOM table not synced for this item ->
+    #     fall back to base AND flag the line for review (safer than silently
+    #     shipping a wrong unit; mirrors Cas' "niet de eerste beste pakken").
+    # `eenheid_origineel` always preserves the raw extracted unit so
+    # compute_europallet can still see e.g. "PAL". apply_mixprijzen may later
+    # override via mix_uom_gekozen for mix-priced items.
+    eenheid_review_idx: list[int] = []
+    eenheid_warnings: list[str] = []
     with Session(engine) as s:
         art_repo = ArtikelkaartRepo(s)
-        for r in matched:
+        for idx, r in enumerate(matched):
             artnr = r.get("artikelnummer_kwabo_matched")
             if not artnr:
                 continue
             kaart = art_repo.get(artnr)
             if not kaart or not kaart.basis_eenheid:
                 continue
-            # Preserve the LLM-extracted unit so downstream europallet
-            # detection can still see e.g. "PAL" even though we overwrite
-            # the NAV-facing `eenheid` with basis. Without this, "66 PAL"
-            # from a Duitse Auftrag becomes "STUK" before compute_europallet
-            # gets a look — and no europallet line is generated.
+            base = kaart.basis_eenheid.strip()
+            base_upper = base.upper()
             r.setdefault("eenheid_origineel", r.get("eenheid"))
-            r["eenheid_default"] = kaart.basis_eenheid
-            r["eenheid"] = kaart.basis_eenheid
+            r["eenheid_default"] = base
+
+            ordered = (r.get("eenheid") or "").strip()
+            ordered_upper = ordered.upper()
+
+            # Map of accepted unit codes (upper -> canonical NAV casing). The
+            # base unit is always valid for the item in NAV, even if the
+            # item-UOM table hasn't been synced yet.
+            code_by_upper = {
+                c.strip().upper(): c.strip()
+                for c in art_repo.valid_uom_codes(artnr)
+            }
+            code_by_upper.setdefault(base_upper, base)
+
+            if not ordered or ordered_upper == base_upper:
+                r["eenheid"] = base
+            elif ordered_upper in code_by_upper:
+                r["eenheid"] = code_by_upper[ordered_upper]
+            else:
+                # Unknown/unvalidatable unit -> safe base + human review.
+                r["eenheid"] = base
+                eenheid_review_idx.append(idx)
+                eenheid_warnings.append(
+                    f"⚠ EENHEID CONTROLEREN (regel {idx + 1}): klant bestelde "
+                    f"'{ordered}' maar dit is geen geldige eenheid voor artikel "
+                    f"{artnr} (gebruikt nu standaard '{base}')."
+                )
 
     alle_gematcht = bool(matched) and all(r.get("artikelnummer_kwabo_matched") for r in matched)
     log.info(
@@ -246,9 +274,17 @@ async def match_articles_node(state: OrderState) -> OrderState:
                 needs_paths.append(path)
     meta["orderregels"] = regels_meta
 
+    # Flag lines whose ordered unit could not be validated against the
+    # item-UOM mirror (see the eenheid-resolution block above).
+    for idx in eenheid_review_idx:
+        path = f"orderregels[{idx}].eenheid"
+        if path not in needs_paths:
+            needs_paths.append(path)
+
     validatie_warnings = list(state.get("validatie_warnings") or [])
     if nav_outage_warning:
         validatie_warnings.append(nav_outage_warning)
+    validatie_warnings.extend(eenheid_warnings)
 
     return {
         **state,

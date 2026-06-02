@@ -7,6 +7,7 @@ from curl/dashboard without needing Railway shell access.
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 import uuid
 from typing import Optional
@@ -18,6 +19,7 @@ from sqlmodel import Session, select, func
 from kwabo.config import settings
 from kwabo.db.models import (
     Artikelkaart,
+    ArtikelEenheid,
     ArtikelKruisverwijzing,
     Klantenkaart,
     KlantenkaartShipTo,
@@ -203,6 +205,75 @@ def _ship_to_to_record(
         plaats=plaats,
         land=land,
         is_default=False,
+    )
+
+
+# Same mix-UOM heuristic as scripts/sync_navision_masters.py: an explicit NAV
+# flag wins, otherwise the UOM code itself signals a mix unit. Keep the pattern
+# conservative (MIX/MENG) — "M1"/"M2" are meter-based units, NOT mix units, so
+# we do NOT pattern-match a leading "M<digit>" to avoid false positives.
+_MIX_UOM_PATTERN = re.compile(r"\bMIX\b|MENG", re.IGNORECASE)
+
+
+def _nav_bool(row: dict, *keys: str) -> bool:
+    """NAV exposes flags as bool / "true"/"false" / "Yes"/"No" / 0/1."""
+    for k in keys:
+        if k in row:
+            v = row[k]
+            if isinstance(v, bool):
+                return v
+            if isinstance(v, (int, float)):
+                return bool(v)
+            s = str(v).strip().lower()
+            if s in ("true", "yes", "ja", "1"):
+                return True
+            if s in ("false", "no", "nee", "0", ""):
+                return False
+    return False
+
+
+def _item_uom_is_mix(row: dict, code: str) -> bool:
+    if _nav_bool(row, "Mix_UoM", "MixUoM", "Is_Mix_UoM", "Kwabo_Mix"):
+        return True
+    return bool(code and _MIX_UOM_PATTERN.search(code))
+
+
+def _item_uom_to_record(
+    row: dict, existing: Optional[ArtikelEenheid]
+) -> Optional[ArtikelEenheid]:
+    """Map a PLX_ItemUnitOfMeasure row (NAV table 5404) to ArtikelEenheid.
+
+    Tolerant of NAV field-name variants — the exact OData property names for
+    this page in the Kopie 2026 environment must be verified live, so we
+    accept the common alternatives and skip rows missing a key field.
+    """
+    artikelnr = _str_or_none(
+        row.get("Item_No") or row.get("ItemNo") or row.get("Item")
+    )
+    code = _str_or_none(
+        row.get("Code")
+        or row.get("Unit_of_Measure_Code")
+        or row.get("UnitOfMeasureCode")
+    )
+    if not artikelnr or not code:
+        return None
+    qty = _float_or_none(
+        row.get("Qty_per_Unit_of_Measure")
+        or row.get("QtyperUnitofMeasure")
+        or row.get("Qty_per_Unit")
+    )
+    if qty is None or qty <= 0:
+        qty = 1.0
+    is_mix = _item_uom_is_mix(row, code)
+    if existing is not None:
+        existing.qty_per_base = float(qty)
+        existing.is_mix_uom = is_mix
+        return existing
+    return ArtikelEenheid(
+        kwabo_artikelnr=artikelnr,
+        eenheid_code=code,
+        qty_per_base=float(qty),
+        is_mix_uom=is_mix,
     )
 
 
@@ -397,6 +468,68 @@ async def _sync_ship_to(
     )
 
 
+async def _sync_item_uoms(
+    client: Nav2018ODataClient, session: Session, dry_run: bool
+) -> SyncReport:
+    """Mirror PLX_ItemUnitOfMeasure (NAV table 5404) into ArtikelEenheid.
+
+    This is the data match_articles needs to validate the customer's ordered
+    unit (e.g. keep "STUK" instead of forcing the article's default "PAL"),
+    and apply_mixprijzen needs to find mix UOMs. The page is a flat PLX page,
+    so we read it like _sync_ship_to rather than per-item sub-collections.
+    """
+    rows, err = await _fetch_collection_safe(client, client.page_item_uom)
+    sample_keys = sorted(rows[0].keys()) if rows else []
+    skipped = {"no_artikelnr": 0, "no_code": 0, "error": 0}
+    if err:
+        return SyncReport(
+            domain="item_uoms", fetched=0, upserted=0, skipped=0,
+            skipped_reasons={"fetch_error": 1}, sample_keys=[], fetch_error=err,
+        )
+    upserted = 0
+    for i, r in enumerate(rows):
+        artikelnr = _str_or_none(
+            r.get("Item_No") or r.get("ItemNo") or r.get("Item")
+        )
+        code = _str_or_none(
+            r.get("Code")
+            or r.get("Unit_of_Measure_Code")
+            or r.get("UnitOfMeasureCode")
+        )
+        if not artikelnr:
+            skipped["no_artikelnr"] += 1
+            continue
+        if not code:
+            skipped["no_code"] += 1
+            continue
+        if dry_run:
+            upserted += 1
+            continue
+        existing = session.get(ArtikelEenheid, (artikelnr, code))
+        try:
+            obj = _item_uom_to_record(r, existing)
+            if obj is None:
+                skipped["error"] += 1
+                continue
+            session.add(obj)
+            upserted += 1
+        except Exception:  # noqa: BLE001
+            log.exception(
+                "nav_sync_item_uom_row_failed", artikelnr=artikelnr, code=code
+            )
+            skipped["error"] += 1
+        if not dry_run and (i + 1) % SYNC_CHUNK_SIZE == 0:
+            session.commit()
+            await asyncio.sleep(0)
+    if not dry_run:
+        session.commit()
+    return SyncReport(
+        domain="item_uoms", fetched=len(rows), upserted=upserted,
+        skipped=sum(skipped.values()), skipped_reasons=skipped,
+        sample_keys=sample_keys,
+    )
+
+
 async def _sync_cross_ref(
     client: Nav2018ODataClient, session: Session, dry_run: bool
 ) -> SyncReport:
@@ -508,6 +641,10 @@ async def _run_sync_job(job_id: str, selected: set[str], dry_run: bool) -> None:
                 job["progress"]["current"] = "ship_to"
                 reports.append(await _sync_ship_to(client, session, dry_run))
                 job["progress"]["ship_to"] = reports[-1].model_dump()
+            if "item_uoms" in selected:
+                job["progress"]["current"] = "item_uoms"
+                reports.append(await _sync_item_uoms(client, session, dry_run))
+                job["progress"]["item_uoms"] = reports[-1].model_dump()
         counts = db_counts()
         job["result"] = NavSyncResponse(
             mode=settings.navision_mode,
@@ -547,7 +684,7 @@ async def nav_sync_start(
             f"(current: {settings.navision_mode}).",
         )
     selected = {d.strip() for d in domains.split(",") if d.strip()}
-    valid = {"customers", "items", "cross_ref", "ship_to"}
+    valid = {"customers", "items", "cross_ref", "ship_to", "item_uoms"}
     unknown = selected - valid
     if unknown:
         raise HTTPException(400, f"unknown domains: {sorted(unknown)}. Valid: {sorted(valid)}")

@@ -160,10 +160,16 @@ def _build_state_from_extract(parsed: dict, raw: RawEmail) -> tuple[dict, dict, 
 
     flat["orderregels"] = regels_out
     meta["orderregels"] = regels_meta
-    # Leverdatum is informatief — wél tonen in het reviewscherm, maar NOOIT
-    # blokkeren/als 'mist' markeren (Cas: "leverdatum bij order invullen is
-    # overbodig"). Houd 'm dus uit de needs_review-set.
-    needs_review = [p for p in needs_review if p != "gewenste_leverdatum"]
+    # Informatieve/optionele velden — wél tonen in het reviewscherm, maar NOOIT
+    # blokkeren/als 'mist' markeren:
+    #  - leverdatum (Cas: "leverdatum bij order invullen is overbodig")
+    #  - opmerkingen (Cas: opmerkingen optioneel/niet-verplicht). Een lege
+    #    opmerking mag de push dus nooit tegenhouden.
+    _optioneel = {"gewenste_leverdatum", "opmerkingen"}
+    needs_review = [p for p in needs_review if p not in _optioneel]
+    for _f in _optioneel:
+        if isinstance(meta.get(_f), dict):
+            meta[_f]["needs_review"] = False
     return flat, meta, needs_review
 
 
