@@ -325,6 +325,10 @@ async def _fetch_collection_safe(
 # other HTTP requests) keep responding while a multi-thousand-row sync is
 # in flight. session.commit() is sync I/O, so we batch commits too.
 SYNC_CHUNK_SIZE = 100
+# Yield the event loop much more often than we commit, so a long sync (esp.
+# the ~13k-row item_uoms domain) can't block /api/health past Railway's
+# healthcheck timeout. Keeps the container alive during the sync.
+UOM_YIELD_EVERY = 10
 
 
 async def _sync_customers(
@@ -518,9 +522,15 @@ async def _sync_item_uoms(
                 "nav_sync_item_uom_row_failed", artikelnr=artikelnr, code=code
             )
             skipped["error"] += 1
-        if not dry_run and (i + 1) % SYNC_CHUNK_SIZE == 0:
-            session.commit()
-            await asyncio.sleep(0)
+        # This is the largest domain (~13k rows). Each session.get/commit is a
+        # BLOCKING Supabase round-trip on the event loop, so yield often (every
+        # few rows) — otherwise /api/health stops responding for seconds and
+        # Railway's healthcheck restarts the container mid-sync.
+        if not dry_run:
+            if (i + 1) % SYNC_CHUNK_SIZE == 0:
+                session.commit()
+            if (i + 1) % UOM_YIELD_EVERY == 0:
+                await asyncio.sleep(0)
     if not dry_run:
         session.commit()
     return SyncReport(
