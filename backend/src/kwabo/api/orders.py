@@ -751,15 +751,19 @@ ALLOWED_INCOMING_DOC_TYPES = {
     "text/plain",
     "image/png",
     "image/jpeg",
-    # Browsers often label .eml uploads as octet-stream because no MIME db
-    # entry exists. We accept it conditionally: only when the filename ends
+    # Outlook .msg — browsers send this or octet-stream depending on the OS
+    # MIME registry. Kwabo forwards orders as .msg, so the bron-document
+    # upload must accept it.
+    "application/vnd.ms-outlook",
+    # Browsers often label .eml/.msg uploads as octet-stream because no MIME
+    # db entry exists. We accept it conditionally: only when the filename ends
     # in a known-safe extension. See _is_safe_octet_stream below.
     "application/octet-stream",
 }
 
 # Extensions allowed when content_type is application/octet-stream — keeps
 # random binaries out of the inbox.
-SAFE_OCTET_STREAM_EXTENSIONS = {".eml", ".pdf", ".png", ".jpg", ".jpeg", ".txt"}
+SAFE_OCTET_STREAM_EXTENSIONS = {".eml", ".msg", ".pdf", ".png", ".jpg", ".jpeg", ".txt"}
 
 
 def _is_safe_octet_stream(content_type: str, filename: str) -> bool:

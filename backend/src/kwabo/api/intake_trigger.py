@@ -231,10 +231,19 @@ async def scan_inbox() -> dict:
 
 @router.post("/upload")
 async def upload_eml(file: UploadFile) -> dict:
-    if not file.filename or not file.filename.lower().endswith(".eml"):
-        raise HTTPException(400, "Only .eml accepted")
+    name = (file.filename or "").lower()
+    if not (name.endswith(".eml") or name.endswith(".msg")):
+        raise HTTPException(400, "Alleen .eml of .msg toegestaan")
     content = await file.read()
-    raw = parse_eml_bytes(content)
+    if name.endswith(".msg"):
+        # Outlook .msg → MIME, dan dezelfde pijplijn als .eml.
+        from kwabo.integrations.email_client import parse_msg_bytes
+        try:
+            raw = parse_msg_bytes(content)
+        except Exception as e:  # noqa: BLE001
+            raise HTTPException(422, f"Kon .msg niet lezen: {str(e)[:200]}")
+    else:
+        raw = parse_eml_bytes(content)
     state = _raw_email_to_state(raw)
     # Save the .eml BEFORE the pipeline so compose_order picks up
     # incoming_document_path/storage_key and emits the /incomingDocuments ops.

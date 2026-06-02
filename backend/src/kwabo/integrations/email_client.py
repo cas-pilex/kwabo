@@ -3,9 +3,13 @@ from __future__ import annotations
 
 import email
 import email.policy
+import email.utils
 import hashlib
 import io
+import mimetypes
+import os
 import shutil
+import tempfile
 import zipfile
 from dataclasses import dataclass, field
 from email.message import Message
@@ -192,6 +196,78 @@ def parse_eml_bytes(raw: bytes, email_id: str | None = None, source_path: str | 
         source_path=source_path,
         raw_eml=raw,
     )
+
+
+def _msg_to_mime_bytes(content: bytes) -> bytes:
+    """Convert an Outlook `.msg` (OLE compound file) to RFC822 MIME bytes.
+
+    Kwabo forwards orders as `.msg` files (both the source-document upload and
+    the loose-mail upload button). The rest of the pipeline — extraction,
+    storage, and the attachment-download MIME walker — speaks MIME, so we
+    convert once here and reuse `parse_eml_bytes`. extract_msg is imported
+    lazily so a missing dependency only breaks `.msg` handling, not app start.
+    """
+    import extract_msg  # lazy: optional dependency, .msg-only path
+
+    with tempfile.NamedTemporaryFile(suffix=".msg", delete=False) as tf:
+        tf.write(content)
+        tmp = tf.name
+    msg = None
+    try:
+        msg = extract_msg.openMsg(tmp)
+        em = email.message.EmailMessage()
+        if getattr(msg, "sender", None):
+            em["From"] = str(msg.sender)
+        if getattr(msg, "to", None):
+            em["To"] = str(msg.to)
+        em["Subject"] = str(getattr(msg, "subject", "") or "")
+        try:
+            d = getattr(msg, "date", None)
+            if d:
+                em["Date"] = d if isinstance(d, str) else email.utils.format_datetime(d)
+        except Exception:  # noqa: BLE001
+            pass
+        em.set_content(str(getattr(msg, "body", "") or ""))
+
+        for att in (getattr(msg, "attachments", None) or []):
+            data = getattr(att, "data", None)
+            # File attachments expose bytes; embedded .msg/other types don't.
+            if not isinstance(data, (bytes, bytearray)):
+                log_name = getattr(att, "longFilename", None) or getattr(att, "shortFilename", None)
+                from kwabo.utils.logging import log as _log
+                _log.warning("msg_attachment_skipped_non_bytes", filename=str(log_name))
+                continue
+            fname = (
+                getattr(att, "longFilename", None)
+                or getattr(att, "shortFilename", None)
+                or "attachment"
+            )
+            ctype, _ = mimetypes.guess_type(fname)
+            if ctype and "/" in ctype:
+                maintype, subtype = ctype.split("/", 1)
+            else:
+                maintype, subtype = "application", "octet-stream"
+            em.add_attachment(bytes(data), maintype=maintype, subtype=subtype, filename=fname)
+        return em.as_bytes()
+    finally:
+        if msg is not None:
+            try:
+                msg.close()
+            except Exception:  # noqa: BLE001
+                pass
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+
+
+def parse_msg_bytes(content: bytes, email_id: str | None = None, source_path: str | None = None) -> RawEmail:
+    """Parse an Outlook `.msg` by converting to MIME then reusing the .eml path.
+
+    The returned RawEmail's `raw_eml` is the converted MIME — so persisting it
+    and later re-extracting attachments works exactly like a native .eml."""
+    mime = _msg_to_mime_bytes(content)
+    return parse_eml_bytes(mime, email_id=email_id or _hash(content), source_path=source_path)
 
 
 def _extract_excel_text(xlsx_bytes: bytes) -> str:
