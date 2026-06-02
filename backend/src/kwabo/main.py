@@ -268,6 +268,20 @@ def create_app() -> FastAPI:
     def root() -> dict:
         return {"name": "kwabo-order-intake", "version": "0.1.0"}
 
+    @app.get("/api/version")
+    def version() -> dict:
+        """Deployed git commit, so a deploy can be verified before running
+        operational endpoints (e.g. nav-sync). Railway injects the SHA env."""
+        import os
+
+        sha = (
+            os.environ.get("RAILWAY_GIT_COMMIT_SHA")
+            or os.environ.get("GIT_COMMIT_SHA")
+            or os.environ.get("SOURCE_COMMIT")
+            or "unknown"
+        )
+        return {"commit": sha, "short": sha[:7] if sha != "unknown" else "unknown"}
+
     @app.get("/api/health")
     def health(response: Response) -> dict:
         """Liveness + mail-poller health. Fail-open by design.

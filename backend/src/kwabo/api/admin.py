@@ -325,10 +325,6 @@ async def _fetch_collection_safe(
 # other HTTP requests) keep responding while a multi-thousand-row sync is
 # in flight. session.commit() is sync I/O, so we batch commits too.
 SYNC_CHUNK_SIZE = 100
-# Yield the event loop much more often than we commit, so a long sync (esp.
-# the ~13k-row item_uoms domain) can't block /api/health past Railway's
-# healthcheck timeout. Keeps the container alive during the sync.
-UOM_YIELD_EVERY = 10
 
 
 async def _sync_customers(
@@ -472,6 +468,71 @@ async def _sync_ship_to(
     )
 
 
+def _item_uom_keys(r: dict) -> tuple[Optional[str], Optional[str]]:
+    artikelnr = _str_or_none(r.get("Item_No") or r.get("ItemNo") or r.get("Item"))
+    code = _str_or_none(
+        r.get("Code") or r.get("Unit_of_Measure_Code") or r.get("UnitOfMeasureCode")
+    )
+    return artikelnr, code
+
+
+def _ingest_item_uoms(rows: list[dict], dry_run: bool, sample_keys: list[str]) -> SyncReport:
+    """BLOCKING DB ingest for item_uoms — runs in a worker thread via
+    asyncio.to_thread with its OWN Session, so the ~13k synchronous Supabase
+    round-trips never block the event loop (and /api/health stays responsive,
+    so Railway doesn't restart the container mid-sync).
+    """
+    skipped = {"no_artikelnr": 0, "no_code": 0, "error": 0}
+    upserted = 0
+
+    if dry_run:
+        for r in rows:
+            artikelnr, code = _item_uom_keys(r)
+            if not artikelnr:
+                skipped["no_artikelnr"] += 1
+            elif not code:
+                skipped["no_code"] += 1
+            else:
+                upserted += 1
+        return SyncReport(
+            domain="item_uoms", fetched=len(rows), upserted=upserted,
+            skipped=sum(skipped.values()), skipped_reasons=skipped,
+            sample_keys=sample_keys,
+        )
+
+    with Session(engine) as s:
+        for i, r in enumerate(rows):
+            artikelnr, code = _item_uom_keys(r)
+            if not artikelnr:
+                skipped["no_artikelnr"] += 1
+                continue
+            if not code:
+                skipped["no_code"] += 1
+                continue
+            existing = s.get(ArtikelEenheid, (artikelnr, code))
+            try:
+                obj = _item_uom_to_record(r, existing)
+                if obj is None:
+                    skipped["error"] += 1
+                    continue
+                s.add(obj)
+                upserted += 1
+            except Exception:  # noqa: BLE001
+                log.exception(
+                    "nav_sync_item_uom_row_failed", artikelnr=artikelnr, code=code
+                )
+                skipped["error"] += 1
+            if (i + 1) % SYNC_CHUNK_SIZE == 0:
+                s.commit()
+        s.commit()
+
+    return SyncReport(
+        domain="item_uoms", fetched=len(rows), upserted=upserted,
+        skipped=sum(skipped.values()), skipped_reasons=skipped,
+        sample_keys=sample_keys,
+    )
+
+
 async def _sync_item_uoms(
     client: Nav2018ODataClient, session: Session, dry_run: bool
 ) -> SyncReport:
@@ -481,63 +542,18 @@ async def _sync_item_uoms(
     unit (e.g. keep "STUK" instead of forcing the article's default "PAL"),
     and apply_mixprijzen needs to find mix UOMs. The page is a flat PLX page,
     so we read it like _sync_ship_to rather than per-item sub-collections.
+
+    The DB ingest (largest domain, ~13k rows) is offloaded to a worker thread
+    so it never blocks the event loop / healthcheck.
     """
     rows, err = await _fetch_collection_safe(client, client.page_item_uom)
-    sample_keys = sorted(rows[0].keys()) if rows else []
-    skipped = {"no_artikelnr": 0, "no_code": 0, "error": 0}
     if err:
         return SyncReport(
             domain="item_uoms", fetched=0, upserted=0, skipped=0,
             skipped_reasons={"fetch_error": 1}, sample_keys=[], fetch_error=err,
         )
-    upserted = 0
-    for i, r in enumerate(rows):
-        artikelnr = _str_or_none(
-            r.get("Item_No") or r.get("ItemNo") or r.get("Item")
-        )
-        code = _str_or_none(
-            r.get("Code")
-            or r.get("Unit_of_Measure_Code")
-            or r.get("UnitOfMeasureCode")
-        )
-        if not artikelnr:
-            skipped["no_artikelnr"] += 1
-            continue
-        if not code:
-            skipped["no_code"] += 1
-            continue
-        if dry_run:
-            upserted += 1
-            continue
-        existing = session.get(ArtikelEenheid, (artikelnr, code))
-        try:
-            obj = _item_uom_to_record(r, existing)
-            if obj is None:
-                skipped["error"] += 1
-                continue
-            session.add(obj)
-            upserted += 1
-        except Exception:  # noqa: BLE001
-            log.exception(
-                "nav_sync_item_uom_row_failed", artikelnr=artikelnr, code=code
-            )
-            skipped["error"] += 1
-        # This is the largest domain (~13k rows). Each session.get/commit is a
-        # BLOCKING Supabase round-trip on the event loop, so yield often (every
-        # few rows) — otherwise /api/health stops responding for seconds and
-        # Railway's healthcheck restarts the container mid-sync.
-        if not dry_run:
-            if (i + 1) % SYNC_CHUNK_SIZE == 0:
-                session.commit()
-            if (i + 1) % UOM_YIELD_EVERY == 0:
-                await asyncio.sleep(0)
-    if not dry_run:
-        session.commit()
-    return SyncReport(
-        domain="item_uoms", fetched=len(rows), upserted=upserted,
-        skipped=sum(skipped.values()), skipped_reasons=skipped,
-        sample_keys=sample_keys,
-    )
+    sample_keys = sorted(rows[0].keys()) if rows else []
+    return await asyncio.to_thread(_ingest_item_uoms, rows, dry_run, sample_keys)
 
 
 async def _sync_cross_ref(
