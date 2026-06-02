@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import asyncio
 import os
+import time
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session
 
@@ -55,6 +56,11 @@ def _cors_origins() -> list[str]:
 # and go. This pattern matches both `<project>.vercel.app` and the
 # hash-form `<project>-<hash>-<team>.vercel.app`.
 _CORS_ORIGIN_REGEX = r"https://.*\.vercel\.app$"
+
+# Grace window after boot before /api/health will report the poller as dead.
+# The poll task is created at boot, so it's alive immediately; this only guards
+# against thrash if the task crashes within the first seconds of a deploy.
+POLLER_BOOT_GRACE_SECONDS = 60
 
 
 async def _mail_poll_loop(interval_seconds: int) -> None:
@@ -184,6 +190,12 @@ async def lifespan(app: FastAPI):
                 "var to e.g. 300 (5 min) in Railway and redeploy."
             ),
         )
+    # Expose the poll task + boot time so /api/health can report poller
+    # liveness (Railway auto-restarts on a 503). poll_task is None when the
+    # poller was never expected (file_drop, interval<30, or WEB_CONCURRENCY>1)
+    # — in that case health stays 200, because a restart wouldn't fix config.
+    app.state.poll_task = poll_task
+    app.state.poll_boot_monotonic = time.monotonic()
     try:
         yield
     finally:
@@ -257,8 +269,35 @@ def create_app() -> FastAPI:
         return {"name": "kwabo-order-intake", "version": "0.1.0"}
 
     @app.get("/api/health")
-    def health() -> dict:
-        return {"status": "ok"}
+    def health(response: Response) -> dict:
+        """Liveness + mail-poller health. Fail-open by design.
+
+        Returns 200 in every normal case. Returns 503 ONLY when the mail
+        poller was expected to run but its background task is definitively
+        dead (crashed out of the loop), past the boot grace. That is the one
+        case where a Railway restart actually helps. Transient poll/token
+        failures stay inside the loop (the task is still alive) and surface
+        via /api/mailbox/status + alerts — they must NOT trigger restart
+        thrash, because a restart wouldn't fix an expired token or NAV outage.
+        """
+        poll_task = getattr(app.state, "poll_task", None)
+        boot = getattr(app.state, "poll_boot_monotonic", None)
+        within_grace = boot is None or (time.monotonic() - boot) < POLLER_BOOT_GRACE_SECONDS
+
+        # poll_task is None => poller was never expected (file_drop / interval<30
+        # / multi-worker). Nothing to heal; stay healthy.
+        if poll_task is None:
+            return {"status": "ok", "poller": "not_running"}
+
+        if not poll_task.done():
+            return {"status": "ok", "poller": "alive"}
+
+        # Task finished. During boot grace, don't flap.
+        if within_grace:
+            return {"status": "ok", "poller": "starting"}
+
+        response.status_code = 503
+        return {"status": "degraded", "poller": "dead"}
 
     return app
 

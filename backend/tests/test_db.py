@@ -47,6 +47,46 @@ def test_order_log_crud(session):
     assert updated.navision_order_nr == "SO-XYZ"
 
 
+def test_list_defers_heavy_columns_without_changing_summary(session):
+    """list_all/list_by_status defer the unused heavy JSON columns
+    (stappen_log, correcties) but must keep order_state intact so the
+    dashboard summary counts are unchanged, and the deferred columns must
+    still lazy-load correctly when explicitly accessed."""
+    import json
+
+    from kwabo.api.orders import _to_summary
+
+    repo = OrderLogRepo(session)
+    row = repo.create(
+        email_id="defer-1",
+        email_from="x@y.nl",
+        email_subject="Defer test",
+        status="review",
+        warnings=json.dumps(["w1", "w2"]),
+        correcties=json.dumps({"foo": "bar"}),
+        stappen_log=json.dumps([{"stap": "x", "beslissing": "y"}]),
+        order_state=json.dumps({"needs_review_count": 3, "parent_log_id": 7}),
+    )
+
+    listed = repo.list_all()
+    got = next(r for r in listed if r.email_id == "defer-1")
+
+    # order_state still present → summary counts correct.
+    summary = _to_summary(got)
+    assert summary.warnings_count == 2
+    assert summary.needs_review_count == 3
+    assert summary.parent_log_id == 7
+
+    # Deferred columns lazy-load on demand (not dropped, just not eager).
+    assert json.loads(got.stappen_log) == [{"stap": "x", "beslissing": "y"}]
+    assert json.loads(got.correcties) == {"foo": "bar"}
+
+    # Same via status-filtered query.
+    by_status = repo.list_by_status("review")
+    assert any(r.email_id == "defer-1" for r in by_status)
+    assert row.id in {r.id for r in by_status}
+
+
 def test_order_log_status_not_order(session):
     repo = OrderLogRepo(session)
     row = repo.create(email_id="t-2", email_from="x@y.nl", email_subject="Factuur", status="not_order", is_order=False)

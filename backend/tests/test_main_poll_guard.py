@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 
 import pytest
 from fastapi.testclient import TestClient
 
 from kwabo.config import settings
-from kwabo.main import app
+from kwabo.main import POLLER_BOOT_GRACE_SECONDS, app
 
 
 @pytest.fixture
@@ -100,3 +101,64 @@ def test_lifespan_no_poll_when_interval_zero(monkeypatch, admin_off):
         client.get("/api/health")
 
     assert spawned["n"] == 0
+
+
+# ---------------------------------------------------------------------------
+# /api/health poller-liveness (fail-open). Railway auto-restarts on 503.
+# We drive app.state directly so the test is independent of a real poller.
+# ---------------------------------------------------------------------------
+
+
+class _StubTask:
+    """Minimal stand-in for an asyncio.Task — health only calls .done()."""
+
+    def __init__(self, done: bool) -> None:
+        self._done = done
+
+    def done(self) -> bool:
+        return self._done
+
+
+@pytest.fixture
+def health_client(monkeypatch, admin_off):
+    """A client whose lifespan does NOT spawn a real poller (file_drop), so
+    we can set app.state.poll_task to a controlled stub per test."""
+    monkeypatch.setattr(settings, "email_mode", "file_drop")
+    monkeypatch.setattr(settings, "mail_poll_interval_seconds", 0)
+    with TestClient(app) as client:
+        yield client
+
+
+def test_health_ok_when_poller_not_expected(health_client):
+    """poll_task is None (poller never expected) → 200, never 503."""
+    app.state.poll_task = None
+    r = health_client.get("/api/health")
+    assert r.status_code == 200
+    assert r.json()["poller"] == "not_running"
+
+
+def test_health_ok_when_poller_alive(health_client):
+    """Running poll task → 200."""
+    app.state.poll_task = _StubTask(done=False)
+    app.state.poll_boot_monotonic = time.monotonic() - (POLLER_BOOT_GRACE_SECONDS + 100)
+    r = health_client.get("/api/health")
+    assert r.status_code == 200
+    assert r.json()["poller"] == "alive"
+
+
+def test_health_ok_when_task_dead_within_grace(health_client):
+    """A dead task during the boot grace must NOT flap to 503."""
+    app.state.poll_task = _StubTask(done=True)
+    app.state.poll_boot_monotonic = time.monotonic()  # fresh boot
+    r = health_client.get("/api/health")
+    assert r.status_code == 200
+    assert r.json()["poller"] == "starting"
+
+
+def test_health_503_when_task_dead_past_grace(health_client):
+    """The one auto-heal case: poller was expected, task crashed, past grace."""
+    app.state.poll_task = _StubTask(done=True)
+    app.state.poll_boot_monotonic = time.monotonic() - (POLLER_BOOT_GRACE_SECONDS + 100)
+    r = health_client.get("/api/health")
+    assert r.status_code == 503
+    assert r.json()["poller"] == "dead"

@@ -300,7 +300,7 @@ export default function EmailPage() {
           </li>
           <li>Klik <strong>Register</strong></li>
           <li>
-            Linkermenu <strong>API permissions</strong> → <strong>Add a permission</strong> → <strong>Microsoft Graph</strong> → <strong>Delegated permissions</strong> → selecteer <code>Mail.Read</code>, <code>offline_access</code>, <code>User.Read</code> → Add
+            Linkermenu <strong>API permissions</strong> → <strong>Add a permission</strong> → <strong>Microsoft Graph</strong> → <strong>Delegated permissions</strong> → selecteer <code>Mail.ReadWrite</code>, <code>offline_access</code>, <code>User.Read</code> → Add
           </li>
           <li>
             Linkermenu <strong>Certificates & secrets</strong> → <strong>New client secret</strong> → geldigheid 24 maanden → kopieer de <strong>Value</strong> (niet de Secret ID!) — dit is je <em>Client Secret</em>

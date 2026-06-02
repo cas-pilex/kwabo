@@ -208,7 +208,7 @@ def get_oauth_config() -> OAuthConfigOut:
             client_id="",
             has_secret=False,
             redirect_uri="http://localhost:8000/api/mailbox/oauth/callback",
-            scopes="offline_access Mail.Read User.Read",
+            scopes="offline_access Mail.ReadWrite User.Read",
         )
     return OAuthConfigOut(
         configured=bool(cfg.tenant_id and cfg.client_id),

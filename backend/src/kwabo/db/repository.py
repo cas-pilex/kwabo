@@ -7,6 +7,7 @@ from datetime import date, datetime
 from typing import Any, Optional
 
 from sqlalchemy import func
+from sqlalchemy.orm import defer
 from sqlmodel import Session, select
 
 from kwabo.utils import utcnow
@@ -320,14 +321,32 @@ class OrderLogRepo:
     def by_email(self, email_id: str) -> Optional[OrderLog]:
         return self.s.exec(select(OrderLog).where(OrderLog.email_id == email_id)).first()
 
+    # Heavy JSON columns the dashboard/list summary never reads. Deferring
+    # them keeps the list query from pulling (and the driver from
+    # transferring) potentially large blobs for every row. `stappen_log` is
+    # append-only and grows per order; `correcties` is unused by _to_summary.
+    # NB: `order_state` is intentionally NOT deferred — _to_summary still
+    # reads needs_review_count / parent_log_id / sub_order_index from it.
+    # Eliminating that one needs denormalised columns (a migration) — see plan.
+    _LIST_DEFER = (defer(OrderLog.stappen_log), defer(OrderLog.correcties))
+
     def list_by_status(self, status: str | None = None) -> list[OrderLog]:
-        stmt = select(OrderLog).order_by(OrderLog.created_at.desc())
+        stmt = (
+            select(OrderLog)
+            .options(*self._LIST_DEFER)
+            .order_by(OrderLog.created_at.desc())
+        )
         if status:
             stmt = stmt.where(OrderLog.status == status)
         return list(self.s.exec(stmt).all())
 
     def list_all(self) -> list[OrderLog]:
-        return list(self.s.exec(select(OrderLog).order_by(OrderLog.created_at.desc())).all())
+        stmt = (
+            select(OrderLog)
+            .options(*self._LIST_DEFER)
+            .order_by(OrderLog.created_at.desc())
+        )
+        return list(self.s.exec(stmt).all())
 
     def update(self, order_id: int, **fields: Any) -> Optional[OrderLog]:
         row = self.s.get(OrderLog, order_id)

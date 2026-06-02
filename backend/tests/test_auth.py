@@ -97,7 +97,10 @@ def test_health_is_unauthenticated(client, monkeypatch):
     monkeypatch.setattr(settings, "admin_password", "x-y-z")
     r = client.get("/api/health")
     assert r.status_code == 200
-    assert r.json() == {"status": "ok"}
+    # Health is reachable without auth and reports ok. It now also carries a
+    # `poller` liveness field (see test_main_poll_guard) — assert the stable
+    # contract rather than an exact-dict match.
+    assert r.json()["status"] == "ok"
 
 
 def test_login_endpoint_is_unauthenticated(client, monkeypatch):
