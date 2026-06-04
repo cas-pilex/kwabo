@@ -110,9 +110,34 @@ MOCK_PRICES: dict[str, float] = {
 
 
 # Pallet-staffel mix discount kicks in once a single line reaches this
-# quantity AND both customer + item are mixprijzen=True.
+# quantity AND both customer + item are mixprijzen=True. Legacy fallback for
+# non-mix-code lines; mix-code lines are priced from MOCK_SALES_PRICES below.
 MOCK_MIX_THRESHOLD: int = 24
 MOCK_MIX_DISCOUNT_FACTOR: float = 0.9
+
+
+# Offline mirror of NAV table 7002 "Verkoopprijzen", using NAV-ish field names
+# so it doubles as ingest-test input. eenheid_code "" = normal price; an
+# M-format code is a mix-staffel price. Ferney (10001) is a mixprijzen customer;
+# item 1515155 is ROL-based at 24 ROL/pallet, so its mix codes carry PAL24.
+MOCK_SALES_PRICES: list[dict] = [
+    {"Item_No": "1515155", "Sales_Type": "Customer", "Sales_Code": "10001",
+     "Unit_of_Measure_Code": "", "Unit_Price": 100.0, "Minimum_Quantity": 0.0,
+     "Starting_Date": "2026-01-01", "Ending_Date": ""},
+    {"Item_No": "1515155", "Sales_Type": "Customer", "Sales_Code": "10001",
+     "Unit_of_Measure_Code": "M1PAL24", "Unit_Price": 2400.0, "Minimum_Quantity": 0.0,
+     "Starting_Date": "2026-01-01", "Ending_Date": ""},
+    {"Item_No": "1515155", "Sales_Type": "Customer", "Sales_Code": "10001",
+     "Unit_of_Measure_Code": "M7PAL24", "Unit_Price": 2300.0, "Minimum_Quantity": 0.0,
+     "Starting_Date": "2026-01-01", "Ending_Date": ""},
+    {"Item_No": "1515155", "Sales_Type": "Customer", "Sales_Code": "10001",
+     "Unit_of_Measure_Code": "M10PAL24", "Unit_Price": 2250.0, "Minimum_Quantity": 0.0,
+     "Starting_Date": "2026-01-01", "Ending_Date": ""},
+    # All_Customers fallback row (exercises the verkoopsoort cascade).
+    {"Item_No": "SOFTBREATH-PALLET", "Sales_Type": "All_Customers", "Sales_Code": "",
+     "Unit_of_Measure_Code": "M1PAL35", "Unit_Price": 500.0, "Minimum_Quantity": 0.0,
+     "Starting_Date": "2026-01-01", "Ending_Date": ""},
+]
 
 
 # Ship-to addresses keyed by customer number. Each customer has at least

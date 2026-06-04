@@ -17,6 +17,7 @@ from kwabo.integrations.nav_mock_fixtures import (
     MOCK_MIX_DISCOUNT_FACTOR,
     MOCK_MIX_THRESHOLD,
     MOCK_PRICES,
+    MOCK_SALES_PRICES,
     MOCK_SHIP_TOS,
 )
 from kwabo.integrations.nav_operations import (
@@ -30,6 +31,7 @@ from kwabo.integrations.nav_operations import (
     _substitute_body_values,
     _substitute_path,
 )
+from kwabo.utils.mixcode import is_mix_code
 
 
 class NavisionClient(Protocol):
@@ -83,6 +85,7 @@ class MockNavisionClient:
         self.item_uoms = {k: list(v) for k, v in MOCK_ITEM_UOMS.items()}
         self.item_references = list(MOCK_ITEM_REFERENCES)
         self.prices = dict(MOCK_PRICES)
+        self.sales_prices = list(MOCK_SALES_PRICES)
         self.out_dir = (out_dir or (settings.navision_mock_path / "orders")).resolve()
         self.out_dir.mkdir(parents=True, exist_ok=True)
         # In-memory store keyed by sales-order id.
@@ -524,10 +527,19 @@ class MockNavisionClient:
                     # UOM is a registered mix-UOM (qtyPerUnitOfMeasure > 1.0).
                     # Discounting on quantity alone would hide composer bugs
                     # where the wrong UOM is patched.
-                    if key == "quantity":
+                    current_uom = line.get("unitOfMeasureCode", "")
+                    # Real NAV's mix codeunit prices the line from table 7002
+                    # for the chosen M-code. Mirror that: when the line carries
+                    # an M-format mix code, set unitPrice from the 7002 mirror.
+                    if is_mix_code(current_uom):
+                        mix_price = self._mix_price_for(line["itemNumber"], current_uom)
+                        if mix_price is not None:
+                            line["unitPrice"] = mix_price
+                    elif key == "quantity":
+                        # Legacy fallback (non-mix-code lines): quantity-staffel
+                        # discount when customer + item + alternate UOM all qualify.
                         cust_mix = order.get("_customer_mixprijzen", False)
                         item_mix = line.get("_item_mixprijzen", False)
-                        current_uom = line.get("unitOfMeasureCode", "")
                         is_mix_uom = self._is_mix_uom_for_item(
                             line["itemNumber"], current_uom
                         )
@@ -542,6 +554,26 @@ class MockNavisionClient:
                             )
                     return {k: v for k, v in line.items() if not k.startswith("_")}
         raise ValueError(f"unknown sales-order line {line_id!r}")
+
+    def _mix_price_for(self, item_number: str, uom_code: str) -> Optional[float]:
+        """Active mix price for (item, mix code) from the 7002 mirror, or None.
+
+        Mirrors NAV's verkoopsoort resolution loosely: prefer a Customer-tier
+        row, fall back to any tier. The mock doesn't thread the customer no into
+        the line, so we just match on item + code."""
+        want = (uom_code or "").strip().upper()
+        for row in self.sales_prices:
+            if str(row.get("Item_No")) != str(item_number):
+                continue
+            code = (row.get("Unit_of_Measure_Code") or "").strip().upper()
+            if code == want:
+                price = row.get("Unit_Price")
+                return float(price) if price is not None else None
+        return None
+
+    async def get_sales_prices(self) -> list[dict]:
+        """Return the mock 7002 mirror (read-only)."""
+        return list(self.sales_prices)
 
     def _is_mix_uom_for_item(self, item_number: str, uom_code: str) -> bool:
         """True iff the UOM code is registered as a mix-UOM for the item.

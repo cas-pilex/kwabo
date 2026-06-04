@@ -33,9 +33,15 @@ class OrderRegel(TypedDict, total=False):
     # T7: optional UoM picker for mixprijzen lines (set by apply_mixprijzen)
     mix_uom_kandidaat: Optional[list[str]]
     mix_uom_gekozen: Optional[str]
+    # T7: active mix price (NAV table 7002) for the chosen mix code, informational
+    mix_actieve_prijs: Optional[float]
     # T3/T4: line-level default UoM (informational; lets the composer suppress
     # redundant unitOfMeasureCode PATCHes when the regel uses the item default)
     eenheid_default: Optional[str]
+    # T3: customer's originally-ordered unit, preserved before match_articles
+    # normalises `eenheid` to a NAV-valid code. Used by compute_europallet and
+    # apply_mixprijzen to convert quantities to pallets.
+    eenheid_origineel: Optional[str]
 
 
 class KlantMatch(TypedDict, total=False):
@@ -99,6 +105,9 @@ class OrderState(TypedDict, total=False):
 
     # T7: mixprijzen flag (set by apply_mixprijzen_node when customer has mix-prices)
     mixprijzen_actief: bool
+    # T7: order-wide total pallets across mix lines — the staffel basis for the
+    # chosen M-tier (M{order_mix_total_pallets}PAL..). Informational/audit.
+    order_mix_total_pallets: Optional[int]
 
     # T8: europallet line, computed when an order needs a pallet
     europallet_regel: Optional[dict]

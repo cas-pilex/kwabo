@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 type RegelLike = {
   mix_uom_kandidaat?: string[] | null;
   mix_uom_gekozen?: string | null;
+  mix_actieve_prijs?: number | null;
 };
 
 type Props = {
@@ -14,9 +15,11 @@ type Props = {
   regel: RegelLike;
   idx: number;
   onChanged?: () => void;
+  /** Order-wide total pallets — the staffel basis for the chosen M-tier. */
+  totalPallets?: number | null;
 };
 
-export function MixprijzenBadge({ orderId, regel, idx, onChanged }: Props) {
+export function MixprijzenBadge({ orderId, regel, idx, onChanged, totalPallets }: Props) {
   const [busy, setBusy] = useState(false);
   const [local, setLocal] = useState<string | null>(regel.mix_uom_gekozen ?? null);
 
@@ -52,13 +55,19 @@ export function MixprijzenBadge({ orderId, regel, idx, onChanged }: Props) {
   }
 
   if (local) {
+    const prijs = regel.mix_actieve_prijs;
+    const basis =
+      totalPallets != null && totalPallets > 0
+        ? `order: ${totalPallets} pallet(s) → ${local}`
+        : "Gekozen mix-UOM (mixprijzen actief)";
     return (
       <span
         data-testid={`mix-badge-${idx}`}
         className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-800 ring-1 ring-emerald-300"
-        title="Gekozen mix-UOM (mixprijzen actief)"
+        title={basis}
       >
         Mix: {local}
+        {prijs != null ? ` · €${prijs.toFixed(2)}` : ""}
       </span>
     );
   }

@@ -55,6 +55,14 @@ _ADDITIVE_MIGRATIONS: list[tuple[str, str, dict[str, str]]] = [
             "postgresql": "BOOLEAN NOT NULL DEFAULT FALSE",
         },
     ),
+    (
+        "klantenkaarten",
+        "prijsgroep",
+        {
+            "sqlite": "VARCHAR",
+            "postgresql": "VARCHAR",
+        },
+    ),
 ]
 
 

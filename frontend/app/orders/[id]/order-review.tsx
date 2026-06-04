@@ -78,6 +78,7 @@ type State = {
   ship_to_kandidaten?: ShipToKandidaat[];
   ship_to_gekozen?: string | null;
   mixprijzen_actief?: boolean;
+  order_mix_total_pallets?: number | null;
   europallet_regel?: EuropalletRegel | null;
   incoming_document_path?: string | null;
   navision_status?: string | null;
@@ -352,6 +353,7 @@ export function OrderReview({ order, items }: Props) {
                     regel={r}
                     idx={i}
                     onChanged={refresh}
+                    totalPallets={initialState.order_mix_total_pallets ?? null}
                   />
                 ))}
               </div>

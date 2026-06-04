@@ -222,6 +222,70 @@ def test_klantenkaart_mixprijzen_column(session):
     assert k.mixprijzen is True
 
 
+def test_verkoopprijs_table_created_and_usable(session):
+    """The new verkoopprijzen table is auto-created by create_all and writable."""
+    from sqlmodel import select
+
+    from kwabo.db.models import Verkoopprijs
+
+    session.add(
+        Verkoopprijs(
+            sales_type="Customer", sales_code="10001", kwabo_artikelnr="A",
+            eenheid_code="M1PAL30", prijs=99.0, is_mix=True,
+        )
+    )
+    session.commit()
+    rows = list(session.exec(select(Verkoopprijs)).all())
+    assert len(rows) == 1
+    assert rows[0].eenheid_code == "M1PAL30"
+    assert rows[0].is_mix is True
+
+
+def test_apply_additive_migrations_adds_prijsgroep_to_legacy_db(tmp_path):
+    """The prijsgroep column must be ALTERed onto a pre-existing klantenkaarten
+    table (create_all does not ALTER existing tables on deployed DBs)."""
+    db_file = tmp_path / "legacy_pg.db"
+    legacy_engine = create_engine(
+        f"sqlite:///{db_file}", connect_args={"check_same_thread": False}
+    )
+    # Schema with mixprijzen but no prijsgroep (post-T1, pre-mixprijzen-7002).
+    ddl = """
+    CREATE TABLE klantenkaarten (
+        id INTEGER NOT NULL PRIMARY KEY,
+        nav_klantnr VARCHAR NOT NULL UNIQUE,
+        naam VARCHAR NOT NULL,
+        taal VARCHAR NOT NULL,
+        is_4plus BOOLEAN NOT NULL,
+        mixprijzen BOOLEAN NOT NULL DEFAULT 0,
+        created_at DATETIME NOT NULL,
+        updated_at DATETIME NOT NULL
+    )
+    """
+    with legacy_engine.begin() as conn:
+        conn.execute(text(ddl))
+        conn.execute(
+            text(
+                "INSERT INTO klantenkaarten (id, nav_klantnr, naam, taal, is_4plus,"
+                " mixprijzen, created_at, updated_at) VALUES (1, '99999', 'k', 'NL', 0,"
+                " 1, '2024-01-01 00:00:00', '2024-01-01 00:00:00')"
+            )
+        )
+    with legacy_engine.connect() as conn:
+        before = {r[1] for r in conn.execute(text("PRAGMA table_info(klantenkaarten)")).fetchall()}
+    assert "prijsgroep" not in before
+
+    _apply_additive_migrations(legacy_engine)
+
+    with legacy_engine.connect() as conn:
+        after = {r[1] for r in conn.execute(text("PRAGMA table_info(klantenkaarten)")).fetchall()}
+        row = conn.execute(text("SELECT nav_klantnr, prijsgroep FROM klantenkaarten WHERE id=1")).fetchone()
+    assert "prijsgroep" in after
+    assert row[0] == "99999"
+    assert row[1] is None  # nullable, no default
+    # Idempotent.
+    _apply_additive_migrations(legacy_engine)
+
+
 def test_apply_additive_migrations_adds_mixprijzen_to_legacy_db(tmp_path):
     """Coverage for the load-bearing ALTER TABLE shim in db/session.py.
 

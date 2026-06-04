@@ -169,6 +169,7 @@ class Nav2018ODataClient:
         page_item_reference: str | None = None,
         page_ship_to: str | None = None,
         page_item_uom: str | None = None,
+        page_sales_price: str | None = None,
         field_map: dict[str, str] | None = None,
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
@@ -189,6 +190,7 @@ class Nav2018ODataClient:
         self.page_item_reference = page_item_reference or settings.nav_page_item_reference
         self.page_ship_to = page_ship_to or settings.nav_page_ship_to
         self.page_item_uom = page_item_uom or settings.nav_page_item_uom
+        self.page_sales_price = page_sales_price or settings.nav_page_sales_price
         self.field_map = field_map or _DEFAULT_FIELD_MAP
 
         self._client = http_client or httpx.AsyncClient(

@@ -23,6 +23,21 @@ async def validate_prices_node(state: OrderState) -> OrderState:
             r = dict(r)
             kw = r.get("artikelnummer_kwabo_matched")
             prijs = r.get("prijs_per_eenheid")
+
+            # Mix cross-check (informational): the chosen mix code's active
+            # NAV-7002 price vs what the customer wrote. NAV stays the price
+            # authority on push (we send no Unit_Price); this only surfaces a
+            # warning when they diverge >5%.
+            mix_actief = r.get("mix_actieve_prijs")
+            if r.get("mix_uom_gekozen") and prijs is not None and mix_actief:
+                mix_afw = abs(prijs - mix_actief) / mix_actief * 100
+                if mix_afw > 5:
+                    warnings.append(
+                        f"MIX PRIJS AFWIJKING regel {r.get('positie')}: mail "
+                        f"€{prijs:.2f} vs 7002 €{mix_actief:.2f} voor "
+                        f"{r.get('mix_uom_gekozen')} ({mix_afw:.1f}%)"
+                    )
+
             if not kw or prijs is None or not klant:
                 r["prijs_validated"] = None
                 regels_out.append(r)
