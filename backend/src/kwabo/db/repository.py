@@ -24,9 +24,7 @@ from kwabo.db.models import (
     KlantenkaartShipTo,
     OrderLog,
     Prijsafspraak,
-    Verkoopprijs,
 )
-from kwabo.utils.mixcode import MixCode, parse_mix_code
 
 
 def _split_emails(raw: str | None) -> set[str]:
@@ -305,83 +303,6 @@ class PrijsRepo:
             return standaard[0] if standaard else all_matches[0]
         eligible.sort(key=lambda p: type_priority.get(p.type, 99))
         return eligible[0]
-
-
-class VerkoopprijsRepo:
-    """NAV Sales-Price mirror (table 7002) lookup with the verkoopsoort cascade.
-
-    The cascade returns the rows from the FIRST tier that yields ANY row —
-    Customer-specific prices, if present, fully govern; otherwise fall back to
-    the customer's price group, otherwise All_Customers. (NAV resolves
-    verkoopsoort the same way — it does not merge across tiers.)
-    """
-
-    # Cascade priority: most specific first.
-    _CASCADE = ("Customer", "Customer_Price_Group", "All_Customers")
-
-    def __init__(self, session: Session) -> None:
-        self.s = session
-
-    def _rows_for_tier(
-        self,
-        kwabo_artikelnr: str,
-        sales_type: str,
-        sales_code: str,
-        on_date: date,
-    ) -> list[Verkoopprijs]:
-        stmt = select(Verkoopprijs).where(
-            (Verkoopprijs.kwabo_artikelnr == kwabo_artikelnr)
-            & (Verkoopprijs.sales_type == sales_type)
-            & (Verkoopprijs.sales_code == (sales_code or ""))
-            & ((Verkoopprijs.geldig_van.is_(None)) | (Verkoopprijs.geldig_van <= on_date))
-            & ((Verkoopprijs.geldig_tot.is_(None)) | (Verkoopprijs.geldig_tot >= on_date))
-        )
-        return list(self.s.exec(stmt).all())
-
-    def active_rows(
-        self,
-        *,
-        kwabo_artikelnr: str,
-        klant_nr: str,
-        prijsgroep: Optional[str],
-        on_date: date,
-    ) -> list[Verkoopprijs]:
-        """Resolve the active 7002 rows for (article, customer) via the cascade.
-
-        Returns [] when no tier resolves — the caller then flags for review
-        rather than guessing.
-        """
-        for sales_type in self._CASCADE:
-            if sales_type == "Customer":
-                sales_code = klant_nr
-            elif sales_type == "Customer_Price_Group":
-                if not prijsgroep:
-                    continue
-                sales_code = prijsgroep
-            else:
-                sales_code = ""
-            rows = self._rows_for_tier(kwabo_artikelnr, sales_type, sales_code, on_date)
-            if rows:
-                return rows
-        return []
-
-    @staticmethod
-    def normal_price(rows: list[Verkoopprijs]) -> Optional[float]:
-        """Price from the row with an empty eenheid_code (the normal price)."""
-        for r in rows:
-            if not r.eenheid_code:
-                return r.prijs
-        return None
-
-    @staticmethod
-    def mix_codes(rows: list[Verkoopprijs]) -> list[MixCode]:
-        """Parsed, deduped mix codes (rows whose eenheid_code is M-format)."""
-        out: dict[str, MixCode] = {}
-        for r in rows:
-            mc = parse_mix_code(r.eenheid_code)
-            if mc:
-                out[mc.code] = mc
-        return list(out.values())
 
 
 class OrderLogRepo:

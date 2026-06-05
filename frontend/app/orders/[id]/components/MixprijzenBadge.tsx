@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 type RegelLike = {
   mix_uom_kandidaat?: string[] | null;
   mix_uom_gekozen?: string | null;
-  mix_actieve_prijs?: number | null;
+  mix_aantal?: number | null;
 };
 
 type Props = {
@@ -55,7 +55,7 @@ export function MixprijzenBadge({ orderId, regel, idx, onChanged, totalPallets }
   }
 
   if (local) {
-    const prijs = regel.mix_actieve_prijs;
+    const aantal = regel.mix_aantal;
     const basis =
       totalPallets != null && totalPallets > 0
         ? `order: ${totalPallets} pallet(s) → ${local}`
@@ -67,7 +67,7 @@ export function MixprijzenBadge({ orderId, regel, idx, onChanged, totalPallets }
         title={basis}
       >
         Mix: {local}
-        {prijs != null ? ` · €${prijs.toFixed(2)}` : ""}
+        {aantal != null ? ` · ${aantal} pal` : ""}
       </span>
     );
   }

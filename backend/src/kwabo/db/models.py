@@ -4,7 +4,6 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import Index
 from sqlmodel import Field, SQLModel
 
 from kwabo.utils import utcnow
@@ -24,7 +23,6 @@ class Klantenkaart(SQLModel, table=True):
     speciale_instructies: Optional[str] = None
     is_4plus: bool = False
     mixprijzen: bool = Field(default=False, nullable=False)
-    prijsgroep: Optional[str] = Field(default=None, index=True)  # NAV Customer Price Group
     kredietlimiet: Optional[float] = None
     betalingsconditie: Optional[str] = None
     created_at: datetime = Field(default_factory=utcnow)
@@ -110,39 +108,6 @@ class Prijsafspraak(SQLModel, table=True):
     min_hoeveelheid: Optional[float] = None
     geldig_van: Optional[date] = None
     geldig_tot: Optional[date] = None
-
-
-class Verkoopprijs(SQLModel, table=True):
-    """NAV Sales Price mirror (NAV table 7002 "Verkoopprijzen").
-
-    One row per active price line. ``eenheid_code == ""`` is the NORMAL price;
-    a non-empty M-format code (e.g. ``M33PAL35``) is a MIX price. The
-    ``sales_prices`` sync refreshes this table as a full mirror (clear +
-    bulk-insert), so a surrogate ``id`` PK suffices — no upsert key is needed,
-    and NAV may legitimately return rows that differ only by ``geldig_tot``.
-
-    The verkoopsoort cascade (see ``VerkoopprijsRepo``) resolves which rows
-    apply to a given (customer, article): ``sales_type`` is NAV table 7002
-    field 13 (Customer / Customer_Price_Group / All_Customers) and
-    ``sales_code`` is field 2 (the customer no, price-group code, or "").
-    """
-
-    __tablename__ = "verkoopprijzen"
-    __table_args__ = (
-        Index("ix_vp_lookup", "kwabo_artikelnr", "sales_type", "sales_code"),
-    )
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    sales_type: str = Field(index=True)  # Customer | Customer_Price_Group | All_Customers
-    sales_code: str = Field(default="")  # customer no, group code, or "" (All_Customers)
-    kwabo_artikelnr: str = Field(index=True)
-    eenheid_code: str = Field(default="")  # "" = normal price; "M33PAL35" = mix
-    prijs: float = 0.0
-    min_hoeveelheid: float = 0.0
-    geldig_van: Optional[date] = None
-    geldig_tot: Optional[date] = None
-    is_mix: bool = Field(default=False, nullable=False)  # derived: non-empty M-format code
-    created_at: datetime = Field(default_factory=utcnow)
 
 
 class ArtikelMatchingHistory(SQLModel, table=True):

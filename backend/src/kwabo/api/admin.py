@@ -23,7 +23,6 @@ from kwabo.db.models import (
     ArtikelKruisverwijzing,
     Klantenkaart,
     KlantenkaartShipTo,
-    Verkoopprijs,
 )
 from kwabo.db.session import engine
 from kwabo.integrations.navision_api import get_navision_client
@@ -61,7 +60,6 @@ class DbCounts(BaseModel):
     kruisverwijzingen: int
     ship_to_adressen: int
     artikel_eenheden: int = 0
-    verkoopprijzen: int = 0
 
 
 class JobStartResponse(BaseModel):
@@ -105,19 +103,6 @@ def _float_or_none(value) -> Optional[float]:
         return None
 
 
-def _date_or_none(value):
-    """Parse a NAV date string to a date. NAV's "no date" sentinels
-    (empty / "0001-01-01") map to None."""
-    s = _str_or_none(value)
-    if not s or s.startswith("0001-01-01"):
-        return None
-    try:
-        from datetime import date as _date
-        return _date.fromisoformat(s[:10])
-    except (ValueError, TypeError):
-        return None
-
-
 def _customer_to_klantenkaart(row: dict, existing: Optional[Klantenkaart]) -> Klantenkaart:
     """Map a PLX_Customer row to a Klantenkaart. If `existing` is given,
     overwrite NAV-authoritative fields but preserve user-edited ones
@@ -142,12 +127,6 @@ def _customer_to_klantenkaart(row: dict, existing: Optional[Klantenkaart]) -> Kl
         "Kwabo_Mixprijzen",
         "Field50013",
     )
-    prijsgroep = _str_or_none(
-        row.get("Customer_Price_Group")
-        or row.get("Customer_Price_Group_Code")
-        or row.get("CustomerPriceGroup")
-        or row.get("Price_Group_Code")
-    )
 
     if existing is not None:
         existing.naam = naam
@@ -160,7 +139,6 @@ def _customer_to_klantenkaart(row: dict, existing: Optional[Klantenkaart]) -> Kl
         existing.kredietlimiet = krediet
         existing.betalingsconditie = betaling
         existing.mixprijzen = mix
-        existing.prijsgroep = prijsgroep
         existing.updated_at = utcnow()
         return existing
     return Klantenkaart(
@@ -172,7 +150,6 @@ def _customer_to_klantenkaart(row: dict, existing: Optional[Klantenkaart]) -> Kl
         kredietlimiet=krediet,
         betalingsconditie=betaling,
         mixprijzen=mix,
-        prijsgroep=prijsgroep,
     )
 
 
@@ -272,6 +249,9 @@ def _nav_bool(row: dict, *keys: str) -> bool:
 
 def _item_uom_is_mix(row: dict, code: str) -> bool:
     if _nav_bool(row, "Mix_UoM", "MixUoM", "Is_Mix_UoM", "Kwabo_Mix"):
+        return True
+    # The real staffel codes are M{n}PAL{r} (e.g. M33PAL35) — recognise those.
+    if code and is_mix_code(code):
         return True
     return bool(code and _MIX_UOM_PATTERN.search(code))
 
@@ -605,127 +585,6 @@ async def _sync_item_uoms(
     return await asyncio.to_thread(_ingest_item_uoms, rows, dry_run, sample_keys)
 
 
-def _normalize_sales_type(value: Optional[str]) -> str:
-    """Canonicalise NAV's Sales_Type spelling to the values VerkoopprijsRepo
-    expects. NAV may emit "Customer Price Group" (spaces) or an ordinal; fold
-    the common variants. Verify the exact live strings against $metadata."""
-    s = (value or "").strip().lower().replace(" ", "_")
-    if s in ("customer", "klant", "0"):
-        return "Customer"
-    if s in ("customer_price_group", "klantprijsgroep", "customer_disc._group", "1"):
-        return "Customer_Price_Group"
-    if s in ("all_customers", "alle_klanten", "2", ""):
-        return "All_Customers"
-    return value or "All_Customers"
-
-
-def _sales_price_to_record(row: dict) -> Optional[Verkoopprijs]:
-    """Map a PLX_SalesPrice row (NAV table 7002) to a Verkoopprijs.
-
-    Tolerant of NAV field-name variants — the exact OData property names for
-    this page in the Kopie 2026 environment must be verified live (watch for
-    _x003C_..._x003E_ encoding). Skips rows missing the article number.
-    """
-    item = _str_or_none(row.get("Item_No") or row.get("ItemNo") or row.get("Item"))
-    if not item:
-        return None
-    sales_type = _normalize_sales_type(
-        _str_or_none(row.get("Sales_Type") or row.get("SalesType"))
-    )
-    sales_code = (
-        _str_or_none(row.get("Sales_Code") or row.get("SalesCode")) or ""
-    )
-    uom = (
-        _str_or_none(
-            row.get("Unit_of_Measure_Code")
-            or row.get("UnitOfMeasureCode")
-            or row.get("Unit_of_Measure")
-        )
-        or ""
-    )
-    prijs = _float_or_none(row.get("Unit_Price") or row.get("UnitPrice")) or 0.0
-    min_q = (
-        _float_or_none(
-            row.get("Minimum_Quantity")
-            or row.get("MinimumQuantity")
-            or row.get("Minimum_Qty")
-        )
-        or 0.0
-    )
-    van = _date_or_none(row.get("Starting_Date") or row.get("StartingDate"))
-    tot = _date_or_none(row.get("Ending_Date") or row.get("EndingDate"))
-    return Verkoopprijs(
-        sales_type=sales_type,
-        sales_code=sales_code,
-        kwabo_artikelnr=item,
-        eenheid_code=uom,
-        prijs=prijs,
-        min_hoeveelheid=min_q,
-        geldig_van=van,
-        geldig_tot=tot,
-        is_mix=is_mix_code(uom),
-    )
-
-
-def _ingest_sales_prices(
-    rows: list[dict], dry_run: bool, sample_keys: list[str]
-) -> SyncReport:
-    """BLOCKING DB ingest for sales_prices — runs in a worker thread via
-    asyncio.to_thread with its OWN Session, so the (potentially large, table
-    7002 can hold tens of thousands of rows) write never blocks the event loop.
-    Full-mirror refresh: one DELETE + one bulk INSERT (NOT per-row get/add,
-    which caused two prod outages on the item_uoms domain).
-    """
-    skipped = {"no_item": 0, "error": 0}
-    objs: list[Verkoopprijs] = []
-    for r in rows:
-        try:
-            obj = _sales_price_to_record(r)
-        except Exception:  # noqa: BLE001
-            log.exception("nav_sync_sales_price_row_failed")
-            skipped["error"] += 1
-            continue
-        if obj is None:
-            skipped["no_item"] += 1
-            continue
-        objs.append(obj)
-
-    if not dry_run:
-        with Session(engine) as s:
-            s.exec(delete(Verkoopprijs))
-            s.bulk_save_objects(objs)
-            s.commit()
-
-    return SyncReport(
-        domain="sales_prices", fetched=len(rows), upserted=len(objs),
-        skipped=sum(skipped.values()), skipped_reasons=skipped,
-        sample_keys=sample_keys,
-    )
-
-
-async def _sync_sales_prices(
-    client: Nav2018ODataClient, session: Session, dry_run: bool
-) -> SyncReport:
-    """Mirror PLX_SalesPrice (NAV table 7002 "Verkoopprijzen") into Verkoopprijs.
-
-    This is the data apply_mixprijzen needs to resolve the active mix codes +
-    prices per (article, customer) via the verkoopsoort cascade. Flat PLX page,
-    read like _sync_item_uoms; the DB ingest is offloaded to a worker thread.
-
-    404-tolerant: if the page isn't published yet, _fetch_collection_safe
-    returns ([], err) and we report fetch_error with zero rows — apply_mixprijzen
-    then degrades to flag-for-review rather than guessing.
-    """
-    rows, err = await _fetch_collection_safe(client, client.page_sales_price)
-    if err:
-        return SyncReport(
-            domain="sales_prices", fetched=0, upserted=0, skipped=0,
-            skipped_reasons={"fetch_error": 1}, sample_keys=[], fetch_error=err,
-        )
-    sample_keys = sorted(rows[0].keys()) if rows else []
-    return await asyncio.to_thread(_ingest_sales_prices, rows, dry_run, sample_keys)
-
-
 async def _sync_cross_ref(
     client: Nav2018ODataClient, session: Session, dry_run: bool
 ) -> SyncReport:
@@ -791,10 +650,9 @@ def db_counts() -> DbCounts:
         n_x = s.exec(select(func.count()).select_from(ArtikelKruisverwijzing)).one()
         n_st = s.exec(select(func.count()).select_from(KlantenkaartShipTo)).one()
         n_uom = s.exec(select(func.count()).select_from(ArtikelEenheid)).one()
-        n_vp = s.exec(select(func.count()).select_from(Verkoopprijs)).one()
     return DbCounts(
         klanten=n_k, artikelen=n_a, kruisverwijzingen=n_x, ship_to_adressen=n_st,
-        artikel_eenheden=n_uom, verkoopprijzen=n_vp,
+        artikel_eenheden=n_uom,
     )
 
 
@@ -844,10 +702,6 @@ async def _run_sync_job(job_id: str, selected: set[str], dry_run: bool) -> None:
                 job["progress"]["current"] = "item_uoms"
                 reports.append(await _sync_item_uoms(client, session, dry_run))
                 job["progress"]["item_uoms"] = reports[-1].model_dump()
-            if "sales_prices" in selected:
-                job["progress"]["current"] = "sales_prices"
-                reports.append(await _sync_sales_prices(client, session, dry_run))
-                job["progress"]["sales_prices"] = reports[-1].model_dump()
         counts = db_counts()
         job["result"] = NavSyncResponse(
             mode=settings.navision_mode,
@@ -887,7 +741,7 @@ async def nav_sync_start(
             f"(current: {settings.navision_mode}).",
         )
     selected = {d.strip() for d in domains.split(",") if d.strip()}
-    valid = {"customers", "items", "cross_ref", "ship_to", "item_uoms", "sales_prices"}
+    valid = {"customers", "items", "cross_ref", "ship_to", "item_uoms"}
     unknown = selected - valid
     if unknown:
         raise HTTPException(400, f"unknown domains: {sorted(unknown)}. Valid: {sorted(valid)}")

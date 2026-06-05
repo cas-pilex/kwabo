@@ -101,7 +101,6 @@ class Settings(BaseSettings):
     nav_page_item_reference: str = "PLX_ItemReference"
     nav_page_ship_to: str = "PLX_ShipToAddress"
     nav_page_item_uom: str = "PLX_ItemUnitOfMeasure"
-    nav_page_sales_price: str = "PLX_SalesPrice"  # NAV table 7002 "Verkoopprijzen"
     nav_verify_ssl: bool = True
 
     @property

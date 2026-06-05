@@ -33,8 +33,9 @@ class OrderRegel(TypedDict, total=False):
     # T7: optional UoM picker for mixprijzen lines (set by apply_mixprijzen)
     mix_uom_kandidaat: Optional[list[str]]
     mix_uom_gekozen: Optional[str]
-    # T7: active mix price (NAV table 7002) for the chosen mix code, informational
-    mix_actieve_prijs: Optional[float]
+    # T7: line quantity in the chosen mix unit (pallets); used for the NAV
+    # quantity PATCH and the europallet pallet count
+    mix_aantal: Optional[int]
     # T3/T4: line-level default UoM (informational; lets the composer suppress
     # redundant unitOfMeasureCode PATCHes when the regel uses the item default)
     eenheid_default: Optional[str]
