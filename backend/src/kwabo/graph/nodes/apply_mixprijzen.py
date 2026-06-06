@@ -14,9 +14,14 @@ the mix unit (pallets). Confirmed mechanism (Kwabo, Veris example):
    and is intentionally NOT required.
 2. Mix codes have the format ``M{total_pallets_in_mix}PAL{rolls_per_pallet}``
    (e.g. ``M7PAL30``, ``M33PAL35``). The ``M``-number is the order-wide total
-   pallets; ``PALxx`` is rolls-per-pallet, article-specific. These codes live in
-   ``PLX_ItemUnitOfMeasure`` — already mirrored into ``ArtikelEenheid`` by the
-   ``item_uoms`` sync (the ``PALxx`` suffix equals ``Qty_per_Unit_of_Measure``).
+   pallets staffel tier. These codes live in ``PLX_ItemUnitOfMeasure`` — already
+   mirrored into ``ArtikelEenheid`` by the ``item_uoms`` sync.
+   IMPORTANT: the ``PALxx`` suffix is a human-typed *label* and is NOT reliable
+   — live NAV has typos (item 15450: ``M10PAL1028`` / ``M5PAL528`` whose real
+   ``Qty_per_Unit_of_Measure`` is 1728). The authoritative units-per-pallet is
+   ``ArtikelEenheid.qty_per_base`` ( == NAV ``Qty_per_Unit_of_Measure`` == the
+   ``PALLET`` unit's qty), which is physically constant per article. We compute
+   pallets with ``qty_per_base`` and treat the suffix as cosmetic only.
 3. Per article, the available staffel tiers are the M-numbers across its mix
    codes; we pick the highest tier whose threshold <= the order's total pallets
    (clamp up to the lowest tier when the total is below it).
@@ -40,20 +45,31 @@ Like ``select_ship_to``, the node accepts an injectable session for tests.
 """
 from __future__ import annotations
 
-from typing import Optional
+from typing import NamedTuple, Optional
 
 from sqlmodel import Session
 
 from kwabo.db.repository import ArtikelkaartRepo, KlantRepo
 from kwabo.db.session import engine
 from kwabo.utils.logging import log
-from kwabo.utils.mixcode import MixCode, parse_mix_code
+from kwabo.utils.mixcode import parse_mix_code
 from kwabo.utils.pallet_logic import _qty_per_base
 
 # How close rolls/rolls-per-pallet must be to a whole number to auto-accept the
 # pallet count. Mix orders are whole pallets; a non-integer signals an ambiguous
 # quantity we should not silently round, so we flag it for review instead.
 _PALLET_TOL = 0.02
+
+
+class _MixTier(NamedTuple):
+    """A mix staffel tier for one article: the literal NAV code, its M-number
+    threshold (parsed from the code, reliable), and the authoritative
+    units-per-pallet read from ``ArtikelEenheid.qty_per_base`` (NOT the PALxx
+    suffix, which is a possibly-typo'd label)."""
+
+    code: str
+    m_threshold: int
+    units_per_pallet: float
 
 
 def _to_rolls(
@@ -78,13 +94,20 @@ def _to_rolls(
     return qty * _qty_per_base(eenheden, unit)
 
 
-def _mix_codes_for(eenheden: list) -> list[MixCode]:
-    """Parse the article's ArtikelEenheid rows into mix codes (deduped)."""
-    out: dict[str, MixCode] = {}
+def _mix_codes_for(eenheden: list) -> list[_MixTier]:
+    """Parse the article's ArtikelEenheid rows into mix tiers (deduped).
+
+    Each tier pairs the parsed M-number threshold with the row's own
+    ``qty_per_base`` (== NAV ``Qty_per_Unit_of_Measure``) as the authoritative
+    units-per-pallet. The PALxx suffix is ignored for the math.
+    """
+    out: dict[str, _MixTier] = {}
     for e in eenheden:
         mc = parse_mix_code(e.eenheid_code)
         if mc:
-            out[mc.code] = mc
+            out[mc.code] = _MixTier(
+                mc.code, mc.m_threshold, float(e.qty_per_base or 0)
+            )
     return list(out.values())
 
 
@@ -125,10 +148,13 @@ def _evaluate(state: dict, klant_repo: KlantRepo, art_repo: ArtikelkaartRepo) ->
         codes = _mix_codes_for(eenheden)
         if not codes:
             continue  # normal-only article — not a mix line
-        rpps = {c.rolls_per_pallet for c in codes}
-        if len(rpps) > 1:
-            ambiguous = True  # inconsistent NAV data — PALxx must be article-constant
-        rpp = min(rpps)
+        # Units-per-pallet is the physical pallet size; it MUST be constant
+        # across an article's mix codes. Use qty_per_base (authoritative), not
+        # the cosmetic PALxx suffix which can have typos (live item 15450).
+        upps = {c.units_per_pallet for c in codes}
+        if len(upps) > 1 or any(u <= 0 for u in upps):
+            ambiguous = True  # genuinely inconsistent/incomplete NAV data
+        rpp = min(upps)
         rolls = _to_rolls(art, regel, eenheden)
         line_pallets: Optional[int] = None
         if rolls is None or rpp <= 0:

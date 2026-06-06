@@ -171,13 +171,52 @@ async def test_non_integer_pallets_flags_review(session):
 
 
 @pytest.mark.asyncio
-async def test_inconsistent_pal_suffix_flags_review(session):
-    """Same article exposing two PAL suffixes is inconsistent NAV data."""
+async def test_inconsistent_units_per_pallet_flags_review(session):
+    """Two mix codes with genuinely different qty_per_base (physical pallet
+    size) is inconsistent NAV data -> review."""
     _set_klant_mix(session, "10001", True)
     _add_uom(session, "1515155", "ROL", 1.0)
     _add_uom(session, "1515155", "M1PAL30", 30.0)
     _add_uom(session, "1515155", "M1PAL35", 35.0)
     out = await _run(session, _state("10001", [_regel(1, "1515155", 30)]))
+    assert out["orderregels"][0]["mix_uom_gekozen"] is None
+    assert "mix_uom:1" in out["needs_review_fields"]
+
+
+@pytest.mark.asyncio
+async def test_typoed_pal_suffix_uses_qty_per_base(session):
+    """Live prod item 15450: the PALxx suffix has typos (M5PAL528) but the
+    authoritative Qty_per_Unit_of_Measure (== qty_per_base) is constant (1728).
+
+    Pallets must be computed via qty_per_base, the chosen code is sent
+    LITERALLY (typo and all — NAV resolves it), and no false review fires.
+    The old suffix-based math would have read rolls/pallet = min(528, 1728) and
+    flagged the order (3456/528 = 6.54, non-integer + inconsistent suffix).
+    """
+    _set_klant_mix(session, "10001", True)
+    _add_uom(session, "15450", "STUK", 1.0)
+    _add_uom(session, "15450", "M5PAL528", 1728.0)    # suffix 528 is a typo
+    _add_uom(session, "15450", "M33PAL1728", 1728.0)
+    # 3456 STUK / 1728 = 2 pallets -> below M5, clamp up to the lowest tier.
+    out = await _run(session, _state("10001", [_regel(1, "15450", 3456, eenheid="STUK")]))
+    assert out.get("needs_review_fields", []) == []
+    assert out["order_mix_total_pallets"] == 2
+    r = out["orderregels"][0]
+    assert r["mix_uom_gekozen"] == "M5PAL528"  # literal NAV code, typo preserved
+    assert r["mix_aantal"] == 2
+    assert out["mixprijzen_actief"] is True
+
+
+@pytest.mark.asyncio
+async def test_ambiguity_keys_on_qty_per_base_not_suffix(session):
+    """Same PALxx suffix but DIFFERENT qty_per_base is a real inconsistency ->
+    review. Proves the ambiguity check keys on qty_per_base, not the suffix:
+    the old suffix-based code would have seen one suffix ({40}) and proceeded."""
+    _set_klant_mix(session, "10001", True)
+    _add_uom(session, "15450", "ROL", 1.0)
+    _add_uom(session, "15450", "M5PAL40", 40.0)
+    _add_uom(session, "15450", "M33PAL40", 50.0)  # same suffix, different real qty
+    out = await _run(session, _state("10001", [_regel(1, "15450", 200)]))
     assert out["orderregels"][0]["mix_uom_gekozen"] is None
     assert "mix_uom:1" in out["needs_review_fields"]
 

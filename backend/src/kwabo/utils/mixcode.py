@@ -25,7 +25,11 @@ _MIX_CODE_RE = re.compile(r"^M(\d+)PAL(\d+)$", re.IGNORECASE)
 class MixCode(NamedTuple):
     code: str  # canonical upper-case, e.g. "M33PAL35"
     m_threshold: int  # total-pallets staffel tier (33)
-    rolls_per_pallet: int  # PAL suffix (35)
+    # PAL suffix (35). NOTE: this is a human-typed *label* and is NOT a reliable
+    # source of truth — live NAV has typos (item 15450: M5PAL528 / M10PAL1028
+    # whose real Qty_per_Unit_of_Measure is 1728). For pallet math always use
+    # ArtikelEenheid.qty_per_base; treat this suffix as cosmetic (badges only).
+    rolls_per_pallet: int
 
 
 def parse_mix_code(code: Optional[str]) -> Optional[MixCode]:
