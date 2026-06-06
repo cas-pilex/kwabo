@@ -149,7 +149,13 @@ def _emit_line_ops(
                 "label": f"{label_prefix}: eenheid kiezen ({uom})",
             }
         )
-    quantity = regel.get("hoeveelheid")
+    # For a mix line the unit is a pallet-staffel code (M{n}PAL{r}), so the
+    # quantity is expressed in that unit (pallets), not the ordered rolls/stuks.
+    # apply_mixprijzen put the pallet count in `mix_aantal`.
+    if regel.get("mix_uom_gekozen") and regel.get("mix_aantal") is not None:
+        quantity = regel.get("mix_aantal")
+    else:
+        quantity = regel.get("hoeveelheid")
     if quantity is not None:
         ops.append(
             {

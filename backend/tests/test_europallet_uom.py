@@ -44,6 +44,20 @@ def test_60_stuks_is_one_pallet():
     assert regel["hoeveelheid"] == 1
 
 
+def test_mix_line_counts_mix_aantal_pallets():
+    """A mix line resolved by apply_mixprijzen contributes its mix_aantal
+    pallets directly (not its raw rolls)."""
+    repo = _UomRepo({"AAA": [_UOM("ROL", 1), _UOM("M33PAL35", 35)]})
+    state = _state([
+        {"positie": 1, "artikelnummer_kwabo_matched": "AAA",
+         "eenheid_origineel": "ROL", "hoeveelheid": 805,
+         "mix_uom_gekozen": "M33PAL35", "mix_aantal": 23},
+    ])
+    regel = compute_europallet(state, repo=_NoKennis(), uom_repo=repo)
+    assert regel is not None
+    assert regel["hoeveelheid"] == 23  # 23 pallets, not 805/35 or 805
+
+
 def test_small_quantities_consolidate_to_one_pallet():
     """10 + 4 + 1 stuks of the same 60/pallet article = 0.25 pallet.
 

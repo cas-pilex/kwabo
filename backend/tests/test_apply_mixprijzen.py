@@ -1,16 +1,20 @@
-"""Tests for apply_mixprijzen node (T7).
+"""Tests for apply_mixprijzen node (T7) — staffel from PLX_ItemUnitOfMeasure.
 
-Mirrors the dependency-injection style of test_select_ship_to: a session
-fixture seeds the DB, repos bound to that same session are passed in, and
-the node operates against that DB without monkeypatching the module-level
-engine.
+The node gates ONLY on the customer mixprijzen flag, reads the article's mix
+codes (M{n}PAL{r}) from ArtikelEenheid (mirrored from PLX_ItemUnitOfMeasure),
+computes the order-wide total pallets, picks per line the highest tier whose
+threshold <= the total, and converts the line quantity to pallets (mix_aantal).
+NAV prices the chosen code itself on push.
+
+DI style mirrors test_select_ship_to: the `session` fixture seeds the DB
+(klant 10001 exists); the node binds repos to that session via `session=`.
 """
 from __future__ import annotations
 
 import pytest
 
-from kwabo.db.models import ArtikelEenheid, Artikelkaart, Klantenkaart
-from kwabo.db.repository import ArtikelkaartRepo, KlantRepo
+from kwabo.db.models import ArtikelEenheid
+from kwabo.db.repository import KlantRepo
 from kwabo.graph.nodes.apply_mixprijzen import apply_mixprijzen_node
 
 
@@ -22,37 +26,33 @@ def _set_klant_mix(session, nav_klantnr: str, mix: bool) -> None:
     session.commit()
 
 
-def _add_artikelkaart(
-    session, kwabo_artikelnr: str, *, mixprijzen: bool, basis_eenheid: str = "STUK"
-) -> None:
-    session.add(
-        Artikelkaart(
-            kwabo_artikelnr=kwabo_artikelnr,
-            naam=f"Artikel {kwabo_artikelnr}",
-            basis_eenheid=basis_eenheid,
-            mixprijzen=mixprijzen,
-        )
-    )
-    session.commit()
-
-
-def _add_uom(
-    session,
-    kwabo_artikelnr: str,
-    eenheid_code: str,
-    *,
-    qty_per_base: float,
-    is_mix_uom: bool,
-) -> None:
+def _add_uom(session, artikelnr: str, code: str, qty_per_base: float) -> None:
     session.add(
         ArtikelEenheid(
-            kwabo_artikelnr=kwabo_artikelnr,
-            eenheid_code=eenheid_code,
+            kwabo_artikelnr=artikelnr,
+            eenheid_code=code,
             qty_per_base=qty_per_base,
-            is_mix_uom=is_mix_uom,
+            is_mix_uom=False,
         )
     )
     session.commit()
+
+
+def _add_mix_tiers(session, artikelnr: str, tiers: list[int], rpp: int, *, base="ROL") -> None:
+    """Seed an article with a base unit + a set of M{tier}PAL{rpp} mix codes."""
+    _add_uom(session, artikelnr, base, 1.0)
+    for t in tiers:
+        _add_uom(session, artikelnr, f"M{t}PAL{rpp}", float(rpp))
+
+
+def _regel(positie: int, artikelnr: str | None, hoeveelheid: float, eenheid: str = "ROL") -> dict:
+    return {
+        "positie": positie,
+        "artikelnummer_kwabo_matched": artikelnr,
+        "hoeveelheid": hoeveelheid,
+        "eenheid": eenheid,
+        "eenheid_origineel": eenheid,
+    }
 
 
 def _state(klant_nr: str | None, regels: list[dict]) -> dict:
@@ -64,170 +64,167 @@ def _state(klant_nr: str | None, regels: list[dict]) -> dict:
     }
 
 
-def _run(session, state):
-    return apply_mixprijzen_node(
-        state,
-        repo_klant=KlantRepo(session),
-        repo_artikelkaart=ArtikelkaartRepo(session),
-        session=session,
-    )
+async def _run(session, state):
+    return await apply_mixprijzen_node(state, session=session)
 
 
 @pytest.mark.asyncio
 async def test_no_klant_match_short_circuits(session):
-    state = {
-        "email_id": "t7-noklant",
-        "klant_match": None,
-        "orderregels": [{"positie": 1, "artikelnummer_kwabo_matched": "1515155"}],
-    }
-    out = await _run(session, state)
+    out = await _run(session, _state(None, [_regel(1, "1515155", 30)]))
     assert out["mixprijzen_actief"] is False
-    # Regels untouched.
-    assert out["orderregels"][0] == {"positie": 1, "artikelnummer_kwabo_matched": "1515155"}
 
 
 @pytest.mark.asyncio
 async def test_klant_mix_false_short_circuits(session):
     _set_klant_mix(session, "10001", False)
-    _add_artikelkaart(session, "1515155", mixprijzen=True)
-    _add_uom(session, "1515155", "DOOS", qty_per_base=1.0, is_mix_uom=True)
-
-    regel = {
-        "positie": 1,
-        "artikelnummer_kwabo_matched": "1515155",
-        "hoeveelheid": 5,
-    }
+    _add_mix_tiers(session, "1515155", [1, 7, 10], 30)
+    regel = _regel(1, "1515155", 30)
     out = await _run(session, _state("10001", [regel]))
-
     assert out["mixprijzen_actief"] is False
-    # Regel must be untouched — no mix_uom_* keys, no review entry.
-    assert out["orderregels"][0] == regel
-    assert "mix_uom_kandidaat" not in out["orderregels"][0]
+    assert out["orderregels"][0] == regel  # untouched
+
+
+@pytest.mark.asyncio
+async def test_no_mix_codes_for_article_not_a_mix_line(session):
+    """Mix customer, but the article has only a normal (non-M) unit."""
+    _set_klant_mix(session, "10001", True)
+    _add_uom(session, "1515155", "ROL", 1.0)
+    _add_uom(session, "1515155", "PALLET", 30.0)
+    out = await _run(session, _state("10001", [_regel(1, "1515155", 30)]))
+    assert out["mixprijzen_actief"] is False
     assert "mix_uom_gekozen" not in out["orderregels"][0]
     assert out.get("needs_review_fields", []) == []
 
 
 @pytest.mark.asyncio
-async def test_klant_mix_true_artikel_mix_false_no_change(session):
+async def test_one_pallet_picks_m1_and_qty_in_pallets(session):
     _set_klant_mix(session, "10001", True)
-    _add_artikelkaart(session, "1515155", mixprijzen=False)
+    _add_mix_tiers(session, "1515155", [1, 7, 10], 30)
+    out = await _run(session, _state("10001", [_regel(1, "1515155", 30)]))  # 30 ROL / 30 = 1 pallet
+    assert out["order_mix_total_pallets"] == 1
+    r = out["orderregels"][0]
+    assert r["mix_uom_gekozen"] == "M1PAL30"
+    assert r["mix_aantal"] == 1
+    assert r["mix_uom_kandidaat"] == ["M1PAL30", "M7PAL30", "M10PAL30"]
+    assert out["mixprijzen_actief"] is True
 
-    regel = {
-        "positie": 1,
-        "artikelnummer_kwabo_matched": "1515155",
-        "hoeveelheid": 5,
-    }
-    out = await _run(session, _state("10001", [regel]))
 
-    # No regel had a mix-UOM picked → mixprijzen_actief stays False.
+@pytest.mark.asyncio
+async def test_eight_pallets_picks_m7(session):
+    _set_klant_mix(session, "10001", True)
+    _add_mix_tiers(session, "1515155", [1, 7, 10], 30)
+    out = await _run(session, _state("10001", [_regel(1, "1515155", 240)]))  # 240/30 = 8 pallets
+    assert out["order_mix_total_pallets"] == 8
+    r = out["orderregels"][0]
+    assert r["mix_uom_gekozen"] == "M7PAL30"
+    assert r["mix_aantal"] == 8
+
+
+@pytest.mark.asyncio
+async def test_below_lowest_tier_clamps_up(session):
+    _set_klant_mix(session, "10001", True)
+    _add_mix_tiers(session, "1515155", [5, 7], 30)
+    out = await _run(session, _state("10001", [_regel(1, "1515155", 60)]))  # 2 pallets, below M5
+    assert out["order_mix_total_pallets"] == 2
+    assert out["orderregels"][0]["mix_uom_gekozen"] == "M5PAL30"  # clamp up to lowest
+
+
+@pytest.mark.asyncio
+async def test_quantity_ordered_in_pallets(session):
+    """Customer orders in PALLET; conversion still yields the pallet count."""
+    _set_klant_mix(session, "10001", True)
+    _add_mix_tiers(session, "1515155", [1, 7, 10], 30)
+    _add_uom(session, "1515155", "PALLET", 30.0)  # 1 PALLET = 30 ROL
+    out = await _run(session, _state("10001", [_regel(1, "1515155", 8, eenheid="PALLET")]))
+    assert out["order_mix_total_pallets"] == 8
+    assert out["orderregels"][0]["mix_uom_gekozen"] == "M7PAL30"
+    assert out["orderregels"][0]["mix_aantal"] == 8
+
+
+@pytest.mark.asyncio
+async def test_veris_multiline_shares_tier_with_own_pal_suffix(session):
+    """Two articles, different PAL suffixes; pallets sum to 33 -> both M33."""
+    _set_klant_mix(session, "10001", True)
+    _add_mix_tiers(session, "AAA", [1, 33], 35)
+    _add_mix_tiers(session, "BBB", [1, 33], 60)
+    # 23 pallets of A (23*35=805 ROL) + 10 pallets of B (10*60=600 ROL) = 33.
+    regels = [_regel(1, "AAA", 805), _regel(2, "BBB", 600)]
+    out = await _run(session, _state("10001", regels))
+    assert out["order_mix_total_pallets"] == 33
+    assert out["orderregels"][0]["mix_uom_gekozen"] == "M33PAL35"
+    assert out["orderregels"][0]["mix_aantal"] == 23
+    assert out["orderregels"][1]["mix_uom_gekozen"] == "M33PAL60"
+    assert out["orderregels"][1]["mix_aantal"] == 10
+
+
+@pytest.mark.asyncio
+async def test_non_integer_pallets_flags_review(session):
+    """A quantity that isn't a whole number of pallets is ambiguous."""
+    _set_klant_mix(session, "10001", True)
+    _add_mix_tiers(session, "1515155", [1, 7], 30)
+    out = await _run(session, _state("10001", [_regel(1, "1515155", 40)]))  # 40/30 = 1.33
+    r = out["orderregels"][0]
+    assert r["mix_uom_gekozen"] is None
+    assert r["mix_aantal"] is None
+    assert "mix_uom:1" in out["needs_review_fields"]
     assert out["mixprijzen_actief"] is False
-    assert "mix_uom_kandidaat" not in out["orderregels"][0]
-    assert "mix_uom_gekozen" not in out["orderregels"][0]
-    assert out.get("needs_review_fields", []) == []
 
 
 @pytest.mark.asyncio
-async def test_single_mix_uom_auto_picked(session):
+async def test_inconsistent_units_per_pallet_flags_review(session):
+    """Two mix codes with genuinely different qty_per_base (physical pallet
+    size) is inconsistent NAV data -> review."""
     _set_klant_mix(session, "10001", True)
-    _add_artikelkaart(session, "1515155", mixprijzen=True)
-    _add_uom(session, "1515155", "ROL", qty_per_base=1.0, is_mix_uom=False)
-    _add_uom(session, "1515155", "MIX-DOOS", qty_per_base=1.0, is_mix_uom=True)
-
-    regel = {
-        "positie": 1,
-        "artikelnummer_kwabo_matched": "1515155",
-        "hoeveelheid": 3,
-    }
-    out = await _run(session, _state("10001", [regel]))
-
-    assert out["mixprijzen_actief"] is True
-    assert out["orderregels"][0]["mix_uom_gekozen"] == "MIX-DOOS"
-    assert out["orderregels"][0]["mix_uom_kandidaat"] == ["MIX-DOOS"]
-    # No review flag — single mix-UOM auto-picks.
-    assert out.get("needs_review_fields", []) == []
-
-
-@pytest.mark.asyncio
-async def test_multiple_mix_uoms_residue_picks_pal(session):
-    _set_klant_mix(session, "10001", True)
-    _add_artikelkaart(session, "1515155", mixprijzen=True)
-    # Two mix-UOMs: DOOS at qty_per_base=1.0 and PAL at qty_per_base=24.0.
-    _add_uom(session, "1515155", "DOOS", qty_per_base=1.0, is_mix_uom=True)
-    _add_uom(session, "1515155", "PAL", qty_per_base=24.0, is_mix_uom=True)
-
-    regel = {
-        "positie": 1,
-        "artikelnummer_kwabo_matched": "1515155",
-        "hoeveelheid": 24,
-    }
-    out = await _run(session, _state("10001", [regel]))
-
-    # 24 / 24 = 1.0 (residue 0); 24 / 1 = 24 (residue 0). Both have residue 0,
-    # but stable sort means DOOS (inserted first) and PAL tie. Pick the first
-    # in the ranked list — verify *ranking* explicitly to make this stable.
-    assert out["mixprijzen_actief"] is True
-    chosen = out["orderregels"][0]["mix_uom_gekozen"]
-    assert chosen in {"PAL", "DOOS"}
-    # In the equal-residue case both are valid; the ranked list must contain both.
-    assert set(out["orderregels"][0]["mix_uom_kandidaat"]) == {"PAL", "DOOS"}
-
-
-@pytest.mark.asyncio
-async def test_multiple_mix_uoms_picks_minimum_residue(session):
-    """Pick the UOM whose qty_per_base lines up best with regel.hoeveelheid."""
-    _set_klant_mix(session, "10001", True)
-    _add_artikelkaart(session, "1515155", mixprijzen=True)
-    # DOOS=1 → residue 0 for any int hoeveelheid.
-    # PAL=24 → residue 0 only when hoeveelheid is a multiple of 24.
-    # MIX-OFF=10 → residue 0.5 when hoeveelheid=25 (25/10 = 2.5).
-    _add_uom(session, "1515155", "MIX-OFF", qty_per_base=10.0, is_mix_uom=True)
-    _add_uom(session, "1515155", "PAL", qty_per_base=24.0, is_mix_uom=True)
-
-    regel = {
-        "positie": 1,
-        "artikelnummer_kwabo_matched": "1515155",
-        "hoeveelheid": 24,
-    }
-    out = await _run(session, _state("10001", [regel]))
-
-    # PAL (residue 0) beats MIX-OFF (residue 0.4).
-    assert out["mixprijzen_actief"] is True
-    assert out["orderregels"][0]["mix_uom_gekozen"] == "PAL"
-    assert out["orderregels"][0]["mix_uom_kandidaat"][0] == "PAL"
-
-
-@pytest.mark.asyncio
-async def test_no_mix_uom_defined_flags_review(session):
-    _set_klant_mix(session, "10001", True)
-    _add_artikelkaart(session, "1515155", mixprijzen=True)
-    # Add a non-mix UOM only.
-    _add_uom(session, "1515155", "ROL", qty_per_base=1.0, is_mix_uom=False)
-
-    regel = {
-        "positie": 7,
-        "artikelnummer_kwabo_matched": "1515155",
-        "hoeveelheid": 3,
-    }
-    out = await _run(session, _state("10001", [regel]))
-
-    assert out["mixprijzen_actief"] is False  # nothing was successfully picked
-    assert out["orderregels"][0]["mix_uom_kandidaat"] is None
+    _add_uom(session, "1515155", "ROL", 1.0)
+    _add_uom(session, "1515155", "M1PAL30", 30.0)
+    _add_uom(session, "1515155", "M1PAL35", 35.0)
+    out = await _run(session, _state("10001", [_regel(1, "1515155", 30)]))
     assert out["orderregels"][0]["mix_uom_gekozen"] is None
-    assert "mix_uom:7" in out["needs_review_fields"]
-    assert out["needs_review_count"] == 1
+    assert "mix_uom:1" in out["needs_review_fields"]
+
+
+@pytest.mark.asyncio
+async def test_typoed_pal_suffix_uses_qty_per_base(session):
+    """Live prod item 15450: the PALxx suffix has typos (M5PAL528) but the
+    authoritative Qty_per_Unit_of_Measure (== qty_per_base) is constant (1728).
+
+    Pallets must be computed via qty_per_base, the chosen code is sent
+    LITERALLY (typo and all — NAV resolves it), and no false review fires.
+    The old suffix-based math would have read rolls/pallet = min(528, 1728) and
+    flagged the order (3456/528 = 6.54, non-integer + inconsistent suffix).
+    """
+    _set_klant_mix(session, "10001", True)
+    _add_uom(session, "15450", "STUK", 1.0)
+    _add_uom(session, "15450", "M5PAL528", 1728.0)    # suffix 528 is a typo
+    _add_uom(session, "15450", "M33PAL1728", 1728.0)
+    # 3456 STUK / 1728 = 2 pallets -> below M5, clamp up to the lowest tier.
+    out = await _run(session, _state("10001", [_regel(1, "15450", 3456, eenheid="STUK")]))
+    assert out.get("needs_review_fields", []) == []
+    assert out["order_mix_total_pallets"] == 2
+    r = out["orderregels"][0]
+    assert r["mix_uom_gekozen"] == "M5PAL528"  # literal NAV code, typo preserved
+    assert r["mix_aantal"] == 2
+    assert out["mixprijzen_actief"] is True
+
+
+@pytest.mark.asyncio
+async def test_ambiguity_keys_on_qty_per_base_not_suffix(session):
+    """Same PALxx suffix but DIFFERENT qty_per_base is a real inconsistency ->
+    review. Proves the ambiguity check keys on qty_per_base, not the suffix:
+    the old suffix-based code would have seen one suffix ({40}) and proceeded."""
+    _set_klant_mix(session, "10001", True)
+    _add_uom(session, "15450", "ROL", 1.0)
+    _add_uom(session, "15450", "M5PAL40", 40.0)
+    _add_uom(session, "15450", "M33PAL40", 50.0)  # same suffix, different real qty
+    out = await _run(session, _state("10001", [_regel(1, "15450", 200)]))
+    assert out["orderregels"][0]["mix_uom_gekozen"] is None
+    assert "mix_uom:1" in out["needs_review_fields"]
 
 
 @pytest.mark.asyncio
 async def test_unmatched_regel_skipped(session):
-    """Regels without a matched kwabo_artikelnr must be passed through."""
     _set_klant_mix(session, "10001", True)
-
-    regel = {
-        "positie": 1,
-        "artikelnummer_kwabo_matched": None,
-        "hoeveelheid": 5,
-    }
+    regel = _regel(1, None, 5)
     out = await _run(session, _state("10001", [regel]))
     assert out["mixprijzen_actief"] is False
-    assert "mix_uom_kandidaat" not in out["orderregels"][0]
     assert "mix_uom_gekozen" not in out["orderregels"][0]

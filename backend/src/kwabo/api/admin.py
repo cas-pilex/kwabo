@@ -29,6 +29,7 @@ from kwabo.integrations.navision_api import get_navision_client
 from kwabo.integrations.navision_nav2018 import Nav2018ODataClient
 from kwabo.utils import utcnow
 from kwabo.utils.logging import log
+from kwabo.utils.mixcode import is_mix_code
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -114,6 +115,18 @@ def _customer_to_klantenkaart(row: dict, existing: Optional[Klantenkaart]) -> Kl
     taal = _str_or_none(row.get("Language_Code")) or "NL"
     krediet = _float_or_none(row.get("Credit_Limit_LCY"))
     betaling = _str_or_none(row.get("Payment_Terms_Code"))
+    # Customer mix-price flag. Live NAV audit (Kopie 2026) confirmed PLX_Customer
+    # exposes this as `Mix_Prices_Allowed`; the other keys are tolerant fallbacks.
+    # _nav_bool returns False for unknown keys, so the feature stays inert if the
+    # field is ever renamed.
+    mix = _nav_bool(
+        row,
+        "Mix_Prices_Allowed",
+        "Mixprijzen",
+        "Mix_Prices",
+        "Kwabo_Mixprijzen",
+        "Field50013",
+    )
 
     if existing is not None:
         existing.naam = naam
@@ -125,6 +138,7 @@ def _customer_to_klantenkaart(row: dict, existing: Optional[Klantenkaart]) -> Kl
         existing.taal = taal
         existing.kredietlimiet = krediet
         existing.betalingsconditie = betaling
+        existing.mixprijzen = mix
         existing.updated_at = utcnow()
         return existing
     return Klantenkaart(
@@ -135,7 +149,7 @@ def _customer_to_klantenkaart(row: dict, existing: Optional[Klantenkaart]) -> Kl
         taal=taal,
         kredietlimiet=krediet,
         betalingsconditie=betaling,
-        mixprijzen=False,
+        mixprijzen=mix,
     )
 
 
@@ -235,6 +249,9 @@ def _nav_bool(row: dict, *keys: str) -> bool:
 
 def _item_uom_is_mix(row: dict, code: str) -> bool:
     if _nav_bool(row, "Mix_UoM", "MixUoM", "Is_Mix_UoM", "Kwabo_Mix"):
+        return True
+    # The real staffel codes are M{n}PAL{r} (e.g. M33PAL35) — recognise those.
+    if code and is_mix_code(code):
         return True
     return bool(code and _MIX_UOM_PATTERN.search(code))
 

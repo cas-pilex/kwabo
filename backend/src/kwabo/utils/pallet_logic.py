@@ -109,6 +109,17 @@ def compute_europallet(state: dict, *, repo, uom_repo=None) -> Optional[dict]:
             # double-count if the input already carries one.
             continue
 
+        # A mix line was resolved to a whole number of pallets by
+        # apply_mixprijzen (mix_aantal, in the M{n}PAL{r} unit). Count those
+        # pallets directly — the line's raw rolls/stuks no longer apply.
+        mix_aantal = regel.get("mix_aantal")
+        if regel.get("mix_uom_gekozen") and mix_aantal:
+            try:
+                total += float(mix_aantal)
+            except (TypeError, ValueError):
+                pass
+            continue
+
         # match_articles preserves the customer's ORIGINALLY ordered unit in
         # `eenheid_origineel` (where PAL/STUK/ROL shows up), falling back to
         # the NAV-facing `eenheid` for older state.
