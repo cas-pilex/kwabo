@@ -102,11 +102,16 @@ async def _match_single(regel: dict, klant_nr: str | None, nav: NavisionClient) 
         if candidates:
             names = {c["number"]: c.get("displayName", "") for c in candidates}
             best = process.extractOne(oms, names, scorer=fuzz.WRatio)
-            # Raise the floor to 80: at 70 WRatio matches two unrelated short
-            # strings (e.g. "JOKA JK 145 Maler-Abdeckvlies" → "Stekker 220V"
-            # scored 85 on Nico's order #58). 80 is still permissive enough
-            # for typo-tolerant matches but cuts the worst false positives.
-            if best and best[1] >= 80:
+            # Drempel 90, empirisch bepaald op de echte faalorders (Fase 2 A5,
+            # scripts/analyze_fuzzy_thresholds.py, 10-06-2026): álle junk-
+            # auto-fills uit prod scoorden precies 86 (WRatio's partial-ratio
+            # plafond), o.a. "Stucloper grijs rol a 36m2…" → 18390 "Tork rol
+            # Katrien" en "Afdekvlies 0,67x37…" → 11190 "Vloerschraper". Van
+            # de 16 bekend-correcte paren koos fuzzy er 15 fout — WRatio in
+            # [80,99) had op deze catalogus géén terecht-positieve waarde.
+            # Onder de drempel: NIET invullen (grondwet 5) — doorvallen naar
+            # manual zodat de reviewer een leeg veld ziet i.p.v. onzin.
+            if best and best[1] >= 90:
                 number = best[2]
                 score = best[1]
                 result["artikelnummer_kwabo_matched"] = number
