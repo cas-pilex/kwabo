@@ -118,7 +118,7 @@ class ArtikelMatchingHistory(SQLModel, table=True):
     klant_artikelnr: Optional[str] = Field(default=None, index=True)
     klant_omschrijving: Optional[str] = None
     kwabo_artikelnr: str
-    match_methode: str  # 'exact', 'kruisverwijzing', 'klantenkaart', 'history', 'fuzzy', 'manual'
+    match_methode: str  # 'exact', 'exact_klantnr', 'kruisverwijzing', 'klantenkaart', 'history', 'fuzzy', 'handmatig', 'manual'
     was_correctie: bool = False
     order_datum: Optional[date] = None
     created_at: datetime = Field(default_factory=utcnow)

@@ -1,4 +1,4 @@
-"""Match articles: exact → kruisverwijzing → klantenkaart → history → fuzzy → manual."""
+"""Match articles: exact → exact_klantnr → kruisverwijzing → klantenkaart → history → fuzzy → manual."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -38,6 +38,31 @@ async def _match_single(regel: dict, klant_nr: str | None, nav: NavisionClient) 
             result["match_confidence"] = 1.0
             result["match_methode"] = "exact"
             return result
+
+    # 1b) Klant-artnr dat zélf een geldig Kwabo-nummer is (Fase 2 A1).
+    # De LLM zet soms het Kwabo-nummer in de klant-kolom (Witzand #718:
+    # "238601" → werd fuzzy 11190 "Vloerschraper") of wisselt beide kolommen
+    # om (#550/#635). Een expliciete mapping voor (klant, nummer) —
+    # kruisverwijzing of klantenkaart — blijft gezaghebbend en wint van de
+    # collisie-interpretatie; A1 vuurt alleen als die er niet zijn.
+    # Bewust alléén de lokale mirror (geen live-NAV-fallback): elke
+    # ongematchte regel zou anders een extra NAV-round-trip kosten, en een
+    # nummer dat niet in de gesyncde mirror staat is vrijwel zeker geen
+    # Kwabo-nummer.
+    ka = regel.get("artikelnummer_klant")
+    if ka:
+        with Session(engine) as s:
+            expliciete_mapping = klant_nr is not None and (
+                KruisverwijzingRepo(s).lookup(klant_nr, ka) is not None
+                or ArtikelRepo(s).mapping(klant_nr, ka) is not None
+            )
+            if not expliciete_mapping and ArtikelkaartRepo(s).get(ka) is not None:
+                result["artikelnummer_kwabo_matched"] = ka
+                # Zonder klant_nr is de afwezigheid van een kruisverwijzing
+                # niet verifieerbaar → iets lager dan exact.
+                result["match_confidence"] = 1.0 if klant_nr else 0.95
+                result["match_methode"] = "exact_klantnr"
+                return result
 
     if klant_nr and regel.get("artikelnummer_klant"):
         with Session(engine) as s:
@@ -219,7 +244,7 @@ async def match_articles_node(state: OrderState) -> OrderState:
         "details": {
             "per_methode": {
                 m: sum(1 for r in matched if r.get("match_methode") == m)
-                for m in ("exact", "kruisverwijzing", "klantenkaart", "history", "fuzzy", "manual")
+                for m in ("exact", "exact_klantnr", "kruisverwijzing", "klantenkaart", "history", "fuzzy", "manual")
             }
         },
     }
