@@ -95,6 +95,14 @@ export type ShipToKandidaat = {
   is_default: boolean;
 };
 
+// Fase 2 K3: kandidaat uit de klant-naam-fallback (of NAV-zoektocht)
+export type KlantKandidaat = {
+  navision_klantnr: string;
+  klantnaam: string;
+  score: number | null;
+  bron: string;
+};
+
 export type EuropalletRegel = {
   kwabo_artikelnr: string;
   hoeveelheid: number;

@@ -8,6 +8,7 @@ import {
   type EuropalletRegel,
   type FieldMeta,
   type Item,
+  type KlantKandidaat,
   type OrderDetail,
   type ShipToKandidaat,
 } from "@/lib/api";
@@ -21,6 +22,7 @@ import { EuropalletEditor } from "./components/EuropalletEditor";
 import { IncomingDocumentPanel } from "./components/IncomingDocumentPanel";
 import { MixprijzenBadge } from "./components/MixprijzenBadge";
 import { NavOperationsPreview } from "./components/NavOperationsPreview";
+import { KlantPicker } from "./components/KlantPicker";
 import { ShipToPicker } from "./components/ShipToPicker";
 
 type Props = { order: OrderDetail; items: Item[] };
@@ -75,6 +77,7 @@ type State = {
     orderregels?: Array<Record<string, FieldMeta>>;
   };
   needs_review_fields?: string[];
+  klant_kandidaten?: KlantKandidaat[];
   ship_to_kandidaten?: ShipToKandidaat[];
   ship_to_gekozen?: string | null;
   mixprijzen_actief?: boolean;
@@ -245,6 +248,15 @@ export function OrderReview({ order, items }: Props) {
           {/* Klant */}
           <div className="mb-4 rounded-lg border border-[var(--kwabo-border)] bg-slate-50 p-3">
             <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--kwabo-muted)]">Klant</div>
+            {/* K3: kandidaten uit de naam-fallback — alleen zolang er geen
+                klant gekozen is; een keuze loopt via dezelfde patch-flow als
+                handmatig typen (incl. refresh). */}
+            {!initialState.klant_match?.navision_klantnr && (
+              <KlantPicker
+                kandidaten={initialState.klant_kandidaten || []}
+                onPick={(nr) => patch("klant_match", nr)}
+              />
+            )}
             {initialState.klant_match?.klantnaam && (
               <div className="mb-1.5 text-sm font-semibold text-[var(--kwabo-navy)]" data-testid="klant-naam">
                 {initialState.klant_match.klantnaam}
