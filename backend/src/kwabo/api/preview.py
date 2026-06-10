@@ -45,6 +45,7 @@ class NavisionPreviewResponse(BaseModel):
 # ---------- helpers ----------
 
 PATH_RE = re.compile(r"([a-zA-Z_]\w*)|\[(\d+)\]")
+REGEL_MATCHED_RE = re.compile(r"orderregels\[(\d+)\]\.artikelnummer_kwabo_matched")
 
 
 def _split_path(path: str) -> list[Any]:
@@ -173,8 +174,12 @@ def navision_preview(order_id: int) -> NavisionPreviewResponse:
 @router.patch("/{order_id}/patch-field")
 def patch_field(order_id: int, body: PatchFieldBody) -> dict:
     state, _ = _load(order_id)
-    # Special-case top-level fields with klant_match shorthand
-    if body.path == "klant_match":
+    # Special-case top-level fields with klant_match shorthand. Het sub-pad
+    # klant_match.navision_klantnr is semantisch dezelfde actie (reviewer zet
+    # een klantnummer) en moet dezelfde verrijking + review-clear krijgen —
+    # anders blijft _meta.klant_match.needs_review True staan en blijft de
+    # rode badge na een handmatige fix zichtbaar (M1, Van Dongen-case).
+    if body.path in ("klant_match", "klant_match.navision_klantnr"):
         kn = body.value if isinstance(body.value, str) else (body.value or {}).get("navision_klantnr")
         # Verrijk met de NAAM uit de klantenkaart zodat de reviewer een naam
         # ziet i.p.v. alleen een nummer. Lukt de lookup niet (klant niet in de
@@ -214,6 +219,43 @@ def patch_field(order_id: int, body: PatchFieldBody) -> dict:
         except Exception:  # noqa: BLE001
             pass
 
+    # M1 (Fase 2): een handmatige artikel-match moet plakken. De generieke
+    # meta-update hierboven dekt het matched-veld, maar laat de regel zelf op
+    # match_methode="manual"/confidence 0.0 staan en wist de raw-extract-flag
+    # (orderregels[i].artikelnummer_kwabo) niet — terwijl match_articles dat
+    # bij een confident automatische match wél doet. Gevolg was een order die
+    # eeuwig "ONTBREEKT" toonde na een correcte handmatige fix (#721).
+    m = REGEL_MATCHED_RE.fullmatch(body.path)
+    if m:
+        i = int(m.group(1))
+        regels = state.get("orderregels") or []
+        if i < len(regels) and isinstance(regels[i], dict):
+            heeft_waarde = bool(body.value)
+            regels[i]["match_methode"] = "handmatig" if heeft_waarde else "manual"
+            regels[i]["match_confidence"] = 1.0 if heeft_waarde else 0.0
+            meta = state.setdefault("_meta", {})
+            regels_meta = meta.setdefault("orderregels", [])
+            while len(regels_meta) <= i:
+                regels_meta.append({})
+            rm = regels_meta[i] if isinstance(regels_meta[i], dict) else {}
+            rm["artikelnummer_kwabo_matched"] = {
+                "value": body.value, "source": "manual",
+                "source_detail": f"reviewer:{body.reviewer or 'dashboard'}",
+                "confidence": 1.0 if heeft_waarde else 0.0,
+                # Leegmaken = de regel is wéér ongematcht en moet terug in
+                # review (grondwet 5) — de generieke patch-meta zou hier
+                # needs_review=False zetten.
+                "needs_review": not heeft_waarde,
+            }
+            if heeft_waarde:
+                raw = rm.get("artikelnummer_kwabo")
+                if isinstance(raw, dict):
+                    raw["needs_review"] = False
+                    raw["source_detail"] = (
+                        f"{raw.get('source_detail') or ''} | cleared by manual match"
+                    ).strip(" |")
+            regels_meta[i] = rm
+
     needs = _all_needs_review_paths(state)
     state["needs_review_fields"] = needs
     state["needs_review_count"] = len(needs)
@@ -232,10 +274,15 @@ def patch_field(order_id: int, body: PatchFieldBody) -> dict:
     extra = {}
     if body.path.startswith("orderregels[") and body.path.endswith(".artikelnummer_kwabo_matched"):
         regels = state.get("orderregels") or []
-        extra["alle_artikelen_gematcht"] = bool(regels) and all(
+        alle_gematcht = bool(regels) and all(
             r.get("artikelnummer_kwabo_matched") for r in regels
         )
-    if body.path == "klant_match":
+        # Zowel de OrderLog-kolom (lijstweergave) als de state-JSON (de
+        # review-UI rendert uit order_state) — alleen de kolom bijwerken
+        # liet de UI op "niet alles gematcht" staan na een handmatige fix.
+        extra["alle_artikelen_gematcht"] = alle_gematcht
+        state["alle_artikelen_gematcht"] = alle_gematcht
+    if body.path in ("klant_match", "klant_match.navision_klantnr"):
         extra["klant_nr"] = (state.get("klant_match") or {}).get("navision_klantnr")
 
     _save(order_id, state, **extra)
