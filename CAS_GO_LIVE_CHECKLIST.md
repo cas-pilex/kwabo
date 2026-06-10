@@ -150,6 +150,33 @@ of laat het via mailbox binnenkomen. Verifieer in NAV staging dat:
 
 Als alle vier kloppen → veilig om productie aan te zetten.
 
+## 5. On-site verificatie ná go-live (Fase 3/4-restpunten)
+
+- [ ] **pgbouncer-veiligheid (Supabase poort 6543, transaction-mode).** Vuur
+  een reeks opeenvolgende DB-zware requests af (b.v. 10× achter elkaar een
+  order herverwerken en/of de orderslijst + artikelen-endpoints verversen)
+  en controleer de Railway-logs op prepared-statement-fouten
+  (`DuplicatePreparedStatement` / "prepared statement ... already exists").
+  De pooling-test (`test_db_engine_pooling`, `prepare_threshold=None`) is
+  characterization van de engine-config — dít is het runtime-bewijs op de
+  echte bouncer.
+- [ ] **Veris-mixorder (klant 60203).** Stuur/herverwerk een echte
+  Veris-order en verifieer op de NAV-order: juiste `M{X}PAL{Y}`-codes per
+  regel én juiste aantallen (staffel volgt order-totaal-pallets:
+  1→M1, 8→M7, 12→M10). Vereist eerst NAV-side **OPS-item g**: de
+  mixprijzen-vlag exposen op de KlantOut/PLX_Customer-page — zolang die
+  vlag niet meekomt staat mixprijzen voor echte klanten uit en is deze
+  check niet uitvoerbaar.
+
+### Open punten (geen code — eerst business-antwoord)
+
+- **7002-cascade (Fase 3, STAP 5).** Open vraag aan de NAV-expert: moet de
+  app de Verkoopprijs-cascade (tabel 7002) als beslissteun spiegelen, en zo
+  ja via welke page? NAV exposet de 7002-page nu niet
+  (FASE0_NULMETING B7: geen PLX_SalesPrice/Verkoopprijzen in de 42 entity
+  sets); prijsbepaling blijft NAV's eigen codeunit en de app rekent zelf
+  geen prijzen. Bewust géén code gebouwd tot hier antwoord op is.
+
 ## Kort overzicht van environment-variabelen
 
 | Variabele | Waar | Vereist | Doel |
