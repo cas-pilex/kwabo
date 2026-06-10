@@ -1,4 +1,4 @@
-"""Match customer node: email → DB → Navision search → None."""
+"""Match customer node: email → DB → NAV-email → naam-extract → NAV-domein → None."""
 from __future__ import annotations
 
 import re
@@ -6,6 +6,7 @@ from datetime import datetime
 
 from kwabo.utils import utcnow
 
+from rapidfuzz import fuzz, process
 from sqlmodel import Session
 
 from kwabo.db.repository import KlantRepo
@@ -24,10 +25,82 @@ from kwabo.utils.logging import log
 
 EMAIL_RE = re.compile(r"[\w\.\-\+]+@[\w\.\-]+")
 
+# --- K3/K4 (Fase 2): klant-naam-fallback -----------------------------------
+# Rechtsvorm-suffixen vervuilen de fuzzy-score ("B.V." matcht elke B.V.).
+RECHTSVORM_RE = re.compile(
+    r"\b(b\.?v\.?|n\.?v\.?|v\.?o\.?f\.?|gmbh|& ?co\.? ?kg|bv|nv)\b\.?",
+    re.IGNORECASE,
+)
+# Pure doorstuur-portalen: het afzenderdomein noemt NOOIT de klant, dus de
+# domein-substring-stap is daar actief schadelijk (K4).
+PORTAL_DOMAINS = {"zevij-necomij.com", "orders.nl"}
+# Drempels, empirisch bepaald op alle 1787 echte klantnamen
+# (scripts/analyze_name_fallback.py, 10-06-2026, token_set_ratio na
+# rechtsvorm-strip): exacte faalorder-namen (Witzand/Van Dongen/GBI Borne)
+# scoren 100 met gap >= 22; franchise-/generieke namen ("Jongeneel",
+# "Holland") hebben meerdere 100-scores (gap 0) en "TABS Holland" haalt
+# max 87 op het VERKEERDE bedrijf (AST Holland). Autopick vereist dus een
+# unieke winnaar: top >= 90 én gap >= 10. Vanaf 75 tonen we kandidaten —
+# nooit automatisch kiezen (grondwet 5).
+NAAM_ACCEPT = 90
+NAAM_GAP = 10
+NAAM_SHOW = 75
+
 
 def _extract_email(addr: str) -> str:
     m = EMAIL_RE.search(addr or "")
     return m.group(0).lower() if m else ""
+
+
+def _normaliseer_klantnaam(naam: str) -> str:
+    n = RECHTSVORM_RE.sub(" ", (naam or "").lower())
+    n = re.sub(r"[^\w\s]", " ", n)
+    return re.sub(r"\s+", " ", n).strip()
+
+
+def _match_by_name(naam_signaal: str) -> tuple[dict | None, list[dict]]:
+    """K3: fuzzy-match het naam-signaal tegen klantenkaarten.naam.
+
+    Returns ``(match, kandidaten)`` — bij een unieke duidelijke winnaar een
+    match (conf 0.8); bij meerdere plausibele kaarten alleen kandidaten.
+    token_set_ratio is bewust subset-vriendelijk: "Witzand" moet "Witzand
+    Bouwmaterialen B.V." vinden — de gap-eis voorkomt dat generieke tokens
+    ("Holland") of franchises ("Jongeneel": 1 kaart per vestiging) autopicken.
+    """
+    norm = _normaliseer_klantnaam(naam_signaal)
+    if len(norm) < 3:
+        return None, []
+    with Session(engine) as s:
+        kaarten = KlantRepo(s).all()
+    namen = {k.nav_klantnr: _normaliseer_klantnaam(k.naam) for k in kaarten if k.naam}
+    if not namen:
+        return None, []
+    per_kaart = {k.nav_klantnr: k for k in kaarten}
+    top = process.extract(norm, namen, scorer=fuzz.token_set_ratio, limit=6)
+    kandidaten = [
+        {
+            "navision_klantnr": nr,
+            "klantnaam": per_kaart[nr].naam,
+            "score": round(score, 1),
+            "bron": "naam_extract",
+        }
+        for _, score, nr in top
+        if score >= NAAM_SHOW
+    ]
+    if top and top[0][1] >= NAAM_ACCEPT and (
+        len(top) == 1 or top[0][1] - top[1][1] >= NAAM_GAP
+    ):
+        kaart = per_kaart[top[0][2]]
+        return {
+            "navision_klantnr": kaart.nav_klantnr,
+            "klantnaam": kaart.naam,
+            "match_confidence": 0.8,
+            "match_bron": "naam_extract",
+            "is_4plus": kaart.is_4plus,
+            "kredietlimiet": kaart.kredietlimiet,
+            "betalingsconditie": kaart.betalingsconditie,
+        }, kandidaten
+    return None, kandidaten
 
 
 def _extract_domain_name(addr: str) -> str:
@@ -164,11 +237,27 @@ async def match_customer_node(state: OrderState) -> OrderState:
             ambiguous_candidates = res
             ambiguous_term = effective_email
 
-    if not match and ambiguous_candidates is None:
-        # Name fuzzy search via Nav — gebruik forward-domein indien aanwezig
+    # K3 (Fase 2): naam-fallback — de geëxtraheerde KLANTNAAM uit de
+    # bestelling (niet de afzender!) fuzzy tegen de klantenkaarten-mirror.
+    # Bij portaal/agent-mails (zevij-portaal, pontmeyer-agent) is dit het
+    # enige betrouwbare signaal. Forward-naam als tweede signaal.
+    klant_kandidaten: list[dict] = []
+    naam_signaal = (
+        (state.get("klantnaam_besteller") or "").strip()
+        or (fwd.original_from_name or "").strip()
+    )
+    if not match and ambiguous_candidates is None and naam_signaal:
+        match, klant_kandidaten = _match_by_name(naam_signaal)
+
+    if not match and ambiguous_candidates is None and not klant_kandidaten:
+        # Name fuzzy search via Nav — gebruik forward-domein indien aanwezig.
+        # K4: pure doorstuur-portalen overslaan — hun domein noemt nooit de
+        # klant, dus elke hit zou per definitie fout zijn.
         effective_from = fwd.original_from_email or email_from
+        effective_addr = _extract_email(effective_from)
+        full_domain = effective_addr.split("@", 1)[1] if "@" in effective_addr else ""
         domain = _extract_domain_name(effective_from)
-        if domain:
+        if domain and full_domain not in PORTAL_DOMAINS:
             res = await nav.search_customers(naam=domain)
             chosen, ambiguous, matched_on = _pick_customer(res, state)
             if chosen:
@@ -196,6 +285,26 @@ async def match_customer_node(state: OrderState) -> OrderState:
             f"⚠ MEERDERE KLANTEN gevonden voor '{ambiguous_term}' "
             f"({len(ambiguous_candidates)}) — geen eenduidige adres-match. "
             f"Handmatige selectie nodig. Kandidaten: {namen}"
+        )
+        # Unificeer met de K3-kandidatenstructuur zodat het dashboard één
+        # picker kan tonen ongeacht welke stap de kandidaten vond.
+        if not klant_kandidaten:
+            klant_kandidaten = [
+                {
+                    "navision_klantnr": c.get("number"),
+                    "klantnaam": c.get("displayName"),
+                    "score": None,
+                    "bron": "navision",
+                }
+                for c in ambiguous_candidates[:6]
+            ]
+    elif not match and klant_kandidaten:
+        namen = ", ".join(
+            f"{k['navision_klantnr']} ({k['klantnaam']})" for k in klant_kandidaten
+        )
+        warnings.append(
+            f"⚠ MEERDERE KLANTEN mogelijk voor '{naam_signaal}' — geen unieke "
+            f"naam-match. Handmatige selectie nodig. Kandidaten: {namen}"
         )
     elif not match:
         warnings.append(f"KLANT NIET GEVONDEN: {email_from}. Handmatige selectie nodig.")
@@ -243,7 +352,7 @@ async def match_customer_node(state: OrderState) -> OrderState:
     klant_meta = {
         "value": (match or {}).get("navision_klantnr"),
         "source": (
-            "klantenkaart" if bron == "email"
+            "klantenkaart" if bron in ("email", "forward_email", "naam_extract")
             else "navision" if bron and bron.startswith("navision_")
             else "missing"
         ),
@@ -260,6 +369,7 @@ async def match_customer_node(state: OrderState) -> OrderState:
     return {
         **state,
         "klant_match": match,
+        "klant_kandidaten": [] if match else klant_kandidaten,
         "validatie_warnings": warnings,
         "stappen_log": steps,
         "_meta": meta,
