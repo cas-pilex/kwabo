@@ -32,6 +32,7 @@ Auth probe summary (run once during onboarding to pick the right port):
 """
 from __future__ import annotations
 
+import asyncio
 import re
 import urllib.parse
 from typing import Any, Optional
@@ -171,6 +172,9 @@ class Nav2018ODataClient:
         page_item_uom: str | None = None,
         field_map: dict[str, str] | None = None,
         http_client: httpx.AsyncClient | None = None,
+        retry_attempts: int | None = None,
+        retry_base_delay: float | None = None,
+        retry_max_delay: float | None = None,
     ) -> None:
         from kwabo.config import settings
 
@@ -194,6 +198,20 @@ class Nav2018ODataClient:
         self._client = http_client or httpx.AsyncClient(
             verify=self.verify_ssl,
             timeout=httpx.Timeout(30.0, connect=10.0),
+        )
+
+        # Fase 4 (B2): retry-knoppen voor idempotente GETs. Zie
+        # _send_get_with_retry; POST/PATCH retryen nooit.
+        self.retry_attempts = (
+            settings.nav_get_retry_attempts if retry_attempts is None else retry_attempts
+        )
+        self.retry_base_delay = (
+            settings.nav_get_retry_base_delay_s
+            if retry_base_delay is None else retry_base_delay
+        )
+        self.retry_max_delay = (
+            settings.nav_get_retry_max_delay_s
+            if retry_max_delay is None else retry_max_delay
         )
 
     # ---------- URL building ----------
@@ -260,8 +278,68 @@ class Nav2018ODataClient:
             "Content-Type": "application/json",
         }
 
+    _RETRYABLE_STATUSES = frozenset({429, 500, 502, 503, 504})
+
+    @staticmethod
+    def _retry_after_seconds(resp: httpx.Response) -> float | None:
+        """Integer/float-seconden-vorm van Retry-After (NAV/proxies sturen
+        geen HTTP-datums). None bij afwezig of onparseerbaar."""
+        raw = resp.headers.get("Retry-After")
+        if not raw:
+            return None
+        try:
+            return max(0.0, float(raw))
+        except ValueError:
+            return None
+
+    async def _send_get_with_retry(
+        self,
+        url: str,
+        *,
+        params: dict | None = None,
+        headers: dict | None = None,
+        auth: httpx.BasicAuth | None = None,
+    ) -> httpx.Response:
+        """GET met retry/backoff op transiente fouten (Fase 4 B2).
+
+        Alleen voor GETs — die zijn idempotent. 429/500/502/503/504 en
+        transportfouten worden opnieuw geprobeerd (exponentieel vanaf
+        retry_base_delay; een Retry-After-header wint, gecapt op
+        retry_max_delay). Andere statussen gaan direct terug naar de caller
+        zodat de bestaande 404-/raise_for_status-afhandeling ongewijzigd
+        blijft. POST/PATCH gebruiken deze helper bewust NIET.
+        """
+        attempts = max(1, int(self.retry_attempts))
+        for attempt in range(attempts):
+            laatste = attempt == attempts - 1
+            try:
+                resp = await self._client.get(
+                    url, params=params, headers=headers, auth=auth
+                )
+            except httpx.TransportError as exc:
+                if laatste:
+                    raise
+                delay = self.retry_base_delay * (2 ** attempt)
+                log.warning(
+                    "nav_get_retry", url=url, attempt=attempt + 1,
+                    error=f"{type(exc).__name__}: {exc}",
+                )
+                await asyncio.sleep(min(delay, self.retry_max_delay))
+                continue
+            if resp.status_code not in self._RETRYABLE_STATUSES or laatste:
+                return resp
+            delay = self._retry_after_seconds(resp)
+            if delay is None:
+                delay = self.retry_base_delay * (2 ** attempt)
+            log.warning(
+                "nav_get_retry", url=url, attempt=attempt + 1,
+                status=resp.status_code,
+            )
+            await asyncio.sleep(min(delay, self.retry_max_delay))
+        return resp  # onbereikbaar; for-lus retourneert altijd eerder
+
     async def _get(self, url: str, params: dict | None = None) -> dict:
-        resp = await self._client.get(
+        resp = await self._send_get_with_retry(
             url,
             params=self._merge_params(params),
             headers=self._headers(),
@@ -349,7 +427,9 @@ class Nav2018ODataClient:
         out.extend(page.get("value") or [])
         next_link = page.get("@odata.nextLink") or page.get("odata.nextLink")
         while next_link:
-            resp = await self._client.get(next_link, headers=self._headers(), auth=self._auth())
+            resp = await self._send_get_with_retry(
+                next_link, headers=self._headers(), auth=self._auth()
+            )
             # Mirror _get's 404 tolerance: a misconfigured page that
             # disappears mid-pagination should yield "no more rows", not
             # bring down a master-sync script.

@@ -25,7 +25,7 @@ from kwabo.db.models import (
     KlantenkaartShipTo,
 )
 from kwabo.db.session import engine
-from kwabo.integrations.navision_api import get_navision_client
+from kwabo.integrations.navision_api import nav_client_scope
 from kwabo.integrations.navision_nav2018 import Nav2018ODataClient
 from kwabo.utils import utcnow
 from kwabo.utils.logging import log
@@ -684,33 +684,37 @@ async def _run_sync_job(job_id: str, selected: set[str], dry_run: bool) -> None:
     to caller (errors are recorded on the job)."""
     job = _JOBS[job_id]
     try:
-        client = get_navision_client()
-        if not isinstance(client, Nav2018ODataClient):
-            raise RuntimeError(
-                f"Expected Nav2018ODataClient, got {type(client).__name__}"
-            )
-        reports: list[SyncReport] = []
-        with Session(engine) as session:
-            if "customers" in selected:
-                job["progress"]["current"] = "customers"
-                reports.append(await _sync_customers(client, session, dry_run))
-                job["progress"]["customers"] = reports[-1].model_dump()
-            if "items" in selected:
-                job["progress"]["current"] = "items"
-                reports.append(await _sync_items(client, session, dry_run))
-                job["progress"]["items"] = reports[-1].model_dump()
-            if "cross_ref" in selected:
-                job["progress"]["current"] = "cross_ref"
-                reports.append(await _sync_cross_ref(client, session, dry_run))
-                job["progress"]["cross_ref"] = reports[-1].model_dump()
-            if "ship_to" in selected:
-                job["progress"]["current"] = "ship_to"
-                reports.append(await _sync_ship_to(client, session, dry_run))
-                job["progress"]["ship_to"] = reports[-1].model_dump()
-            if "item_uoms" in selected:
-                job["progress"]["current"] = "item_uoms"
-                reports.append(await _sync_item_uoms(client, session, dry_run))
-                job["progress"]["item_uoms"] = reports[-1].model_dump()
+        # Fase 4 (§12.D.2): de job draait als losse asyncio-task zonder
+        # omliggende pipeline-scope; zonder scope lekte hier één
+        # httpx.AsyncClient (+ open TLS-sockets) per sync-run — ook op het
+        # faalpad. De scope sluit de client gegarandeerd via aclose().
+        async with nav_client_scope() as client:
+            if not isinstance(client, Nav2018ODataClient):
+                raise RuntimeError(
+                    f"Expected Nav2018ODataClient, got {type(client).__name__}"
+                )
+            reports: list[SyncReport] = []
+            with Session(engine) as session:
+                if "customers" in selected:
+                    job["progress"]["current"] = "customers"
+                    reports.append(await _sync_customers(client, session, dry_run))
+                    job["progress"]["customers"] = reports[-1].model_dump()
+                if "items" in selected:
+                    job["progress"]["current"] = "items"
+                    reports.append(await _sync_items(client, session, dry_run))
+                    job["progress"]["items"] = reports[-1].model_dump()
+                if "cross_ref" in selected:
+                    job["progress"]["current"] = "cross_ref"
+                    reports.append(await _sync_cross_ref(client, session, dry_run))
+                    job["progress"]["cross_ref"] = reports[-1].model_dump()
+                if "ship_to" in selected:
+                    job["progress"]["current"] = "ship_to"
+                    reports.append(await _sync_ship_to(client, session, dry_run))
+                    job["progress"]["ship_to"] = reports[-1].model_dump()
+                if "item_uoms" in selected:
+                    job["progress"]["current"] = "item_uoms"
+                    reports.append(await _sync_item_uoms(client, session, dry_run))
+                    job["progress"]["item_uoms"] = reports[-1].model_dump()
         counts = db_counts()
         job["result"] = NavSyncResponse(
             mode=settings.navision_mode,

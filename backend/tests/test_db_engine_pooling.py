@@ -33,3 +33,24 @@ def test_sqlite_engine_unchanged():
     # SQLite-pad (dev/test) blijft ongewijzigd werken.
     eng = _build_engine("sqlite:///:memory:")
     assert eng is not None
+
+
+def test_postgres_engine_disables_prepared_statements(monkeypatch):
+    """DE pgbouncer-transaction-mode-veiligheidseis: geen server-side prepared
+    statements. Connectie-hergebruik (QueuePool) is alléén veilig op de
+    Supabase-pooler zolang prepare_threshold=None meereist op elke connectie —
+    pgbouncer wisselt server-connecties per transactie, dus een prepared
+    statement van connectie A bestaat niet op server B (→ 'prepared statement
+    does not exist'-fouten). Borg de connect_arg expliciet (Fase 4-checkpoint)."""
+    import kwabo.db.session as dbs
+
+    captured: dict = {}
+    real_create = dbs.create_engine
+
+    def spy(url, **kwargs):
+        captured.update(kwargs)
+        return real_create(url, **kwargs)
+
+    monkeypatch.setattr(dbs, "create_engine", spy)
+    dbs._build_engine(PG_URL)
+    assert captured.get("connect_args") == {"prepare_threshold": None}

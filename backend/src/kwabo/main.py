@@ -209,6 +209,11 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     setup_logging()
+    # Fail closed: refuse to boot a Postgres (production) deploy whose auth is
+    # trivially bypassable (empty ADMIN_PASSWORD = open API; default JWT_SECRET
+    # = forgeable sessions). No-op on SQLite (dev/CI).
+    from kwabo.config import validate_production_security
+    validate_production_security()
     app = FastAPI(
         title="Kwabo Order Intake AI",
         version="0.1.0",

@@ -17,6 +17,10 @@ async def validate_prices_node(state: OrderState) -> OrderState:
     klant = (state.get("klant_match") or {}).get("navision_klantnr")
     regels_out = []
 
+    # Fase 4 (audit §12.D.3): één sessie voor de hele node. De prijscheck-loop
+    # én de provenance-loop verderop delen deze sessie; voorheen opende de
+    # provenance-loop een tweede Session(engine) — een onnodige extra
+    # connectie-checkout per pipeline-run.
     with Session(engine) as s:
         repo = PrijsRepo(s)
         for r in state.get("orderregels") or []:
@@ -59,46 +63,40 @@ async def validate_prices_node(state: OrderState) -> OrderState:
                 r["prijs_validated"] = True
             regels_out.append(r)
 
-    # G5: Sanity checks on hoeveelheid/eenheid
-    SANITY_RULES = [
-        (lambda h, e: h <= 0, "Hoeveelheid is 0 of negatief"),
-        (lambda h, e: e == "PAL" and h > 100, f"Meer dan 100 pallets besteld — klopt dit?"),
-        (lambda h, e: e == "STUK" and h > 50000, f"Meer dan 50.000 stuks — klopt dit?"),
-        (lambda h, e: e == "ROL" and h > 5000, f"Meer dan 5.000 rollen — klopt dit?"),
-        (lambda h, e: not e or e in ("ONBEKEND", ""), "Onbekende eenheid"),
-    ]
-    for r in regels_out:
-        h = float(r.get("hoeveelheid") or 0)
-        e = r.get("eenheid") or ""
-        for check, msg in SANITY_RULES:
-            try:
-                if check(h, e):
-                    warnings.append(f"SANITY regel {r.get('positie')}: {msg} (hoev={h} eenh={e})")
-            except Exception:  # noqa: BLE001
-                pass
+        # G5: Sanity checks on hoeveelheid/eenheid
+        SANITY_RULES = [
+            (lambda h, e: h <= 0, "Hoeveelheid is 0 of negatief"),
+            (lambda h, e: e == "PAL" and h > 100, f"Meer dan 100 pallets besteld — klopt dit?"),
+            (lambda h, e: e == "STUK" and h > 50000, f"Meer dan 50.000 stuks — klopt dit?"),
+            (lambda h, e: e == "ROL" and h > 5000, f"Meer dan 5.000 rollen — klopt dit?"),
+            (lambda h, e: not e or e in ("ONBEKEND", ""), "Onbekende eenheid"),
+        ]
+        for r in regels_out:
+            h = float(r.get("hoeveelheid") or 0)
+            e = r.get("eenheid") or ""
+            for check, msg in SANITY_RULES:
+                try:
+                    if check(h, e):
+                        warnings.append(f"SANITY regel {r.get('positie')}: {msg} (hoev={h} eenh={e})")
+                except Exception:  # noqa: BLE001
+                    pass
 
-    stap = {
-        "stap": "validate_prices",
-        "timestamp": utcnow().isoformat(),
-        "beslissing": f"{sum(1 for r in regels_out if r.get('prijs_validated') is True)}/{len(regels_out)} prijzen ok",
-        "details": {"warnings_new": [w for w in warnings if w not in (state.get("validatie_warnings") or [])]},
-    }
-    steps = list(state.get("stappen_log") or [])
-    steps.append(stap)
+        stap = {
+            "stap": "validate_prices",
+            "timestamp": utcnow().isoformat(),
+            "beslissing": f"{sum(1 for r in regels_out if r.get('prijs_validated') is True)}/{len(regels_out)} prijzen ok",
+            "details": {"warnings_new": [w for w in warnings if w not in (state.get("validatie_warnings") or [])]},
+        }
+        steps = list(state.get("stappen_log") or [])
+        steps.append(stap)
 
-    # Provenance per regel (prijs_per_eenheid).
-    # Fase 4: hergebruik dezelfde DB-session als de regel-loop hierboven —
-    # een tweede `Session(engine)` opent (op pgbouncer transaction-mode +
-    # NullPool) een verse TCP+TLS handshake per pipeline-run, terwijl alle
-    # data al in de eerste sessie beschikbaar is. Mini-winst per request
-    # maar gratis.
-    meta = dict(state.get("_meta") or {})
-    regels_meta = list(meta.get("orderregels") or [])
-    while len(regels_meta) < len(regels_out):
-        regels_meta.append({})
-    needs_paths = list(state.get("needs_review_fields") or [])
-    with Session(engine) as price_session:
-        price_repo = PrijsRepo(price_session)
+        # Provenance per regel (prijs_per_eenheid) — zelfde sessie/repo als de
+        # prijscheck-loop hierboven (zie Fase-4-comment bij het with-blok).
+        meta = dict(state.get("_meta") or {})
+        regels_meta = list(meta.get("orderregels") or [])
+        while len(regels_meta) < len(regels_out):
+            regels_meta.append({})
+        needs_paths = list(state.get("needs_review_fields") or [])
         for i, r in enumerate(regels_out):
             rm = regels_meta[i] if isinstance(regels_meta[i], dict) else {}
             existing = rm.get("prijs_per_eenheid") or {}
@@ -119,7 +117,7 @@ async def validate_prices_node(state: OrderState) -> OrderState:
             source_detail_override = existing.get("source_detail")
             if prijs is None and kw:
                 has_afspraak = bool(
-                    klant and price_repo.best_match(klant, kw, float(r.get("hoeveelheid") or 0))
+                    klant and repo.best_match(klant, kw, float(r.get("hoeveelheid") or 0))
                 )
                 if has_afspraak:
                     review_for_missing = True
