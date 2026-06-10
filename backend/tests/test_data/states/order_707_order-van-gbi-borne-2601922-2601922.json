@@ -1,0 +1,279 @@
+{
+  "order_id": 707,
+  "email_from": "\"[portal.zevij-necomij.com]\" <support@zevij-necomij.com>",
+  "email_subject": "Order van GBI Borne - 2601922 - 2601922",
+  "status": "review",
+  "order_state": {
+    "email_id": "AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAAVY9o7AAA=",
+    "email_from": "\"[portal.zevij-necomij.com]\" <support@zevij-necomij.com>",
+    "email_subject": "Order van GBI Borne - 2601922 - 2601922",
+    "email_body": "   *|title| <https://mandrillapp.com/track/click/31181549/portal.zevij-necomij.com?p=eyJzIjoiWVc4UG1sS0JKYVZzbjVTT3ZHdjRTMFFJUFprIiwidiI6MiwicCI6IntcInVcIjozMTE4MTU0OSxcInZcIjoyLFwidXJsXCI6XCJodHRwczpcXFwvXFxcL3BvcnRhbC56ZXZpai1uZWNvbWlqLmNvbVxcXC9cIixcImlkXCI6XCJkNjA2MGNlNTY3ODg0YmJjOTExNWJmMDllNzJjYWExMVwiLFwidXJsX2lkc1wiOltcIjEwN2MyZjhlYTk5NzFjNjc4ZjVmNTM0YTlkMDhkZWFmZGY4Y2IxYzZcIl0sXCJtc2dfdHNcIjoxNzgwOTkyODQyfSJ9> \r\n               \r\n                   Order van GBI Borne            Goedendag,\r\n \r\n\r\n Je hebt een nieuwe *Order* ontvangen van *GBI Borne*.\r\n\r\n Ordernummer: *2601922*\r\nBerichtnummer: *2601922* \r\n\r\n \r\n\r\n*LET OP: Dit is een geautomatiseerd e-mailbericht. Gelieve hier *NIET* op\r\nte antwoorden. \r\n\r\nVragen aan Zevij-Necomij graag altijd richten aan cs@zevij-necomij.com\r\n<mailto:cs@zevij-necomij.com>. Indien dit een bericht is van een lid van\r\nZevij-Necomij of een leverancier dan verzoeken we je rechtstreeks contact\r\nop te nemen met het desbetreffende lid of leverancier.\r\n\r\n*\r\n\r\n Met vriendelijke groeten,\r\n\r\n GBI Borne",
+    "email_date": "Tue, 09 Jun 2026 08:14:02 +0000",
+    "bijlagen": [
+      {
+        "naam": "UPDF_25.55125940.64228417.pdf",
+        "type": "pdf",
+        "inhoud_tekst": "--- PAGE 1 ---\nINKOOPORDER 2601922\nAfleveradres Leverancier\nGBI Borne Kwabo Techniek BV\nHanzestraat 1 Julianaweg 210a\n7622 AX BORNE 1131 DL VOLENDAM\nNEDERLAND NEDERLAND\nOrdernummer 2601922 Gewenste leverdatum 09-06-2026\nOrderdatum 09-06-2026 Pagina 1/1\nRegelnr Artikelnummer Ons artikelnummer EAN Artikelomschrijving Aantal Eenheid\n1 23512 8718347520618 TFC STUCLOPER BLOK 4, 50M2 / C2S / 130 CM 35\nHeeft u vragen over deze order? Neem dan contact op met ons via: 074-2670394\nGBI Borne 074-2670394 Orderbevestiging per EDI sturen en/of mailen naar:\nHanzestraat 1\ninfo@gbiborne.nl\n7622 AX BORNE\nNEDERLAND Ons ordernummer altijd vermelden op orderbevestiging, factuur en pakbon!"
+      }
+    ],
+    "source_path": "graph://AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAAVY9o7AAA=",
+    "is_order": true,
+    "classificatie_reden": "E-mail bevat inkooporder 2601922 van GBI Borne met artikel 23512 (TFC STUCLOPER BLOK) hoeveelheid 35 stuks in PDF-bijlage",
+    "classificatie_confidence": 1.0,
+    "taal": "NL",
+    "bestelnummer_klant": "2601922",
+    "orderdatum": "2026-06-09",
+    "gewenste_leverdatum": "2026-06-09",
+    "afleveradres": {
+      "naam": "GBI Borne",
+      "straat": "Hanzestraat 1",
+      "postcode": "7622 AX",
+      "plaats": "BORNE",
+      "land": "NL"
+    },
+    "afleverinstructies": "Orderbevestiging per EDI sturen en/of mailen naar: info@gbiborne.nl. Ordernummer altijd vermelden op orderbevestiging, factuur en pakbon!",
+    "orderregels": [
+      {
+        "positie": 1,
+        "artikelnummer_klant": "23512",
+        "artikelnummer_kwabo": null,
+        "omschrijving": "TFC STUCLOPER BLOK 4, 50M2 / C2S / 130 CM",
+        "hoeveelheid": 35.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": null,
+        "ean_code": "8718347520618",
+        "leverdatum_regel": null,
+        "opmerkingen": null,
+        "artikelnummer_kwabo_matched": "23374",
+        "match_methode": "fuzzy",
+        "match_confidence": 0.84,
+        "eenheid_origineel": "STUK",
+        "eenheid_default": "STUK",
+        "prijs_validated": null
+      }
+    ],
+    "opmerkingen": "Contact: 074-2670394",
+    "klant_match": null,
+    "alle_artikelen_gematcht": true,
+    "alle_prijzen_valide": true,
+    "validatie_warnings": [
+      "KLANT NIET GEVONDEN: \"[portal.zevij-necomij.com]\" <support@zevij-necomij.com>. Handmatige selectie nodig."
+    ],
+    "review_status": "pending",
+    "mixprijzen_actief": false,
+    "order_mix_total_pallets": null,
+    "europallet_regel": null,
+    "incoming_document_storage_key": "by_email_id/AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1h-55517f1755612974.eml",
+    "stappen_log": [
+      {
+        "stap": "intake",
+        "timestamp": "2026-06-09T08:15:18.578959+00:00",
+        "beslissing": "E-mail opgehaald, 1 bijlagen geëxtraheerd",
+        "details": {
+          "bijlage_namen": [
+            "UPDF_25.55125940.64228417.pdf"
+          ]
+        }
+      },
+      {
+        "stap": "classify",
+        "timestamp": "2026-06-09T08:15:21.299401+00:00",
+        "beslissing": "ORDER (conf=1.0)",
+        "details": {
+          "is_order": true,
+          "reden": "E-mail bevat inkooporder 2601922 van GBI Borne met artikel 23512 (TFC STUCLOPER BLOK) hoeveelheid 35 stuks in PDF-bijlage",
+          "confidence": 1.0
+        }
+      },
+      {
+        "stap": "extract",
+        "timestamp": "2026-06-09T08:15:36.645451+00:00",
+        "beslissing": "Geëxtraheerd: 1 regels, taal=NL, 2 velden needs_review",
+        "details": {
+          "bestelnummer": "2601922",
+          "multi_orders": 1
+        }
+      },
+      {
+        "stap": "match_customer",
+        "timestamp": "2026-06-09T08:15:38.451415+00:00",
+        "beslissing": "Klant NIET gematcht",
+        "details": {
+          "email": "support@zevij-necomij.com"
+        }
+      },
+      {
+        "stap": "match_articles",
+        "timestamp": "2026-06-09T08:15:53.267858+00:00",
+        "beslissing": "1/1 regels gematcht",
+        "details": {
+          "per_methode": {
+            "exact": 0,
+            "kruisverwijzing": 0,
+            "klantenkaart": 0,
+            "history": 0,
+            "fuzzy": 1,
+            "manual": 0
+          }
+        }
+      },
+      {
+        "stap": "validate_prices",
+        "timestamp": "2026-06-09T08:15:53.993576+00:00",
+        "beslissing": "0/1 prijzen ok",
+        "details": {
+          "warnings_new": []
+        }
+      }
+    ],
+    "errors": [],
+    "_meta": {
+      "taal": {
+        "value": "NL",
+        "source": "pdf",
+        "source_detail": "UPDF_25.55125940.64228417.pdf p.1 header",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "bestelnummer_klant": {
+        "value": "2601922",
+        "source": "pdf",
+        "source_detail": "UPDF_25.55125940.64228417.pdf p.1 header 'INKOOPORDER 2601922'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "orderdatum": {
+        "value": "2026-06-09",
+        "source": "pdf",
+        "source_detail": "UPDF_25.55125940.64228417.pdf p.1 'Orderdatum 09-06-2026'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "gewenste_leverdatum": {
+        "value": "2026-06-09",
+        "source": "pdf",
+        "source_detail": "UPDF_25.55125940.64228417.pdf p.1 'Gewenste leverdatum 09-06-2026'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "afleveradres": {
+        "value": {
+          "naam": "GBI Borne",
+          "straat": "Hanzestraat 1",
+          "postcode": "7622 AX",
+          "plaats": "BORNE",
+          "land": "NL"
+        },
+        "source": "pdf",
+        "source_detail": "UPDF_25.55125940.64228417.pdf p.1 'Afleveradres' section",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "afleverinstructies": {
+        "value": "Orderbevestiging per EDI sturen en/of mailen naar: info@gbiborne.nl. Ordernummer altijd vermelden op orderbevestiging, factuur en pakbon!",
+        "source": "pdf",
+        "source_detail": "UPDF_25.55125940.64228417.pdf p.1 footer instructions box",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "opmerkingen": {
+        "value": "Contact: 074-2670394",
+        "source": "pdf",
+        "source_detail": "UPDF_25.55125940.64228417.pdf p.1 'Heeft u vragen over deze order? Neem dan contact op met ons via: 074-2670394'",
+        "confidence": 0.9,
+        "needs_review": false
+      },
+      "orderregels": [
+        {
+          "artikelnummer_klant": {
+            "value": "23512",
+            "source": "pdf",
+            "source_detail": "UPDF_25.55125940.64228417.pdf p.1 row 1 col 'Artikelnummer'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": null,
+            "source": "missing",
+            "source_detail": "UPDF_25.55125940.64228417.pdf p.1 row 1 col 'Ons artikelnummer' is empty",
+            "confidence": 0.0,
+            "needs_review": true
+          },
+          "omschrijving": {
+            "value": "TFC STUCLOPER BLOK 4, 50M2 / C2S / 130 CM",
+            "source": "pdf",
+            "source_detail": "UPDF_25.55125940.64228417.pdf p.1 row 1 col 'Artikelomschrijving'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 35,
+            "source": "pdf",
+            "source_detail": "UPDF_25.55125940.64228417.pdf p.1 row 1 col 'Aantal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "STUK",
+            "source": "pdf",
+            "source_detail": "UPDF_25.55125940.64228417.pdf p.1 row 1 col 'Eenheid' is empty, inferred from context",
+            "confidence": 0.75,
+            "needs_review": true
+          },
+          "prijs_per_eenheid": {
+            "value": null,
+            "source": "nav_default",
+            "source_detail": "UPDF_25.55125940.64228417.pdf p.1 has no price column",
+            "confidence": 0.0,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": "8718347520618",
+            "source": "pdf",
+            "source_detail": "UPDF_25.55125940.64228417.pdf p.1 row 1 col 'EAN'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "23374",
+            "source": "fuzzy",
+            "source_detail": "match-methode=fuzzy",
+            "confidence": 0.84,
+            "needs_review": true
+          }
+        }
+      ],
+      "klant_match": {
+        "value": null,
+        "source": "missing",
+        "source_detail": null,
+        "confidence": 0.0,
+        "needs_review": true
+      }
+    },
+    "needs_review_fields": [
+      "orderregels[0].artikelnummer_kwabo",
+      "orderregels[0].eenheid",
+      "klant_match",
+      "orderregels[0].artikelnummer_kwabo_matched"
+    ],
+    "needs_review_count": 4,
+    "extra_orders_raw": [],
+    "nav_operations": []
+  }
+}

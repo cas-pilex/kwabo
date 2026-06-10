@@ -151,11 +151,13 @@ def main() -> None:
         kk = conn.execute(text(
             "SELECT nav_klantnr, naam, email, email_bestelling FROM klantenkaarten"
         )).fetchall()
+        # Alle history-rijen: ook niet-fuzzy matches zijn bruikbaar als
+        # bekende-correcte (omschrijving -> kwabo-artikel) paren voor de
+        # drempel-analyse (er blijken 0 fuzzy-rijen in prod te staan).
         fh = conn.execute(text(
             "SELECT klant_nr, klant_artikelnr, klant_omschrijving, kwabo_artikelnr, "
             "match_methode, was_correctie, order_datum, created_at "
-            "FROM artikel_matching_history WHERE match_methode = 'fuzzy' "
-            "ORDER BY created_at"
+            "FROM artikel_matching_history ORDER BY created_at"
         )).fetchall()
         if not args.dry_run:
             (STATES_DIR / "artikelkaarten.json").write_text(json.dumps(
@@ -164,14 +166,14 @@ def main() -> None:
             (STATES_DIR / "klantenkaarten.json").write_text(json.dumps(
                 [{"nav_klantnr": r[0], "naam": r[1], "email": r[2], "email_bestelling": r[3]}
                  for r in kk], indent=2, ensure_ascii=False), encoding="utf-8")
-            (STATES_DIR / "fuzzy_history.json").write_text(json.dumps(
+            (STATES_DIR / "matching_history.json").write_text(json.dumps(
                 [{"klant_nr": r[0], "klant_artikelnr": r[1], "klant_omschrijving": r[2],
                   "kwabo_artikelnr": r[3], "match_methode": r[4], "was_correctie": r[5],
                   "order_datum": r[6], "created_at": r[7]} for r in fh],
                 indent=2, ensure_ascii=False, default=str), encoding="utf-8")
         print(f"  -> artikelkaarten.json   ({len(ak)} rijen)")
         print(f"  -> klantenkaarten.json   ({len(kk)} rijen)")
-        print(f"  -> fuzzy_history.json    ({len(fh)} fuzzy-rijen)")
+        print(f"  -> matching_history.json ({len(fh)} rijen)")
 
     print("\nKlaar. Fixtures in tests/test_data/states/ — check de inhoud vóór commit "
           "(geen secrets; klantdata blijft binnen de privérepo).")

@@ -1,0 +1,423 @@
+{
+  "order_id": 706,
+  "email_from": "Gerard BEENSE <Gerard.BEENSE@ppg.com>",
+  "email_subject": "New PO Output: 4510686252 - Vendor: 95042039",
+  "status": "review",
+  "order_state": {
+    "email_id": "AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAAVY9o6AAA=",
+    "email_from": "Gerard BEENSE <Gerard.BEENSE@ppg.com>",
+    "email_subject": "New PO Output: 4510686252 - Vendor: 95042039",
+    "email_body": "%PDF-1.3\r\n%����\r\n%RSTXPDF3 Parameters: DRSTXbh\r\n%Devtype PDF1     Font COURIER  normal Lang NL Script:  0 ->/C001\r\n2 0 obj\r\n<<\r\n/Type /FontDescriptor\r\n/Ascent 629\r\n/CapHeight 562\r\n/Descent -157\r\n/Flags 35\r\n/FontBBox [-23 -250 715 805]\r\n/FontName /Courier\r\n/ItalicAngle 0\r\n/StemV 105\r\n>>\r\nendobj\r\n3 0 obj\r\n/WinAnsiEncoding\r\nendobj\r\n4 0 obj\r\n<<\r\n/Type /Font\r\n/Subtype /Type1\r\n/BaseFont /Courier\r\n/Name /C001\r\n/Encoding 3 0 R\r\n/Widths\r\n[ 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600\r\n 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600]\r\n/FirstChar 32\r\n/LastChar 126\r\n/FontDescriptor 2 0 R\r\n>>\r\nendobj\r\n%Devtype PDF1     Font COURIER  normal Lang NL Script:  1 ->/C002\r\n5 0 obj\r\n<<\r\n/Type /FontDescriptor\r\n/Ascent 629\r\n/CapHeight 562\r\n/Descent -157\r\n/Flags 35\r\n/FontBBox [-23 -250 715 805]\r\n/FontName /Courier\r\n/ItalicAngle 0\r\n/StemV 105\r\n>>\r\nendobj\r\n6 0 obj\r\n/WinAnsiEncoding\r\nendobj\r\n7 0 obj\r\n<<\r\n/Type /Font\r\n/Subtype /Type1\r\n/BaseFont /Courier\r\n/Name /C002\r\n/Encoding 6 0 R\r\n/Widths\r\n[ 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600\r\n 0600 0600 0600 0500 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600\r\n 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600 0600]\r\n/FirstChar 128\r\n/LastChar 255\r\n/FontDescriptor 5 0 R\r\n>>\r\nendobj\r\n%Devtype PDF1     Font HELVE    bold Lang NL Script:  0 ->/C003\r\n8 0 obj\r\n<<\r\n/Type /FontDescriptor\r\n/Ascent 718\r\n/CapHeight 718\r\n/Descent -207\r\n/Flags 32\r\n/FontBBox [-170 -228 1003 962]\r\n/FontName /Helvetica-Bold\r\n/ItalicAngle 0\r\n/StemV 105\r\n>>\r\nendobj\r\n9 0 obj\r\n<<\r\n/Type /Font\r\n/Subtype /Type1\r\n/BaseFont /Helvetica-Bold\r\n/Name /C003\r\n/Encoding 3 0 R\r\n/Widths\r\n[ 0279 0333 0475 0554 0554 0888 0721 0279 0333 0333 0388 0583 0279 0333 0279 0279 0554 0554 0554 0554 0554 0554 0554 0554 0554 0554 0333 0333 0583 0583 0583 0613 0975 0721 0721 0721 0721 0667 0613 0779 0721 0279 0554 0721 0613 0833 0721 0779 0667 0779\r\n 0721 0667 0613 0721 0667 0946 0667 0667 0613 0333 0279 0333 0583 0554 0279 0554 0613 0554 0613 0554 0333 0613 0613 0279 0279 0554 0279 0888 0613 0613 0613 0613 0388 0554 0333 0613 0554 0779 0554 0554 0500 0388 0279 0388 0583]\r\n/FirstChar 32\r\n/LastChar 126\r\n/FontDescriptor 8 0 R\r\n>>\r\nendobj\r\n10 0 obj\r\n<<\r\n/Filter 11 0 R\r\n/Length 12 0 R\r\n>>\r\nstream\r\nx�\u001dR��\u00181\f�(\u001c��h\u0014��\"�\u001c�3C\n���\u0014\u0017�\u0006\u000eg\b��\u0013��}�~�n��7����(�\t\u0013!��@AB\t-X�0\u0002\n,�P�.����MfC�z\u0010n�1�eАQF\u001b6b�����\n:p�`\u0002\f8Р\u0006=� ���\u001c��\"/��ۧ�u,I�*�)S��Q��Z�\u0014i�\u001e�U��%�R�'�}���[i�SN���ڲ\u0015k�\u001d�\r��#G��y�9�\u001a�ȣ��[ww�zv��D��s�<�b7���Y�#�\u001c��\"/��;Yǲ���թ�g:�qkw��v�K�>=��\u001d��x�\u0013Y�Vg���e�9�5��ә�\u000br�b�m�۴\u0019n\\�̥H�\u0017śh&̼hy���\u0007�g���Y�Z�a��ʼ%�I\\5G�Gg�o3��|,�ę�.�����o���c�Z��.ˇ���w��\u001f\u0016�D�\r\nendstream\r\nendobj\r\n12 0 obj\r\n376\r\nendobj\r\n11 0 obj\r\n\r\n[/FlateDecode]\r\nendobj\r\n13 0 obj\r\n<<\r\n/Type /XObject\r\n/Subtype /Image\r\n/Filter 14 0 R\r\n/Length 15 0 R\r\n/Name /00013\r\n/Width 285\r\n/Height 225\r\n/BitsPerComponent 8\r\n/ColorSpace [ /Indexed /DeviceRGB 255 10 0 R]\r\n>>\r\nstream\r\nx��Yks\u001b�\u0015\u0005Iy:��e�v�f2}lۤ�dR?\u0012;�c��t2Mڴ�_�3u\u001c�\u001e���d�\u0000�$\bɖL�\u001c`���]���\u000f��\u0017�\\�..p/��\u001b����~\u001f\u0007�\u0014.خyh�EI\n�8<\r\u001d�\u000ej�w�}�\u0006�����a)���\u0001�/T���ʥ�,��������g�9�FAr�\u0012�\u0007\u001d��@�1X-�uX� 몋���\u000b�EȮ�@�s-��Fh��/��ٍ�\u0019��e��\f[h\r�����\n�в�ȠD��I_�×�h��o�eC?}�ï~�\u000e�>��F\u0003r;�$�oQ�N؍��R\t��/�q�\u0016ʻa�\u001a�Z\u001e�Wq�ڦ�Q�^؇��\u000eU|\u001dg���\fd�� ����ͪ/\u001c@�\u001e4�\u0003j�\u001b�c6��3�\u0007a\u0010Z>��ۜ�,_Q(�-�n���*���\u000e�\u00036��\u001bPa!\u0016:Jm�~\u001a��\"���\u0010\u001d���kA��\u0002IQ��7)�����e\u0016�\u0010�`��* \u0012f\u0018<�(��P�\u0015%r\n���˔}Ē�PG�%�\"���p���Sv\u0011ÀHS\u0004�7J�'�\u001f\u0012g#.�l$Gn�\u0012��*e�Z��\u0015t�顢\u0001.��k��\t�*X0�A2R���W��a8��O�PP��jg\u0006���\\��e�ל�M%�st\u0019\\�:�����/ئ�b];W��>���\u0015\u001aF�����\u0015Z�1���u�T�N�F\t�O�O�1�9T�f���l���e\u0013i��kWT���\u0012�Q��xU�W/c�P�MV��������\u0017Z�a�25��\u001c�`F���0ʷ'�^��2�\u000f��n���l&_K���<S�:��qC�9k4T\u000f'�\u001cb\u001a�\u0013���V���\u001al\u000f:�-5�C\u000b\f\"�:�ϱ�iIE�]�\\R��챹<���\u0012ϓ�Td��\u0002�EA��G��k\u0018�b^��$a��^tx��!�'n�W\u0015c\u0011���\u0001�n�J~W�����\t���!\tn���/L�\u0018���6\u0000\"���\u001a�?!;9U�\n�cr\u000fj�_A�z\u0012nQ0G����\u001a��tda�7��_���\u001a�?�U�>U�\u0014�k��7�\u001b�!�ڶaKd�\\T��q��O�M\rw��\u0016�\u0001\u0018�;-_�����X���炽I�g��k�\u0019�.\u001b�0�p\u001b#@�]C�\u0012��\u0019������I��r\u001chԎ9�\u00038�3�\u0013��H?�\u001d�I\u0018��a���^\b�tL\u0016\u000e|�9�e�KL\u0005}��Q` �s��ɧ�\u0011Xsh,h�ٮ�d��/\u001b����\u00134z;o\fo\u0010F\u001eײZ^[l�S\u00167\t�8���f\n��\u001c����0�n��1h��ܥ\u0017�p\u000fZ�Ft^���\u0014\\E�d\u0013\u0016\u0012|�`:RS��\u0001RA\u001f�f�\u0001UT�����:ԖZ�\u0016�axP�\u0007��()r�z�\u0004��*\u001b]��6�;���87ơ���(\f�D��&\\?�b!��\u0011�#����~jN�bk�a��0���r\u0014�\u0011�*\u0018�B7e�<��o��?��G��Fe\u0015�\u0012�5¢q,�n٬.��\"~!m�$�B:x\r�7t>Y�r�[L-�{�-����)��/�7\u0016��^C��I\u0013}���Г���I\u0014\u000f�P&��\u0005+��(�T\u0000%̃&P�r��G�.��ꡢ`!�r^��\\\bo\r\u0010D5x9p<\n���#�6v�V�ӎ׶^(Om�L}�`b{�'���\u0012�-�Ѧ9-8�����=F�N�sԣ��t\u0011^#\f'~\\\u0006�xu�w�;�[�\f;y\b\u000b�\u000e^�6T\f\u0003\u0018G�g�N\u0001���ڱ}�s\"^P�q�����_�\u001fM�_{U\u0011&��:R3���a\u001a0*ah�u�/��\"k\u0015,�{\u0007\u001c��W[�*1a�۵�.l�\u0011��\u001c=�\\d!^`�2�N�\nF!r�q���\u0018_�~�\u0001\u00057����Ё�\u0001\u0011�8�:&�h�\u0014�\u0012q�\u001c��=v�;�����C��_%��Ҧd�L�\u001d,c`&_��\u0012�b�)\r�y̿�����)��%���\u0015�\u001a��\u001a�׃d7G�\u001b\f.\u0002.;�~M\u00064���p�1B/����x�;\\�i�\\�)|��a��\u0012���A1���\u00116m/-�\u0014\r'��v��\"�(7,-�Ɠ���0��T-\\Ww�d�٩�pl�;^\\\u0018\u000b\f0��:0��e��$0�CLw\u001a�q��1�k�S`cM��C�l\u0004���N��O�9P�\u0006#<�B���qT6�\u0019�}�j8.9u\u0004c\"-�.\u0005�v\u0000����F�Ϣ-m��<[7iwVEZ�\\���\\\u0019��m��ֵ[�����\t>���\u000eI1��L�\u0018Kʝp\u0001�\u0007V�\t��kgc\u000fx�F��a&m[`�U���L\n�\u0010:d�\n:e\u0019�|9�\u0001:vg��wX�&��f���E��L��!y\u0011\u0013Q�\u0019�1\fL~`\u0016�\u001d\u0004ǈ���cf�\u000bS��)�뼣��=\u001f�sZ\f0O|��}\u0016z�!x%�q\u0005���!��na]�\"nF�\u0013����\f��Ϣ.q��z��ѐ����I���\u0014A]z#��c\u0018Ss�I\u0013�1��TL4�\u001f*�Ǹ���w6铟���\u0007�K\u001cmrfǸ+)���\u0006\bK�*�R?�R��<�AN���L�\u001a�x�8�li�\u0004�Y���\u000b1]�S֦�l��\u0004\u0005��\u001e�߃�\u000b�Q�#y�_�\u0011�j-د\u0016���\t�8��{�\u0017�oTt�����\u001b��3RY'-��c��\u0011N������\u001eg��B\u0013�fB�K��\u0014}�qF��\u0004|�\u001e�T0��.��\u0004`&P<ޝ�xB\u0018�3x�a\u0010Y)E�\u0014��A�JƧ\u0019&�\u001c���Y�=�8\b�08�+J�B\u0014\u0019�\u0017\u0010�^@�b[{�\u0005d\u0000d)�|xi3�����K�-�U\u0003�\u0007� �JB��\u0000�\u0003>���d��3\u0011ܶ?\b��n\u0014��C������G�(ǅ��b:s�\u000fI�\u000fI�)+\u0006�u\u0015�\u0011~/��;j\u0005\n�Ek7젿]�+��;���\u0010�6\u001f���_�~�ǎ����\u0011���\u000e�L�ǩ�m��z�N�U���U�|�{��7Ë�8��'�\"l�\u0003�|��FL3�\u0001��ZH�OW]��&EP���xԫ�Z��}\u0016�v~5������S&�W�\"�\u0017\u0019�u�W��(��bx�L<N��F���8x\u0016����+����������}��\u001d\r\nendstream\r\nendobj\r\n15 0 obj\r\n2606\r\nendobj\r\n14 0 obj\r\n\r\n[/FlateDecode/RunLengthDecode]\r\nendobj\r\n16 0 obj\r\n<<\r\n/Length 17 0 R\r\n>>\r\nstream\r\n q 1 g 0 g 0.50 w 306.00 556.90 254.90 156.00 re S Q q 0.80 g 306.00 694.90 254.90 18.00 re f Q 0 g BT 50.40 457.90 Td 0 Tw /C001 10.00 Tf <4C65766572696E67636F6E6469746965733A20464820416D7374657264616D>Tj ET 0 g BT 50.40 445.90 Td 0 Tw\r\n <426574616C696E6773766F6F727761617264656E3A2042696E6E656E20333020646167656E206E6574746F>Tj ET 0 g BT 494.40 445.90 Td 0 Tw <56616C75746120455552>Tj ET 0 g BT 50.40 433.90 Td 0 Tw\r\n <47656C696576652065656E206F726465726265766573746967696E672074652073747572656E20766F6F7220646520766F6C67>Tj <656E6465206974656D733A>Tj ET 0 g BT 50.40 427.90 Td 0 Tw\r\n <5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F>Tj <5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F>Tj ET 0 g BT 50.40 409.90 Td 0 Tw <506F732E>Tj ET 0 g BT 92.90 409.90 Td\r\n 0 Tw <4D617465726961616C>Tj ET 0 g BT 163.80 409.90 Td 0 Tw <4F6D73636872696A76696E67>Tj ET 0 g BT 464.25 409.90 Td 0 Tw <42657374656C686F657668>Tj ET 0 g BT 92.90 397.90 Td 0 Tw <56657270616B6B696E675072696A73207065722065656E68656964>Tj ET 0 g BT\r\n 266.40 397.90 Td 0 Tw <42657374656C626564726167>Tj ET 0 g BT 50.40 391.90 Td 0 Tw <5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F>Tj\r\n <5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F>Tj ET 0 g BT 50.40 373.90 Td 0 Tw <3030303130>Tj ET 0 g BT 92.90 373.90 Td 0 Tw <3030393531343035>Tj ET 0 g BT 163.80 373.90 Td 0 Tw <504720414644454B564C494553204554502032354D>Tj\r\n /C002 10.00 Tf <B2>Tj /C001 10.00 Tf <202020202020202020202020383034363030>Tj ET 0 g BT 416.10 373.90 Td 0 Tw <202020202020202020202020312E343835>Tj ET 0 g BT 532.30 373.90 Td 0 Tw <5043>Tj ET 0 g BT 163.80 361.90 Td 0 Tw <31312C3535202F2031205043>Tj ET\r\n 0 g BT 448.60 361.90 Td 0 Tw <2020202020202031372E3135312C3735>Tj ET 0 g BT 93.60 349.90 Td 0 Tw <557720617274696B656C6E756D6D6572203233343233>Tj ET 0 g BT 93.60 337.90 Td 0 Tw\r\n <496E742E2041727469636C65204E6F2E202845414E2F555043292038373135383534303037343130>Tj ET 0 g BT 50.40 331.90 Td 0 Tw <5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F>Tj\r\n <5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F5F>Tj ET 0 g BT 163.80 301.90 Td 0 Tw <546F74616C65206E6574746F776161726465206578636C2E20425457202845555229>Tj ET 0 g BT 424.60 301.90 Td 0 Tw\r\n <202020202020202020202031372E3135312C373520>Tj ET 0 g BT 50.40 697.90 Td 0 Tw /C001 12.00 Tf <4B7761626F20546563686E69656B204256>Tj ET 0 g BT 50.40 685.90 Td 0 Tw <506F737462757320323636>Tj ET 0 g BT 50.40 673.90 Td 0 Tw\r\n <313133302041472020564F4C454E44414D>Tj ET 0 g BT 50.40 661.90 Td 0 Tw <50682E20323939333631303031>Tj ET 0 g BT 50.40 649.90 Td 0 Tw <466178203030333120323939203336203134203036>Tj ET 0 g BT 50.40 517.90 Td 0 Tw\r\n <47656C69657665207465206C65766572656E2061616E3A>Tj ET 0 g BT 50.40 505.90 Td 0 Tw <4174746E2E204944204C6F676973746963732042656E656C757820422E562E>Tj ET 0 g BT 50.40 493.90 Td 0 Tw <4B6F707261776567203335>Tj ET 0 g BT 50.40 481.90 Td 0 Tw\r\n <313034372042502020414D5354455244414D>Tj ET 0 g BT 309.60 493.90 Td 0 Tw /C001 10.00 Tf <4C65766572696E67737465726D696A6E3A20202030382E30372E32303236>Tj ET 0 g BT 50.40 97.90 Td 0 Tw /C003 8.00 Tf -0.05 Tw\r\n <5265676973747261746965204E722E204B764B20416D7374657264616D3A203333313330353130>Tj ET q 0 0 0 rg 68.40 0 0 54.00 50 776 cm /00013 Do Q 0 g BT 309.60 697.90 Td 0 Tw /C003 14.00 Tf 0.00 Tw <42657374656C6C696E67>Tj ET 0 g BT 309.60 673.90 Td 0 Tw\r\n /C003 8.00 Tf -0.05 Tw <42657374656C6E756D6D65722F646174756D>Tj ET 0 g BT 309.60 661.90 Td 0 Tw /C001 12.00 Tf <34353130363836323532202F2030392E30362E32303236>Tj ET 0 g BT 309.60 649.90 Td 0 Tw /C003 8.00 Tf -0.05 Tw\r\n <436F6E74616374706572736F6F6E2F4661782F456D61696C>Tj ET 0 g BT 309.60 637.90 Td 0 Tw /C001 12.00 Tf <476572617264204245454E5345>Tj ET 0 g BT 309.60 625.90 Td 0 Tw <303131203237203837203030>Tj ET 0 g BT 309.60 613.90 Td 0 Tw\r\n <4765726172642E4245454E5345407070672E636F6D>Tj ET 0 g BT 309.60 577.90 Td 0 Tw /C003 8.00 Tf -0.05 Tw <4F6E7320425457206E756D6D6572>Tj ET 0 g BT 309.60 565.90 Td 0 Tw /C001 12.00 Tf <4E4C303031363232303036423031>Tj ET 0 g BT 465.50 541.90 Td 0 Tw\r\n /C003 8.00 Tf -0.05 Tw <5061672E>Tj ET 0 g BT 482.40 541.90 Td 0 Tw /C001 10.00 Tf <2031202D2032>Tj ET 0 g BT 50.40 565.90 Td 0 Tw /C003 8.00 Tf -0.05 Tw <5577206C65766572616E636965726E756D6D65722062696A206F6E733A20>Tj ET 0 g BT 171.15 565.90 Td 0 Tw\r\n /C001 12.00 Tf <3935303432303339>Tj ET\r\nendstream\r\nendobj\r\n17 0 obj\r\n4520\r\nendobj\r\n18 0 obj\r\n<<\r\n/Type /Page\r\n/MediaBox\r\n[0 0 595 842]\r\n/Parent 1 0 R\r\n/Resources\r\n<<\r\n/ProcSet\r\n[/PDF /Text /ImageI]\r\n/Font\r\n<<\r\n/C001 4 0 R\r\n/C002 7 0 R\r\n/C003 9 0 R\r\n>>\r\n/XObject\r\n<<\r\n/00013 13 0 R\r\n>>\r\n>>\r\n/Contents 16 0 R\r\n>>\r\nendobj\r\n19 0 obj\r\n<<\r\n/Filter 20 0 R\r\n/Length 21 0 R\r\n>>\r\nstream\r\nx�\u001dR��\u00181\f�(\u001c��h\u0014��\"�\u001c�3C\n���\u0014\u0017�\u0006\u000eg\b��\u0013��}�~�n��7����(�\t\u0013!��@AB\t-X�0\u0002\n,�P�.����MfC�z\u0010n�1�eАQF\u001b6b�����\n:p�`\u0002\f8Р\u0006=� ���\u001c��\"/��ۧ�u,I�*�)S��Q��Z�\u0014i�\u001e�U��%�R�'�}���[i�SN���ڲ\u0015k�\u001d�\r��#G��y�9�\u001a�ȣ��[ww�zv��D��s�<�b7���Y�#�\u001c��\"/��;Yǲ���թ�g:�qkw��v�K�>=��\u001d��x�\u0013Y�Vg���e�9�5��ә�\u000br�b�m�۴\u0019n\\�̥H�\u0017śh&̼hy���\u0007�g���Y�Z�a��ʼ%�I\\5G�Gg�o3��|,�ę�.�����o���c�Z��.ˇ���w��\u001f\u0016�D�\r\nendstream\r\nendobj\r\n21 0 obj\r\n376\r\nendobj\r\n20 0 obj\r\n\r\n[/FlateDecode]\r\nendobj\r\n22 0 obj\r\n<<\r\n/Type /XObject\r\n/Subtype /Image\r\n/Filter 23 0 R\r\n/Length 24 0 R\r\n/Name /00022\r\n/Width 285\r\n/Height 225\r\n/BitsPerComponent 8\r\n/ColorSpace [ /Indexed /DeviceRGB 255 19 0 R]\r\n>>\r\nstream\r\nx��Yks\u001b�\u0015\u0005Iy:��e�v�f2}lۤ�dR?\u0012;�c��t2Mڴ�_�3u\u001c�\u001e���d�\u0000�$\bɖL�\u001c`���]���\u000f��\u0017�\\�..p/��\u001b����~\u001f\u0007�\u0014.خyh�EI\n�8<\r\u001d�\u000ej�w�}�\u0006�����a)���\u0001�/T���ʥ�,��������g�9�FAr�\u0012�\u0007\u001d��@�1X-�uX� 몋���\u000b�EȮ�@�s-��Fh��/��ٍ�\u0019��e��\f[h\r�����\n�в�ȠD��I_�×�h��o�eC?}�ï~�\u000e�>��F\u0003r;�$�oQ�N؍��R\t��/�q�\u0016ʻa�\u001a�Z\u001e�Wq�ڦ�Q�^؇��\u000eU|\u001dg���\fd�� ����ͪ/\u001c@�\u001e4�\u0003j�\u001b�c6��3�\u0007a\u0010Z>��ۜ�,_Q(�-�n���*���\u000e�\u00036��\u001bPa!\u0016:Jm�~\u001a��\"���\u0010\u001d���kA��\u0002IQ��7)�����e\u0016�\u0010�`��* \u0012f\u0018<�(��P�\u0015%r\n���˔}Ē�PG�%�\"���p���Sv\u0011ÀHS\u0004�7J�'�\u001f\u0012g#.�l$Gn�\u0012��*e�Z��\u0015t�顢\u0001.��k��\t�*X0�A2R���W��a8��O�PP��jg\u0006���\\��e�ל�M%�st\u0019\\�:�����/ئ�b];W��>���\u0015\u001aF�����\u0015Z�1���u�T�N�F\t�O�O�1�9T�f���l���e\u0013i��kWT���\u0012�Q��xU�W/c�P�MV��������\u0017Z�a�25��\u001c�`F���0ʷ'�^��2�\u000f��n���l&_K���<S�:��qC�9k4T\u000f'�\u001cb\u001a�\u0013���V���\u001al\u000f:�-5�C\u000b\f\"�:�ϱ�iIE�]�\\R��챹<���\u0012ϓ�Td��\u0002�EA��G��k\u0018�b^��$a��^tx��!�'n�W\u0015c\u0011���\u0001�n�J~W�����\t���!\tn���/L�\u0018���6\u0000\"���\u001a�?!;9U�\n�cr\u000fj�_A�z\u0012nQ0G����\u001a��tda�7��_���\u001a�?�U�>U�\u0014�k��7�\u001b�!�ڶaKd�\\T��q��O�M\rw��\u0016�\u0001\u0018�;-_�����X���炽I�g��k�\u0019�.\u001b�0�p\u001b#@�]C�\u0012��\u0019������I��r\u001chԎ9�\u00038�3�\u0013��H?�\u001d�I\u0018��a���^\b�tL\u0016\u000e|�9�e�KL\u0005}��Q` �s��ɧ�\u0011Xsh,h�ٮ�d��/\u001b����\u00134z;o\fo\u0010F\u001eײZ^[l�S\u00167\t�8���f\n��\u001c����0�n��1h��ܥ\u0017�p\u000fZ�Ft^���\u0014\\E�d\u0013\u0016\u0012|�`:RS��\u0001RA\u001f�f�\u0001UT�����:ԖZ�\u0016�axP�\u0007��()r�z�\u0004��*\u001b]��6�;���87ơ���(\f�D��&\\?�b!��\u0011�#����~jN�bk�a��0���r\u0014�\u0011�*\u0018�B7e�<��o��?��G��Fe\u0015�\u0012�5¢q,�n٬.��\"~!m�$�B:x\r�7t>Y�r�[L-�{�-����)��/�7\u0016��^C��I\u0013}���Г���I\u0014\u000f�P&��\u0005+��(�T\u0000%̃&P�r��G�.��ꡢ`!�r^��\\\bo\r\u0010D5x9p<\n���#�6v�V�ӎ׶^(Om�L}�`b{�'���\u0012�-�Ѧ9-8�����=F�N�sԣ��t\u0011^#\f'~\\\u0006�xu�w�;�[�\f;y\b\u000b�\u000e^�6T\f\u0003\u0018G�g�N\u0001���ڱ}�s\"^P�q�����_�\u001fM�_{U\u0011&��:R3���a\u001a0*ah�u�/��\"k\u0015,�{\u0007\u001c��W[�*1a�۵�.l�\u0011��\u001c=�\\d!^`�2�N�\nF!r�q���\u0018_�~�\u0001\u00057����Ё�\u0001\u0011�8�:&�h�\u0014�\u0012q�\u001c��=v�;�����C��_%��Ҧd�L�\u001d,c`&_��\u0012�b�)\r�y̿�����)��%���\u0015�\u001a��\u001a�׃d7G�\u001b\f.\u0002.;�~M\u00064���p�1B/����x�;\\�i�\\�)|��a��\u0012���A1���\u00116m/-�\u0014\r'��v��\"�(7,-�Ɠ���0��T-\\Ww�d�٩�pl�;^\\\u0018\u000b\f0��:0��e��$0�CLw\u001a�q��1�k�S`cM��C�l\u0004���N��O�9P�\u0006#<�B���qT6�\u0019�}�j8.9u\u0004c\"-�.\u0005�v\u0000����F�Ϣ-m��<[7iwVEZ�\\���\\\u0019��m��ֵ[�����\t>���\u000eI1��L�\u0018Kʝp\u0001�\u0007V�\t��kgc\u000fx�F��a&m[`�U���L\n�\u0010:d�\n:e\u0019�|9�\u0001:vg��wX�&��f���E��L��!y\u0011\u0013Q�\u0019�1\fL~`\u0016�\u001d\u0004ǈ���cf�\u000bS��)�뼣��=\u001f�sZ\f0O|��}\u0016z�!x%�q\u0005���!��na]�\"nF�\u0013����\f��Ϣ.q��z��ѐ����I���\u0014A]z#��c\u0018Ss�I\u0013�1��TL4�\u001f*�Ǹ���w6铟���\u0007�K\u001cmrfǸ+)���\u0006\bK�*�R?�R��<�AN���L�\u001a�x�8�li�\u0004�Y���\u000b1]�S֦�l��\u0004\u0005��\u001e�߃�\u000b�Q�#y�_�\u0011�j-د\u0016���\t�8��{�\u0017�oTt�����\u001b��3RY'-��c��\u0011N������\u001eg��B\u0013�fB�K��\u0014}�qF��\u0004|�\u001e�T0��.��\u0004`&P<ޝ�xB\u0018�3x�a\u0010Y)E�\u0014��A�JƧ\u0019&�\u001c���Y�=�8\b�08�+J�B\u0014\u0019�\u0017\u0010�^@�b[{�\u0005d\u0000d)�|xi3�����K�-�U\u0003�\u0007� �JB��\u0000�\u0003>���d��3\u0011ܶ?\b��n\u0014��C������G�(ǅ��b:s�\u000fI�\u000fI�)+\u0006�u\u0015�\u0011~/��;j\u0005\n�Ek7젿]�+��;���\u0010�6\u001f���_�~�ǎ����\u0011���\u000e�L�ǩ�m��z�N�U���U�|�{��7Ë�8��'�\"l�\u0003�|��FL3�\u0001��ZH�OW]��&EP���xԫ�Z��}\u0016�v~5������S&�W�\"�\u0017\u0019�u�W��(��bx�L<N��F���8x\u0016����+����������}��\u001d\r\nendstream\r\nendobj\r\n24 0 obj\r\n2606\r\nendobj\r\n23 0 obj\r\n\r\n[/FlateDecode/RunLengthDecode]\r\nendobj\r\n25 0 obj\r\n<<\r\n/Length 26 0 R\r\n>>\r\nstream\r\n 0 g BT 50.40 625.90 Td 0 Tw /C001 10.00 Tf <466163747575722073747572656E206E6161723A>Tj ET 0 g BT 50.40 613.90 Td 0 Tw <736170696E766F696365574555407070672E636F6D>Tj ET 0 g BT 50.40 601.90 Td 0 Tw\r\n <50504720436F6174696E6773204E656465726C616E6420422E562E2E>Tj ET 0 g BT 50.40 589.90 Td 0 Tw <545341203233353139>Tj ET 0 g BT 50.40 577.90 Td 0 Tw <486F6C616E64736B6120322F34>Tj ET 0 g BT 50.40 565.90 Td 0 Tw <36333930302042726E6F>Tj ET 0 g BT\r\n 50.40 553.90 Td 0 Tw <437A6563682052657075626C6963>Tj ET 0 g BT 50.40 529.90 Td 0 Tw <466163747575722074656E206E616D652076616E3A>Tj ET 0 g BT 50.40 517.90 Td 0 Tw <50504720436F6174696E6773204E656465726C616E64204256>Tj ET 0 g BT 50.40 505.90 Td 0 Tw\r\n <545341203233353139>Tj ET 0 g BT 50.40 493.90 Td 0 Tw <4F6365616E656E7765672032>Tj ET 0 g BT 50.40 481.90 Td 0 Tw <3130343720424220416D7374657264616D>Tj ET 0 g BT 50.40 469.90 Td 0 Tw <4E65746865726C616E647320284E4C29>Tj ET 0 g BT 50.40 433.90 Td 0 Tw\r\n <47656C696576652076657270616B6B696E67207465206D65726B656E206D6574206465205050472D636F64652E204661637475>Tj <757220656E20616C6C6520646F63756D656E74656E20766F6F727A69656E2076616E>Tj ET 0 g BT 50.40 421.90 Td 0 Tw\r\n <505047206F726465726E722E2C20706F73697469656E722E2C20656E205050472D636F64652E>Tj ET 0 g BT 50.40 397.90 Td 0 Tw <446520616C67656D656E6520696E6B6F6F70766F6F727761617264656E2076616E2050504720436F6174696E6773204E656465>Tj\r\n <726C616E6420422E562E207A696A6E2076616E20746F6570617373696E67206F70>Tj ET 0 g BT 50.40 385.90 Td 0 Tw <646520696E6B6F6F7020646F6F7220656E206C65766572696E672076616E2070726F64756374656E2061616E2050504720436F>Tj\r\n <6174696E6773204E656465726C616E6420422E562E206F662065656E206D6574>Tj ET 0 g BT 50.40 373.90 Td 0 Tw <6861617220766572626F6E64656E206F6E6465726E656D696E6720656E20616C6C65206F76657265656E6B6F6D7374656E2064>Tj\r\n <696520696E2076657262616E6420646161726D6565207A696A6E206F66>Tj ET 0 g BT 50.40 361.90 Td 0 Tw <776F7264656E206765736C6F74656E206D6574206465207665726B6F7065722C2074656E7A696A2073636872696674656C696A>Tj\r\n <6B20616E64657273206973206F76657265656E67656B6F6D656E2E2044657A65>Tj ET 0 g BT 50.40 349.90 Td 0 Tw <616C67656D656E6520696E6B6F6F70766F6F727761617264656E20776F7264656E206F70207665727A6F656B20677261746973>Tj\r\n <20746F6567657A6F6E64656E2E20416C67656D656E65>Tj ET 0 g BT 50.40 337.90 Td 0 Tw <287665726B6F6F7029766F6F727761617264656E292076616E204B7761626F20546563686E69656B20425620776F7264656E20>Tj <7569746472756B6B656C696A6B20766572776F7270656E2E>Tj ET 0 g BT\r\n 50.40 313.90 Td 0 Tw <566F6F7220656E20696E206E61616D2076616E2050504720436F6174696E6773204E656465726C616E6420422E562E>Tj ET 0 g BT 50.40 277.90 Td 0 Tw\r\n <416C6C6520706572736F6F6E6C696A6B65206765676576656E7320776F7264656E207665727765726B7420646F6F7220686574>Tj <2062656472696A66206461742064657A6520696E6B6F6F706F72646572>Tj ET 0 g BT 50.40 265.90 Td 0 Tw\r\n <6865656674207569746765676576656E206D657420686574206F6F67206F7020686574206265686565722076616E2064652063>Tj <6F6E7472616374756572656C61746965206D657420752E2055206B756E74207577>Tj ET 0 g BT 50.40 253.90 Td 0 Tw\r\n <7265636874656E207569746F6566656E656E20646F6F722074652073636872696A76656E206E6161722064702D657540707067>Tj <2E636F6D202E20476120766F6F72206D65657220696E666F726D61746965>Tj ET 0 g BT 50.40 241.90 Td 0 Tw\r\n <6F7665722075772070726976616379206E61617220687474703A2F2F636F72706F726174652E7070672E636F6D2F436F6E7472>Tj <6163746F72735072697661637953746174656D656E74>Tj ET 0 g BT 50.40 697.90 Td 0 Tw /C001 12.00 Tf <4B7761626F20546563686E69656B204256>Tj ET 0 g BT\r\n 50.40 685.90 Td 0 Tw <506F737462757320323636>Tj ET 0 g BT 50.40 673.90 Td 0 Tw <313133302041472020564F4C454E44414D>Tj ET 0 g BT 50.40 97.90 Td 0 Tw /C003 8.00 Tf -0.05 Tw <5265676973747261746965204E722E204B764B20416D7374657264616D3A203333313330353130>Tj\r\n ET q 0 0 0 rg 68.40 0 0 54.00 50 776 cm /00022 Do Q 0 g BT 309.60 697.90 Td 0 Tw -0.05 Tw <42657374656C6E756D6D65722F646174756D>Tj ET 0 g BT 309.60 685.90 Td 0 Tw /C001 12.00 Tf <34353130363836323532202F2030392E30362E32303236>Tj ET 0 g BT\r\n 489.60 697.90 Td 0 Tw /C003 8.00 Tf -0.05 Tw <50616765>Tj ET 0 g BT 489.60 685.90 Td 0 Tw /C001 12.00 Tf <32202D2032>Tj ET\r\nendstream\r\nendobj\r\n26 0 obj\r\n4114\r\nendobj\r\n27 0 obj\r\n<<\r\n/Type /Page\r\n/MediaBox\r\n[0 0 595 842]\r\n/Parent 1 0 R\r\n/Resources\r\n<<\r\n/ProcSet\r\n[/PDF /Text /ImageI]\r\n/Font\r\n<<\r\n/C001 4 0 R\r\n/C003 9 0 R\r\n>>\r\n/XObject\r\n<<\r\n/00022 22 0 R\r\n>>\r\n>>\r\n/Contents 25 0 R\r\n>>\r\nendobj\r\n28 0 obj\r\n<<\r\n/Author (BTC-G )\r\n/CreationDate (D:20260609091308)\r\n/Creator (Form ZMDRUCK NL)\r\n/Producer (SAP NetWeaver 740 )\r\n%SAPinfoStart TOA_DARA\r\n%FUNCTION=(    )\r\n%MANDANT=(   )\r\n%DEL_DATE=(        )\r\n%SAP_OBJECT=(          )\r\n%AR_OBJECT=(          )\r\n%OBJECT_ID=(                                                  )\r\n%FORM_ID=(                                        )\r\n%FORMARCHIV=(  )\r\n%RESERVE=(                           )\r\n%NOTIZ=(                                                                )\r\n%-(                                                                )\r\n%-(                                                                )\r\n%-(                                                                )\r\n%SAPinfoEnd TOA_DARA\r\n>>\r\nendobj\r\n1 0 obj\r\n<<\r\n/Type /Pages\r\n/Kids\r\n[ 18 0 R\r\n 27 0 R\r\n]\r\n/Count 2\r\n>>\r\nendobj\r\n29 0 obj\r\n<<\r\n/Type /Catalog\r\n/Pages 1 0 R\r\n/PageMode /UseNone\r\n>>\r\nendobj\r\nxref\r\n0 30\r\n0000000000 65535 f\r\n0000019835 00000 n\r\n0000000115 00000 n\r\n0000000296 00000 n\r\n0000000331 00000 n\r\n0000001046 00000 n\r\n0000001227 00000 n\r\n0000001262 00000 n\r\n0000002143 00000 n\r\n0000002333 00000 n\r\n0000002988 00000 n\r\n0000003466 00000 n\r\n0000003443 00000 n\r\n0000003502 00000 n\r\n0000006351 00000 n\r\n0000006327 00000 n\r\n0000006403 00000 n\r\n0000010984 00000 n\r\n0000011008 00000 n\r\n0000011245 00000 n\r\n0000011723 00000 n\r\n0000011700 00000 n\r\n0000011759 00000 n\r\n0000014608 00000 n\r\n0000014584 00000 n\r\n0000014660 00000 n\r\n0000018835 00000 n\r\n0000018859 00000 n\r\n0000019083 00000 n\r\n0000019913 00000 n\r\ntrailer\r\n<<\r\n/Size 30\r\n/Root 29 0 R\r\n/Info 28 0 R\r\n>>\r\nstartxref\r\n19989\r\n%%EOF\r\n",
+    "email_date": "Tue, 09 Jun 2026 09:08:14 +0200",
+    "bijlagen": [
+      {
+        "naam": "New PO Output: 4510686252 - Vendor: 95042039.pdf",
+        "type": "pdf",
+        "inhoud_tekst": "--- PAGE 1 ---\nBestelling\nBestelnummer/datum\n4510686252 / 09.06.2026\nContactpersoon/Fax/Email\nGerard BEENSE\n011 27 87 00\nGerard.BEENSE@ppg.com\nOns BTW nummer\nNL001622006B01\nKwabo Techniek BV Bestelling\nPostbus 266\n1130 AG VOLENDAM\nBestelnummer/datum\nPh. 299361001 4510686252 / 09.06.2026\nFax 0031 299 36 14 06\nContactpersoon/Fax/Email\nGerard BEENSE\n011 27 87 00\nGerard.BEENSE@ppg.com\nOns BTW nummer\n95042039 NL001622006B01\nUw leveranciernummer bij ons:\nPag. 1 - 2\nGelieve te leveren aan:\nAttn. ID Logistics Benelux B.V.\nKopraweg 35 Leveringstermijn: 08.07.2026\n1047 BP AMSTERDAM\nLeveringcondities: FH Amsterdam\nBetalingsvoorwaarden: Binnen 30 dagen netto Valuta EUR\nGelieve een orderbevestiging te sturen voor de volgende items:\n_____________________________________________________________________________________\nPos. Materiaal Omschrijving Bestelhoevh\nVerpakkingPrijs per eenheid Bestelbedrag\n_____________________________________________________________________________________\n00010 00951405 PG AFDEKVLIES ETP 25M² 804600 1.485 PC\n11,55 / 1 PC 17.151,75\nUw artikelnummer 23423\nInt. Article No. (EAN/UPC) 8715854007410\n_____________________________________________________________________________________\nTotale nettowaarde excl. BTW (EUR) 17.151,75\nRegistratie Nr. KvK Amsterdam: 33130510\n--- PAGE 2 ---\nKwabo Techniek BV\nBestelnummer/datum Page\nPostbus 266 4510686252 / 09.06.2026 2 - 2\n1130 AG VOLENDAM\nFactuur sturen naar:\nsapinvoiceWEU@ppg.com\nPPG Coatings Nederland B.V..\nTSA 23519\nHolandska 2/4\n63900 Brno\nCzech Republic\nFactuur ten name van:\nPPG Coatings Nederland BV\nTSA 23519\nOceanenweg 2\n1047 BB Amsterdam\nNetherlands (NL)\nGelieve verpakking te merken met de PPG-code. Factuur en alle documenten voorzien van\nPPG ordernr., positienr., en PPG-code.\nDe algemene inkoopvoorwaarden van PPG Coatings Nederland B.V. zijn van toepassing op\nde inkoop door en levering van producten aan PPG Coatings Nederland B.V. of een met\nhaar verbonden onderneming en alle overeenkomsten die in verband daarmee zijn of\nworden gesloten met de verkoper, tenzij schriftelijk anders is overeengekomen. Deze\nalgemene inkoopvoorwaarden worden op verzoek gratis toegezonden. Algemene\n(verkoop)voorwaarden) van Kwabo Techniek BV worden uitdrukkelijk verworpen.\nVoor en in naam van PPG Coatings Nederland B.V.\nAlle persoonlijke gegevens worden verwerkt door het bedrijf dat deze inkooporder\nheeft uitgegeven met het oog op het beheer van de contractuerelatie met u. U kunt uw\nrechten uitoefenen door te schrijven naar dp-eu@ppg.com . Ga voor meer informatie\nover uw privacy naar http://corporate.ppg.com/ContractorsPrivacyStatement\nRegistratie Nr. KvK Amsterdam: 33130510"
+      }
+    ],
+    "source_path": "graph://AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAAVY9o6AAA=",
+    "is_order": true,
+    "classificatie_reden": "E-mail bevat Purchase Order (PO 4510686252) van PPG met bestelnummer, leverancier en leveringsgegevens",
+    "classificatie_confidence": 0.98,
+    "taal": "NL",
+    "bestelnummer_klant": "4510686252",
+    "orderdatum": "2026-06-09",
+    "gewenste_leverdatum": "2026-07-08",
+    "afleveradres": {
+      "naam": "ID Logistics Benelux B.V.",
+      "straat": "Kopraweg 35",
+      "postcode": "1047 BP",
+      "plaats": "AMSTERDAM",
+      "land": "NL"
+    },
+    "afleverinstructies": "Leveringcondities: FH Amsterdam. Gelieve verpakking te merken met de PPG-code. Factuur en alle documenten voorzien van PPG ordernr., positienr., en PPG-code.",
+    "orderregels": [
+      {
+        "positie": 1,
+        "artikelnummer_klant": "00951405",
+        "artikelnummer_kwabo": "23423",
+        "omschrijving": "PG AFDEKVLIES ETP 25M²",
+        "hoeveelheid": 1485.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": 11.55,
+        "ean_code": "8715854007410",
+        "leverdatum_regel": "2026-07-08",
+        "opmerkingen": "Artikel 804600",
+        "artikelnummer_kwabo_matched": null,
+        "match_confidence": 0.0,
+        "match_methode": "manual",
+        "prijs_validated": null
+      }
+    ],
+    "opmerkingen": "Factuur sturen naar: sapinvoiceWEU@ppg.com. Contactpersoon: Gerard BEENSE, tel 011 27 87 00, email Gerard.BEENSE@ppg.com. Uw leveranciernummer bij ons: 95042039. Betalingsvoorwaarden: Binnen 30 dagen netto.",
+    "klant_match": {
+      "navision_klantnr": "60282",
+      "klantnaam": "PPG Industries / DC Amsterdam",
+      "match_confidence": 1.0,
+      "match_bron": "email",
+      "is_4plus": false,
+      "kredietlimiet": 50000.0,
+      "betalingsconditie": "8DAG2%",
+      "kredietlimiet_status": "ok"
+    },
+    "alle_artikelen_gematcht": false,
+    "alle_prijzen_valide": true,
+    "validatie_warnings": [
+      "⚠ KLANT IS GEEN 4+ LID — controleer aankoopvoorwaarden"
+    ],
+    "review_status": "pending",
+    "ship_to_kandidaten": [
+      {
+        "klant_nr": "60282",
+        "ship_to_code": "1047 BP",
+        "naam": "ID Logistics Benelux B.V.",
+        "straat": "Kopraweg 35",
+        "postcode": "1047 BP",
+        "plaats": "AMSTERDAM",
+        "land": "NL",
+        "is_default": false
+      },
+      {
+        "klant_nr": "60282",
+        "ship_to_code": "1047 BP.",
+        "naam": "PPG Industries / DC Amsterdam",
+        "straat": "Kopraweg 35",
+        "postcode": "1047 BP",
+        "plaats": "AMSTERDAM",
+        "land": "NL",
+        "is_default": false
+      },
+      {
+        "klant_nr": "60282",
+        "ship_to_code": "1822 BJ",
+        "naam": "SSC Alkmaar",
+        "straat": "Berenkoog 34",
+        "postcode": "1822 BJ",
+        "plaats": "ALKMAAR",
+        "land": "NL",
+        "is_default": false
+      },
+      {
+        "klant_nr": "60282",
+        "ship_to_code": "2031 BK",
+        "naam": "SSC Haarlem",
+        "straat": "Waarderveldweg 101",
+        "postcode": "2031 BK",
+        "plaats": "HAARLEM",
+        "land": "NL",
+        "is_default": false
+      },
+      {
+        "klant_nr": "60282",
+        "ship_to_code": "2222 AH",
+        "naam": "SSC Katwijk",
+        "straat": "Ambachtsweg 1b",
+        "postcode": "2222 AH",
+        "plaats": "KATWIJK ZH",
+        "land": "NL",
+        "is_default": false
+      },
+      {
+        "klant_nr": "60282",
+        "ship_to_code": "2318 BZ",
+        "naam": "SSC Service Center Leiden",
+        "straat": "Flevoweg 15",
+        "postcode": "2318 BZ",
+        "plaats": "LEIDEN",
+        "land": "NL",
+        "is_default": false
+      },
+      {
+        "klant_nr": "60282",
+        "ship_to_code": "2408 AE",
+        "naam": "SSC Alphen a/d Rijn",
+        "straat": "Crown Business Center",
+        "postcode": "2408 AE",
+        "plaats": "ALPHEN AAN DEN RIJN",
+        "land": "NL",
+        "is_default": false
+      },
+      {
+        "klant_nr": "60282",
+        "ship_to_code": "2495 AJ",
+        "naam": "Sigma Service Center Den Haag",
+        "straat": "Laan van 's-Gravenmade 38",
+        "postcode": "2495 AJ",
+        "plaats": "'S-GRAVENHAGE",
+        "land": "NL",
+        "is_default": false
+      },
+      {
+        "klant_nr": "60282",
+        "ship_to_code": "3084 CB",
+        "naam": "SSC Rotterdam Zuid",
+        "straat": "Driemanssteenweg 210",
+        "postcode": "3084 CB",
+        "plaats": "ROTTERDAM",
+        "land": "NL",
+        "is_default": false
+      },
+      {
+        "klant_nr": "60282",
+        "ship_to_code": "3542 AB",
+        "naam": "SSC Utrecht Lage Weide",
+        "straat": "Atoomweg 514",
+        "postcode": "3542 AB",
+        "plaats": "UTRECHT",
+        "land": "NL",
+        "is_default": false
+      },
+      {
+        "klant_nr": "60282",
+        "ship_to_code": "4816 KB",
+        "naam": "Sigma Service Center Breda",
+        "straat": "Druivenstraat 51",
+        "postcode": "4816 KB",
+        "plaats": "BREDA",
+        "land": "NL",
+        "is_default": false
+      },
+      {
+        "klant_nr": "60282",
+        "ship_to_code": "6827 CA",
+        "naam": "SSC Arnhem",
+        "straat": "J. Huddeweg 9",
+        "postcode": "6827 CA",
+        "plaats": "ARNHEM",
+        "land": "NL",
+        "is_default": false
+      },
+      {
+        "klant_nr": "60282",
+        "ship_to_code": "7554 TA",
+        "naam": "SSC Twente",
+        "straat": "Diamantstraat 1B",
+        "postcode": "7554 TA",
+        "plaats": "HENGELO OV",
+        "land": "NL",
+        "is_default": false
+      }
+    ],
+    "ship_to_gekozen": "1047 BP",
+    "mixprijzen_actief": false,
+    "order_mix_total_pallets": null,
+    "europallet_regel": null,
+    "incoming_document_storage_key": "by_email_id/AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1h-9e20c0cb7effd59e.eml",
+    "stappen_log": [
+      {
+        "stap": "intake",
+        "timestamp": "2026-06-09T07:14:10.387940+00:00",
+        "beslissing": "E-mail opgehaald, 1 bijlagen geëxtraheerd",
+        "details": {
+          "bijlage_namen": [
+            "New PO Output: 4510686252 - Vendor: 95042039.pdf"
+          ]
+        }
+      },
+      {
+        "stap": "classify",
+        "timestamp": "2026-06-09T07:14:13.496637+00:00",
+        "beslissing": "ORDER (conf=0.98)",
+        "details": {
+          "is_order": true,
+          "reden": "E-mail bevat Purchase Order (PO 4510686252) van PPG met bestelnummer, leverancier en leveringsgegevens",
+          "confidence": 0.98
+        }
+      },
+      {
+        "stap": "extract",
+        "timestamp": "2026-06-09T07:14:40.113506+00:00",
+        "beslissing": "Geëxtraheerd: 1 regels, taal=NL, 0 velden needs_review",
+        "details": {
+          "bestelnummer": "4510686252",
+          "multi_orders": 1
+        }
+      },
+      {
+        "stap": "match_customer",
+        "timestamp": "2026-06-09T07:14:40.993021+00:00",
+        "beslissing": "Klant gematcht: 60282 (email)",
+        "details": {
+          "navision_klantnr": "60282",
+          "klantnaam": "PPG Industries / DC Amsterdam",
+          "match_confidence": 1.0,
+          "match_bron": "email",
+          "is_4plus": false,
+          "kredietlimiet": 50000.0,
+          "betalingsconditie": "8DAG2%",
+          "kredietlimiet_status": "ok"
+        }
+      },
+      {
+        "stap": "match_articles",
+        "timestamp": "2026-06-09T07:14:57.138760+00:00",
+        "beslissing": "0/1 regels gematcht",
+        "details": {
+          "per_methode": {
+            "exact": 0,
+            "kruisverwijzing": 0,
+            "klantenkaart": 0,
+            "history": 0,
+            "fuzzy": 0,
+            "manual": 1
+          }
+        }
+      },
+      {
+        "stap": "validate_prices",
+        "timestamp": "2026-06-09T07:14:57.734496+00:00",
+        "beslissing": "0/1 prijzen ok",
+        "details": {
+          "warnings_new": []
+        }
+      }
+    ],
+    "errors": [],
+    "_meta": {
+      "taal": {
+        "value": "NL",
+        "source": "pdf",
+        "source_detail": "New PO Output: 4510686252 - Vendor: 95042039.pdf p.1",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "bestelnummer_klant": {
+        "value": "4510686252",
+        "source": "pdf",
+        "source_detail": "New PO Output: 4510686252 - Vendor: 95042039.pdf p.1 header 'Bestelnummer/datum'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "orderdatum": {
+        "value": "2026-06-09",
+        "source": "pdf",
+        "source_detail": "New PO Output: 4510686252 - Vendor: 95042039.pdf p.1 header 'Bestelnummer/datum'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "gewenste_leverdatum": {
+        "value": "2026-07-08",
+        "source": "pdf",
+        "source_detail": "New PO Output: 4510686252 - Vendor: 95042039.pdf p.1 'Leveringstermijn: 08.07.2026'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "afleveradres": {
+        "value": {
+          "naam": "ID Logistics Benelux B.V.",
+          "straat": "Kopraweg 35",
+          "postcode": "1047 BP",
+          "plaats": "AMSTERDAM",
+          "land": "NL"
+        },
+        "source": "pdf",
+        "source_detail": "New PO Output: 4510686252 - Vendor: 95042039.pdf p.1 'Gelieve te leveren aan'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "afleverinstructies": {
+        "value": "Leveringcondities: FH Amsterdam. Gelieve verpakking te merken met de PPG-code. Factuur en alle documenten voorzien van PPG ordernr., positienr., en PPG-code.",
+        "source": "pdf",
+        "source_detail": "New PO Output: 4510686252 - Vendor: 95042039.pdf p.1 and p.2",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "opmerkingen": {
+        "value": "Factuur sturen naar: sapinvoiceWEU@ppg.com. Contactpersoon: Gerard BEENSE, tel 011 27 87 00, email Gerard.BEENSE@ppg.com. Uw leveranciernummer bij ons: 95042039. Betalingsvoorwaarden: Binnen 30 dagen netto.",
+        "source": "pdf",
+        "source_detail": "New PO Output: 4510686252 - Vendor: 95042039.pdf p.1 and p.2",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "orderregels": [
+        {
+          "artikelnummer_klant": {
+            "value": "00951405",
+            "source": "pdf",
+            "source_detail": "New PO Output: 4510686252 - Vendor: 95042039.pdf p.1 row 00010 col 'Materiaal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": "23423",
+            "source": "pdf",
+            "source_detail": "New PO Output: 4510686252 - Vendor: 95042039.pdf p.1 row 00010 'Uw artikelnummer 23423'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "omschrijving": {
+            "value": "PG AFDEKVLIES ETP 25M²",
+            "source": "pdf",
+            "source_detail": "New PO Output: 4510686252 - Vendor: 95042039.pdf p.1 row 00010 col 'Omschrijving'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 1485,
+            "source": "pdf",
+            "source_detail": "New PO Output: 4510686252 - Vendor: 95042039.pdf p.1 row 00010 col 'Bestelhoevh'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "STUK",
+            "source": "pdf",
+            "source_detail": "New PO Output: 4510686252 - Vendor: 95042039.pdf p.1 row 00010 'PC' (piece/stuk)",
+            "confidence": 0.95,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": 11.55,
+            "source": "pdf",
+            "source_detail": "New PO Output: 4510686252 - Vendor: 95042039.pdf p.1 row 00010 '11,55 / 1 PC'",
+            "confidence": 0.99,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": "8715854007410",
+            "source": "pdf",
+            "source_detail": "New PO Output: 4510686252 - Vendor: 95042039.pdf p.1 row 00010 'Int. Article No. (EAN/UPC) 8715854007410'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": "2026-07-08",
+            "source": "pdf",
+            "source_detail": "New PO Output: 4510686252 - Vendor: 95042039.pdf p.1 'Leveringstermijn: 08.07.2026'",
+            "confidence": 0.95,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": "Artikel 804600",
+            "source": "pdf",
+            "source_detail": "New PO Output: 4510686252 - Vendor: 95042039.pdf p.1 row 00010 additional code",
+            "confidence": 0.9,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": null,
+            "source": "manual",
+            "source_detail": "match-methode=manual",
+            "confidence": 0.0,
+            "needs_review": true
+          }
+        }
+      ],
+      "klant_match": {
+        "value": "60282",
+        "source": "klantenkaart",
+        "source_detail": "email",
+        "confidence": 1.0,
+        "needs_review": false
+      }
+    },
+    "needs_review_fields": [
+      "orderregels[0].artikelnummer_kwabo_matched"
+    ],
+    "needs_review_count": 1,
+    "extra_orders_raw": [],
+    "nav_operations": []
+  }
+}

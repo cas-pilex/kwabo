@@ -1,0 +1,42 @@
+[
+  {
+    "klant_nr": "50000",
+    "klant_artikelnr": "17040",
+    "klant_omschrijving": "KOOFLIJST KW-007 150 CM (40,00 stuk = 60 M1)",
+    "kwabo_artikelnr": "20487",
+    "match_methode": "manual",
+    "was_correctie": true,
+    "order_datum": "2026-06-01",
+    "created_at": "2026-06-01 07:56:27.200704"
+  },
+  {
+    "klant_nr": "50000",
+    "klant_artikelnr": "19831",
+    "klant_omschrijving": "KWABO STATIEGELD KIST TBV GIPSLIJSTEN",
+    "kwabo_artikelnr": "20487",
+    "match_methode": "manual",
+    "was_correctie": true,
+    "order_datum": "2026-06-01",
+    "created_at": "2026-06-01 07:56:28.798054"
+  },
+  {
+    "klant_nr": "61793",
+    "klant_artikelnr": "K700100000",
+    "klant_omschrijving": "stucloper/protectiekarton 600mm rol a 30m2",
+    "kwabo_artikelnr": "224681",
+    "match_methode": "manual",
+    "was_correctie": true,
+    "order_datum": "2026-06-02",
+    "created_at": "2026-06-02 11:39:46.954682"
+  },
+  {
+    "klant_nr": "61030",
+    "klant_artikelnr": "9501017951990",
+    "klant_omschrijving": "ZELFKLEVEND-AFDEKVLIES-170GR-B0,67ML25M",
+    "kwabo_artikelnr": "238601",
+    "match_methode": "manual",
+    "was_correctie": true,
+    "order_datum": "2026-06-09",
+    "created_at": "2026-06-09 13:45:26.080141"
+  }
+]

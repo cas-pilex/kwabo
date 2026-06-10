@@ -1,0 +1,375 @@
+{
+  "order_id": 717,
+  "email_from": "hardenberg@kuipers-bmh.nl",
+  "email_subject": "Inkooporder Kuipers BMH (Inkoopordernummer: 20173111)",
+  "status": "review",
+  "order_state": {
+    "email_id": "AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAAVY9pFAAA=",
+    "email_from": "hardenberg@kuipers-bmh.nl",
+    "email_subject": "Inkooporder Kuipers BMH (Inkoopordernummer: 20173111)",
+    "email_body": "Geachte heer/mevrouw,\r\n\r\nBijgaand ontvangt u onze inkooporder.\r\nWij willen u verzoeken ons een opdrachtbevestiging te sturen ter controle.\r\nGelieve in alle communicatie ons inkoopordernummer vermelden.\r\n\r\nMet vriendelijke groet,\r\n\r\nKuipers Bouwmaterialen Hardenberg B.V.\r\nKuipers Bouwmaterialen en Steenhandel\r\nVestiging Hardenberg\r\n0523 - 280 390\r\nhardenberg@kuipers-bmh.nl\r\nwww.kuipers-bmh.nl\r\nKruiwiel 13 - 7773 NL Hardenberg\r\nVan toepassing zijn de Algemene Verkoop- en Leveringsvoorwaarden Bouwstoffen, met bijbehorende bijzondere voorwaarden, zoals deze laatstelijk zijn gedeponeerd bij ​de Arrondissementsrechtbank te Amsterdam door de Vereniging van Handelaren in Bouwmaterialen in Nederland (HIBIN). ​Klik hier om de algemene voorwaarden te bekijken (PDF). Onze privacy-verklaring vindt u hier. (PDF)  \r\n",
+    "email_date": "Tue, 09 Jun 2026 13:20:09 +0200",
+    "bijlagen": [
+      {
+        "naam": "Kuipers BMH Inkooporder-20173111.pdf",
+        "type": "pdf",
+        "inhoud_tekst": "--- PAGE 1 ---\nOrdernummer Uw Contact Behandeld door Pag.\n20173111 Joran Veurink 1\nAflevermethode\nAfleveren\nAantal Product Leverdatum Prijs Totaal\n360,0000 ST Stucloper grijs rol a 36 m2 breedte 01-07-2026 11.64 ST 4190,40\n60-65cm\nArtikel nr.:0007738178\nLeveren aan:\nC.F. Kunststoffen B.V.\nDoorbraakweg 45\n7783 DC Gramsbergen\nNederland\nContactpersoon: De heer Jan Luisman\n06 22370029\nKuipers Bouwmaterialen\nHardenberg B.V.\nKruiwiel 13\n7773 NL Hardenberg\nTel. 0523-280390\nhardenberg@kuipers-bmh.nl\nNL92 RABO 0127 2367 91\nBTW NL8106.14.911 B01\n051040 Kwabo Techniek B.V. Inkooporder KVK 05070316\nJulianaweg 210 A FSC® PBN-COC-029300\n1131 DL Volendam PEFC PBN-PEFC-COC-029300\nOrderdatum: 09-06-2026\nNederland\nOrdernummer Uw Contact Behandeld door Pag.\n20173111 Joran Veurink 1\nAflevermethode\nAfleveren\nGelieve het inkoopordernummer te vermelden op alle correspondentie\nAantal Product Leverdatum Prijs Totaal\n360,0000 ST Stucloper grijs rol a 36 m2 breedte 01-07-2026 11.64 ST 4190,40\n60-65cm\nArtikel nr.:0007738178\nLeveren aan:\nC.F. Kunststoffen B.V.\nDoorbraakweg 45\n7783 DC Gramsbergen\nNederland\nContactpersoon: De heer Jan Luisman\n06 22370029\nVan toepassing zijn de Algemene HIBIN Verkoop- en Leveringsvoorwaarden Bouw- en Afbouwmaterialen, zoals deze laatstelijk zijn gedeponeerd bij de Arrondissementsrechtbank te Amsterdam door de Vereniging van\nHandelaren in Bouwmaterialen in Nederland (HIBIN). In afwijking hiervan gelden voor consumenten de Algemene consumentenvoorwaarden verkoop en levering bouw- en afbouwmaterialen en uitvoering van\nwerkzaamheden. Indien de tekst van de voor u van kracht zijnde voorwaarden niet in uw bezit is, zijn wij desgevraagd bereid u een exemplaar op onze kosten toe te zenden. Uw persoonlijke gegevens worden\nuitsluitend gebruikt voor zakelijke doeleinden. Zie hiervoor onze privacyverklaring (www.kuipers-bmh.nl)."
+      }
+    ],
+    "source_path": "graph://AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAAVY9pFAAA=",
+    "is_order": true,
+    "classificatie_reden": "E-mail bevat inkooporder met ordernummer 20173111, artikelen (Stucloper grijs) met hoeveelheden (360 ST) en bijlage met order-PDF",
+    "classificatie_confidence": 1.0,
+    "taal": "NL",
+    "bestelnummer_klant": "20173111",
+    "orderdatum": "2026-06-09",
+    "gewenste_leverdatum": "2026-07-01",
+    "afleveradres": {
+      "naam": "C.F. Kunststoffen B.V.",
+      "straat": "Doorbraakweg 45",
+      "postcode": "7783 DC",
+      "plaats": "Gramsbergen",
+      "land": "NL",
+      "contactpersoon": "De heer Jan Luisman",
+      "telefoon": "06 22370029"
+    },
+    "afleverinstructies": "Afleveren (methode: Afleveren)",
+    "orderregels": [
+      {
+        "positie": 1,
+        "artikelnummer_klant": "0007738178",
+        "artikelnummer_kwabo": null,
+        "omschrijving": "Stucloper grijs rol a 36 m2 breedte 60-65cm",
+        "hoeveelheid": 360.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": 11.64,
+        "ean_code": null,
+        "leverdatum_regel": "2026-07-01",
+        "opmerkingen": null,
+        "artikelnummer_kwabo_matched": "18390",
+        "match_methode": "fuzzy",
+        "match_confidence": 0.84,
+        "eenheid_origineel": "STUK",
+        "eenheid_default": "STUK",
+        "prijs_validated": null
+      }
+    ],
+    "opmerkingen": "Gelieve het inkoopordernummer te vermelden op alle correspondentie. Behandeld door: Joran Veurink",
+    "klant_match": {
+      "navision_klantnr": "61844",
+      "klantnaam": "Kuipers BMH",
+      "match_confidence": 1.0,
+      "match_bron": "email",
+      "is_4plus": false,
+      "kredietlimiet": 10000.0,
+      "betalingsconditie": "8DAG1,5%",
+      "kredietlimiet_status": "ok"
+    },
+    "alle_artikelen_gematcht": true,
+    "alle_prijzen_valide": true,
+    "validatie_warnings": [
+      "⚠ KLANT IS GEEN 4+ LID — controleer aankoopvoorwaarden",
+      "Geen prijsafspraak in DB voor regel 1 (18390) — prijs €11.64 uit de mail wordt 1-op-1 doorgezet."
+    ],
+    "review_status": "pending",
+    "ship_to_kandidaten": [
+      {
+        "klant_nr": "61844",
+        "ship_to_code": "7783 DC",
+        "naam": "Kuipers BMH",
+        "straat": "Doorbraakweg 45",
+        "postcode": "7783 DC",
+        "plaats": "GRAMSBERGEN",
+        "land": "NL",
+        "is_default": false
+      }
+    ],
+    "ship_to_gekozen": "7783 DC",
+    "mixprijzen_actief": false,
+    "order_mix_total_pallets": null,
+    "europallet_regel": null,
+    "incoming_document_storage_key": "by_email_id/AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1h-6ecf82666dc2be04.eml",
+    "stappen_log": [
+      {
+        "stap": "intake",
+        "timestamp": "2026-06-09T11:25:07.505236+00:00",
+        "beslissing": "E-mail opgehaald, 1 bijlagen geëxtraheerd",
+        "details": {
+          "bijlage_namen": [
+            "Kuipers BMH Inkooporder-20173111.pdf"
+          ]
+        }
+      },
+      {
+        "stap": "classify",
+        "timestamp": "2026-06-09T11:25:10.297574+00:00",
+        "beslissing": "ORDER (conf=1.0)",
+        "details": {
+          "is_order": true,
+          "reden": "E-mail bevat inkooporder met ordernummer 20173111, artikelen (Stucloper grijs) met hoeveelheden (360 ST) en bijlage met order-PDF",
+          "confidence": 1.0
+        }
+      },
+      {
+        "stap": "extract",
+        "timestamp": "2026-06-09T11:25:25.905083+00:00",
+        "beslissing": "Geëxtraheerd: 1 regels, taal=NL, 1 velden needs_review",
+        "details": {
+          "bestelnummer": "20173111",
+          "multi_orders": 1
+        }
+      },
+      {
+        "stap": "match_customer",
+        "timestamp": "2026-06-09T11:25:26.490518+00:00",
+        "beslissing": "Klant gematcht: 61844 (email)",
+        "details": {
+          "navision_klantnr": "61844",
+          "klantnaam": "Kuipers BMH",
+          "match_confidence": 1.0,
+          "match_bron": "email",
+          "is_4plus": false,
+          "kredietlimiet": 10000.0,
+          "betalingsconditie": "8DAG1,5%",
+          "kredietlimiet_status": "ok"
+        }
+      },
+      {
+        "stap": "match_articles",
+        "timestamp": "2026-06-09T11:25:43.229506+00:00",
+        "beslissing": "1/1 regels gematcht",
+        "details": {
+          "per_methode": {
+            "exact": 0,
+            "kruisverwijzing": 0,
+            "klantenkaart": 0,
+            "history": 0,
+            "fuzzy": 1,
+            "manual": 0
+          }
+        }
+      },
+      {
+        "stap": "validate_prices",
+        "timestamp": "2026-06-09T11:25:45.132595+00:00",
+        "beslissing": "0/1 prijzen ok",
+        "details": {
+          "warnings_new": [
+            "Geen prijsafspraak in DB voor regel 1 (18390) — prijs €11.64 uit de mail wordt 1-op-1 doorgezet."
+          ]
+        }
+      }
+    ],
+    "errors": [],
+    "_meta": {
+      "taal": {
+        "value": "NL",
+        "source": "pdf",
+        "source_detail": "Kuipers BMH Inkooporder-20173111.pdf p.1",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "bestelnummer_klant": {
+        "value": "20173111",
+        "source": "pdf",
+        "source_detail": "Kuipers BMH Inkooporder-20173111.pdf p.1 header 'Ordernummer'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "orderdatum": {
+        "value": "2026-06-09",
+        "source": "pdf",
+        "source_detail": "Kuipers BMH Inkooporder-20173111.pdf p.1 'Orderdatum'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "gewenste_leverdatum": {
+        "value": "2026-07-01",
+        "source": "pdf",
+        "source_detail": "Kuipers BMH Inkooporder-20173111.pdf p.1 orderregel 'Leverdatum'",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "afleveradres": {
+        "value": {
+          "naam": "C.F. Kunststoffen B.V.",
+          "straat": "Doorbraakweg 45",
+          "postcode": "7783 DC",
+          "plaats": "Gramsbergen",
+          "land": "NL",
+          "contactpersoon": "De heer Jan Luisman",
+          "telefoon": "06 22370029"
+        },
+        "source": "pdf",
+        "source_detail": "Kuipers BMH Inkooporder-20173111.pdf p.1 'Leveren aan' sectie",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "afleverinstructies": {
+        "value": "Afleveren (methode: Afleveren)",
+        "source": "pdf",
+        "source_detail": "Kuipers BMH Inkooporder-20173111.pdf p.1 'Aflevermethode'",
+        "confidence": 0.9,
+        "needs_review": false
+      },
+      "opmerkingen": {
+        "value": "Gelieve het inkoopordernummer te vermelden op alle correspondentie. Behandeld door: Joran Veurink",
+        "source": "pdf",
+        "source_detail": "Kuipers BMH Inkooporder-20173111.pdf p.1 header",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "orderregels": [
+        {
+          "artikelnummer_klant": {
+            "value": "0007738178",
+            "source": "pdf",
+            "source_detail": "Kuipers BMH Inkooporder-20173111.pdf p.1 orderregel 'Artikel nr.'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": true
+          },
+          "omschrijving": {
+            "value": "Stucloper grijs rol a 36 m2 breedte 60-65cm",
+            "source": "pdf",
+            "source_detail": "Kuipers BMH Inkooporder-20173111.pdf p.1 orderregel 'Product'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 360,
+            "source": "pdf",
+            "source_detail": "Kuipers BMH Inkooporder-20173111.pdf p.1 orderregel 'Aantal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "STUK",
+            "source": "pdf",
+            "source_detail": "Kuipers BMH Inkooporder-20173111.pdf p.1 orderregel 'Aantal' (ST)",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": 11.64,
+            "source": "pdf",
+            "source_detail": "Kuipers BMH Inkooporder-20173111.pdf p.1 orderregel 'Prijs'",
+            "confidence": 0.99,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": "2026-07-01",
+            "source": "pdf",
+            "source_detail": "Kuipers BMH Inkooporder-20173111.pdf p.1 orderregel 'Leverdatum'",
+            "confidence": 0.95,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "18390",
+            "source": "fuzzy",
+            "source_detail": "match-methode=fuzzy",
+            "confidence": 0.84,
+            "needs_review": true
+          }
+        }
+      ],
+      "klant_match": {
+        "value": "61844",
+        "source": "klantenkaart",
+        "source_detail": "email",
+        "confidence": 1.0,
+        "needs_review": false
+      }
+    },
+    "needs_review_fields": [
+      "orderregels[0].artikelnummer_kwabo",
+      "orderregels[0].artikelnummer_kwabo_matched"
+    ],
+    "needs_review_count": 2,
+    "extra_orders_raw": [],
+    "nav_operations": [
+      {
+        "op": "POST",
+        "path": "/salesOrders",
+        "body": {
+          "customerNumber": "61844"
+        },
+        "label": "Klant kiezen (Sell-to Customer No. 61844)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrders({id})",
+        "body": {
+          "shipToCode": "7783 DC"
+        },
+        "label": "Verzendadres kiezen (Ship-to Code 7783 DC)",
+        "expects": {
+          "shipToAddress": "auto"
+        },
+        "optional": true
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrders({id})",
+        "body": {
+          "externalDocumentNumber": "20173111"
+        },
+        "label": "PO-nummer klant (20173111)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrders({id})",
+        "body": {
+          "requestedDeliveryDate": "2026-07-01"
+        },
+        "label": "Gewenste leverdatum (2026-07-01)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrders({id})",
+        "body": {
+          "shipmentDate": "2026-06-10"
+        },
+        "label": "Verzenddatum (2026-06-10)"
+      },
+      {
+        "op": "POST",
+        "path": "/salesOrders({id})/salesOrderLines",
+        "body": {
+          "lineType": "Item",
+          "itemNumber": "18390"
+        },
+        "label": "Regel 1: regel toevoegen (18390)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrderLines({id})",
+        "body": {
+          "quantity": 360.0
+        },
+        "label": "Regel 1: aantal invullen (360.0)"
+      }
+    ]
+  }
+}
