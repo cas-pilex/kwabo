@@ -79,6 +79,10 @@ class OrderState(TypedDict, total=False):
 
     # Extraction
     taal: Optional[str]
+    # Fase 2 K3: naam van de bestellende partij uit het orderdocument
+    # (briefhoofd/portal-veld) — matching-signaal voor de naam-fallback;
+    # nooit een blokkerend veld.
+    klantnaam_besteller: Optional[str]
     bestelnummer_klant: Optional[str]
     orderdatum: Optional[str]
     gewenste_leverdatum: Optional[str]
