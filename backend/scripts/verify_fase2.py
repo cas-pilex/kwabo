@@ -101,6 +101,7 @@ async def main() -> None:
 
         km = uit.get("klant_match") or {}
         kand = uit.get("klant_kandidaten") or []
+        kmeta = (uit.get("_meta") or {}).get("klant_match") or {}
         print(f"=== #{env['order_id']}  {env['email_subject'][:58]!r}")
         print(f"    van: {env['email_from'][:60]!r}  naam-signaal: {naam_signaal!r}")
         print(f"    KLANT  was: {km_oud.get('navision_klantnr')!r} "
@@ -109,6 +110,10 @@ async def main() -> None:
               f"({km.get('match_bron')}, conf {km.get('match_confidence')})"
               + (f"  kandidaten: {[(k['navision_klantnr'], k['klantnaam']) for k in kand]}"
                  if kand else ""))
+        if km:
+            vlag = ("CONTROLEER — operator bevestigt vóór approve"
+                    if kmeta.get("needs_review") else "geen (vertrouwd)")
+            print(f"           vlag: {vlag}  detail: {kmeta.get('source_detail')!r}")
         for i, (r_oud, r_nieuw) in enumerate(
             zip(st_oud.get("orderregels") or [], uit.get("orderregels") or [])
         ):

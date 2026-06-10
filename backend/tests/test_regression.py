@@ -104,6 +104,21 @@ def _regression_db(tmp_path_factory, request):
     with Session(new_engine) as s:
         from kwabo.db.seed import seed
         seed(s)
+        # Prod draait nooit met een lege artikelkaarten-mirror (Fase 4
+        # NAV-master-sync, 3757 artikelen): een lege mirror zet de
+        # A1-vangrail (kolomwissel klant-/kwabo-nummer) droog en laat deze
+        # suite prod onderschatten. Spiegel daarom de mock-NAV-items, zoals
+        # de sync dat in prod doet.
+        from kwabo.db.models import Artikelkaart
+        from kwabo.integrations.nav_mock_fixtures import MOCK_ITEMS
+        for it in MOCK_ITEMS:
+            s.add(Artikelkaart(
+                kwabo_artikelnr=it["number"],
+                naam=it.get("displayName") or "",
+                basis_eenheid=it.get("baseUnitOfMeasureCode") or "STUK",
+                mixprijzen=bool(it.get("mixprijzen")),
+            ))
+        s.commit()
     yield
 
 

@@ -95,6 +95,10 @@ def _match_by_name(naam_signaal: str) -> tuple[dict | None, list[dict]]:
             "navision_klantnr": kaart.nav_klantnr,
             "klantnaam": kaart.naam,
             "match_confidence": 0.8,
+            # De beslis-score op de 0-100-schaal (token_set_ratio) — zichtbaar
+            # in de provenance zodat naam-matches op dezelfde lat als de
+            # artikel-drempel beoordeeld kunnen worden.
+            "naam_score": round(top[0][1], 1),
             "match_bron": "naam_extract",
             "is_4plus": kaart.is_4plus,
             "kredietlimiet": kaart.kredietlimiet,
@@ -349,6 +353,7 @@ async def match_customer_node(state: OrderState) -> OrderState:
     # Provenance for klant_match
     confidence = (match or {}).get("match_confidence", 0.0)
     bron = (match or {}).get("match_bron")
+    naam_score = (match or {}).get("naam_score")
     klant_meta = {
         "value": (match or {}).get("navision_klantnr"),
         "source": (
@@ -356,9 +361,15 @@ async def match_customer_node(state: OrderState) -> OrderState:
             else "navision" if bron and bron.startswith("navision_")
             else "missing"
         ),
-        "source_detail": bron,
+        "source_detail": (
+            f"{bron} (score {naam_score:.0f}/100)" if naam_score is not None else bron
+        ),
         "confidence": float(confidence),
-        "needs_review": (not match) or confidence < 0.7,
+        # 3b: alleen een directe e-mailmatch op de klantenkaart (conf 1.0) is
+        # vlagvrij. Elke naam-/NAV-afgeleide match (< 1.0) krijgt een zachte
+        # "controleer klant"-vlag: een foute klant stuurt prijsgroep, ship-to
+        # én kredietlimiet de verkeerde kant op — liever even bevestigen.
+        "needs_review": (not match) or confidence < 1.0,
     }
     needs_paths = list(state.get("needs_review_fields") or [])
     if klant_meta["needs_review"] and "klant_match" not in needs_paths:

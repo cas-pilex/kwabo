@@ -88,7 +88,9 @@ async def test_witzand_718_matcht_op_naam(session, app_engine, echte_klantenkaar
     assert m["navision_klantnr"] == "60892"
     assert m["match_bron"] == "naam_extract"
     assert m["match_confidence"] == 0.8
-    assert "klant_match" not in out["needs_review_fields"]
+    # 3b: een naam-match is gevuld maar krijgt de zachte controleer-vlag —
+    # de operator bevestigt hem vóór approve (e-mailmatches conf 1.0 niet).
+    assert "klant_match" in out["needs_review_fields"]
 
 
 @pytest.mark.asyncio
@@ -190,3 +192,27 @@ async def test_regressie_k1_email_wint_van_naam(session, app_engine, echte_klant
     assert m is not None
     assert m["match_bron"] in ("email", "forward_email")
     assert m["navision_klantnr"] == "10001"  # demo-seed Ferney
+    # 3b: een directe e-mailmatch (conf 1.0) blijft vertrouwd — géén vlag.
+    assert out["_meta"]["klant_match"]["needs_review"] is False
+    assert "klant_match" not in out["needs_review_fields"]
+
+
+@pytest.mark.asyncio
+async def test_naam_match_krijgt_zachte_controleer_vlag(session, app_engine, echte_klantenkaarten):
+    """3b: elke klant-match onder conf 1.0 (naam-/NAV-afgeleid) krijgt een
+    zachte "controleer klant"-vlag in de provenance: waarde gevuld, maar de
+    operator moet hem bevestigen vóór approve (orders.py weigert anders met
+    422). Een foute klant bepaalt prijsgroep, ship-to én kredietlimiet —
+    liever bevestigen dan stilzwijgend doorlaten."""
+    st = _state("inkoop@witzand.nl", "Inkooporder 50040984",
+                klantnaam="Witzand Bouwmaterialen B.V.")
+    out = await match_customer_node(st)
+    km = out["_meta"]["klant_match"]
+    assert out["klant_match"]["navision_klantnr"] == "60892"
+    assert km["value"] == "60892"           # gevuld — dit is GEEN ontbreekt-staat
+    assert km["confidence"] == 0.8
+    assert km["needs_review"] is True       # maar wél bevestigen
+    assert "klant_match" in out["needs_review_fields"]
+    # De beslis-score staat op de 0-100-schaal in de provenance (één lat).
+    assert "score 100/100" in km["source_detail"]
+    assert out["klant_match"]["naam_score"] == 100.0

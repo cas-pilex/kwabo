@@ -65,7 +65,10 @@ async def test_city_in_text_picks_right_branch(session, app_engine, monkeypatch)
                               "inhoud_tekst": "Pontmeyer Arnhem\nWestervoortsedijk 1"}])
     out = await match_customer_node(state)
     assert out["klant_match"]["navision_klantnr"] == "61792"
-    assert "klant_match" not in (out.get("needs_review_fields") or [])
+    # 3b: een NAV-naam-match (conf 0.85 < 1.0) is gevuld maar krijgt de zachte
+    # controleer-vlag — alleen directe e-mailmatches (conf 1.0) zijn vlagvrij.
+    assert "klant_match" in out["needs_review_fields"]
+    assert out["_meta"]["klant_match"]["value"] == "61792"
 
 
 @pytest.mark.asyncio
