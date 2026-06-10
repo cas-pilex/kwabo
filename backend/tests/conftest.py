@@ -89,6 +89,26 @@ def eml_dir() -> Path:
     return ROOT / "tests" / "test_data" / "emails"
 
 
+STATES_DIR = ROOT / "tests" / "test_data" / "states"
+
+
+def load_state(name: str) -> dict:
+    """Laad een geëxporteerde echte-order fixture (zie scripts/export_order_states.py).
+
+    `name` mag een prefix zijn ("order_706") of een volledige bestandsnaam.
+    Geeft de envelope terug: {order_id, email_from, email_subject, status, order_state}.
+    """
+    import json
+
+    candidates = sorted(STATES_DIR.glob(f"{name}*")) if not name.endswith(".json") \
+        else [STATES_DIR / name]
+    matches = [p for p in candidates if p.is_file()]
+    if not matches:
+        pytest.skip(f"Echte-order fixture '{name}' ontbreekt — draai eerst "
+                    "scripts/export_order_states.py (vereist prod DATABASE_URL)")
+    return json.loads(matches[0].read_text(encoding="utf-8"))
+
+
 @pytest.fixture
 def fixtures_dir() -> Path:
     return ROOT / "tests" / "fixtures"
