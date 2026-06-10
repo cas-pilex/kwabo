@@ -132,6 +132,10 @@ class Artikelkaart(SQLModel, table=True):
     kwabo_artikelnr: str = Field(primary_key=True)
     naam: str
     basis_eenheid: str  # NAV UOM code, e.g. "STUK", "ROL"
+    # NAV Item "Sales_Unit_of_Measure" — de eenheid waarnaar NAV een nieuwe
+    # orderregel DEFAULT (bewezen in order #716: regel kwam op PALLET33,
+    # niet op de base-eenheid). Sturend voor de Branch-A-eenheidskeuze.
+    verkoop_eenheid: Optional[str] = Field(default=None)
     mixprijzen: bool = Field(default=False, nullable=False)
     palletable: Optional[bool] = Field(default=None)  # nullable, computed/learned
     created_at: datetime = Field(default_factory=utcnow)

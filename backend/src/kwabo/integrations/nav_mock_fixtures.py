@@ -66,6 +66,13 @@ MOCK_CUSTOMERS: list[dict] = [
 ]
 
 MOCK_ITEMS: list[dict] = [
+    # Echte #716-casus (Würth, order VO2606411): NAV default een NIEUWE regel
+    # naar de SALES unit van de kaart (PALLET33, 33/base) — niet naar base.
+    # `salesUnitOfMeasure` stuurt die emulatie; items zonder dat veld
+    # defaulten naar base zoals voorheen.
+    {"number": "238601", "displayName": "Quality Covers Top coat Heavy-duty 25m2 67cm",
+     "baseUnitOfMeasureCode": "STUK", "salesUnitOfMeasure": "PALLET33",
+     "mixprijzen": False},
     {"number": "1515155", "displayName": "Ferney stucloper 120cm",
      "baseUnitOfMeasureCode": "ROL", "mixprijzen": True},
     {"number": "228321", "displayName": "TABS hoeknaald 260cm",
@@ -167,9 +174,26 @@ MOCK_SHIP_TOS: dict[str, list[dict]] = {
 # Item UoMs keyed by item number. The base UoM is repeated here with
 # qtyPerUnitOfMeasure=1.0; alternates carry their conversion factor.
 MOCK_ITEM_UOMS: dict[str, list[dict]] = {
+    # Subset van de échte 45 PLX_ItemUnitOfMeasure-rijen van 238601 (prod-
+    # export), incl. de valkuil "EXW PAL33" (óók 33/base). Géén "ROL" — die
+    # code gaf in echt NAV een 400 en moet dat in de mock ook doen.
+    "238601": [
+        {"code": "STUK", "qtyPerUnitOfMeasure": 1.0},
+        {"code": "PALLET33", "qtyPerUnitOfMeasure": 33.0},
+        {"code": "PALLET35", "qtyPerUnitOfMeasure": 35.0},
+        {"code": "EXW PAL33", "qtyPerUnitOfMeasure": 33.0},
+        {"code": "M1PAL33", "qtyPerUnitOfMeasure": 33.0},
+        {"code": "M2PAL33", "qtyPerUnitOfMeasure": 33.0},
+    ],
     "1515155": [
         {"code": "ROL", "qtyPerUnitOfMeasure": 1.0},
         {"code": "PAL", "qtyPerUnitOfMeasure": 24.0},
+        # Mix-staffelcodes zijn in echt NAV gewoon ItemUnitOfMeasure-rijen;
+        # zonder deze rijen zou de (terechte) 400-emulatie op onbekende
+        # UoM-codes de mix-prijslijnen uit MOCK_SALES_PRICES weigeren.
+        {"code": "M1PAL24", "qtyPerUnitOfMeasure": 24.0},
+        {"code": "M7PAL24", "qtyPerUnitOfMeasure": 24.0},
+        {"code": "M10PAL24", "qtyPerUnitOfMeasure": 24.0},
     ],
     "228321": [
         {"code": "STUK", "qtyPerUnitOfMeasure": 1.0},

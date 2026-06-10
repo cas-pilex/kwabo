@@ -379,7 +379,7 @@ class ArtikelkaartRepo:
             # NAV-mirror semantics: unconditional overwrite. If NAV reports
             # False / None, that is the new truth — do NOT preserve prior
             # values the way KlantRepo does for user-edited fields.
-            for field in ("naam", "basis_eenheid", "mixprijzen", "palletable"):
+            for field in ("naam", "basis_eenheid", "verkoop_eenheid", "mixprijzen", "palletable"):
                 setattr(existing, field, getattr(record, field))
             existing.updated_at = utcnow()
             self.s.add(existing)

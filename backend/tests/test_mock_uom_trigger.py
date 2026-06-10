@@ -111,6 +111,78 @@ async def test_mix_discount_skipped_without_uom_patch(tmp_path):
     assert _final_line_price(client) == BASE_PRICE
 
 
+# ---- Fase 3 (E1/E3): eerlijke UoM-emulatie op het #716-faalgeval ----------
+# Echte NAV default een NIEUWE regel naar de Sales Unit of Measure van de
+# artikelkaart (order #716: regel 238601 kwam op PALLET33, 33/pallet), en
+# weigert een UoM-code die niet in de Item-UoM-tabel staat (de ROL-400).
+# De mock moet beide nadoen, anders bewijzen onze tests niets.
+
+ITEM_716 = "238601"
+
+
+def _ops_716(uom: str | None, quantity: float) -> list[dict]:
+    ops: list[dict] = [
+        {"op": "POST", "path": "/salesOrders",
+         "body": {"customerNumber": CUSTOMER_NR}, "label": "header"},
+        {"op": "POST", "path": "/salesOrders({id})/salesOrderLines",
+         "body": {"lineType": "Item", "itemNumber": ITEM_716}, "label": "line"},
+    ]
+    if uom is not None:
+        ops.append({"op": "PATCH", "path": "/salesOrderLines({id})",
+                    "body": {"unitOfMeasureCode": uom}, "label": "uom"})
+    ops.append({"op": "PATCH", "path": "/salesOrderLines({id})",
+                "body": {"quantity": quantity}, "label": "qty"})
+    return ops
+
+
+def _final_line(client: MockNavisionClient) -> dict:
+    order = next(iter(client._orders.values()))
+    return order["lines"][0]
+
+
+@pytest.mark.asyncio
+async def test_line_post_default_is_verkoopeenheid_niet_base(tmp_path):
+    """Faalgeval #716 geëmuleerd: POST line + quantity 66 ZONDER UoM-PATCH ->
+    de regel staat in PALLET33 (NAV's default = Sales UoM) met quantity 66 —
+    oftewel 66 pallets. Dit is de val waar de composer nooit meer in mag
+    trappen (Branch A stuurt altijd een expliciete UoM-PATCH)."""
+    client = MockNavisionClient(out_dir=tmp_path)
+    result = await client.create_sales_order_stepwise(_ops_716(None, 66.0))
+    for r in result["operation_results"]:
+        assert "error" not in r, f"unexpected op error: {r}"
+    line = _final_line(client)
+    assert line["unitOfMeasureCode"] == "PALLET33"
+    assert line["quantity"] == 66.0  # = 66 PALLETS: de stille factor-33-fout
+
+
+@pytest.mark.asyncio
+async def test_expliciete_branch_a_patches_geven_2_pallet33(tmp_path):
+    """De fix end-to-end op de mock: UoM-PATCH PALLET33 + quantity 2 ->
+    regel staat correct in 2 × PALLET33."""
+    client = MockNavisionClient(out_dir=tmp_path)
+    result = await client.create_sales_order_stepwise(_ops_716("PALLET33", 2))
+    for r in result["operation_results"]:
+        assert "error" not in r, f"unexpected op error: {r}"
+    line = _final_line(client)
+    assert line["unitOfMeasureCode"] == "PALLET33"
+    assert line["quantity"] == 2
+
+
+@pytest.mark.asyncio
+async def test_ongeldige_uom_code_geeft_400(tmp_path):
+    """E3: een UoM-code die niet in de Item-UoM-tabel staat (ROL voor 238601)
+    -> 400 + stop-on-error, zoals echte NAV. Items zonder mock-UoM-data
+    blijven alles accepteren (geen data = niet te valideren)."""
+    client = MockNavisionClient(out_dir=tmp_path)
+    result = await client.create_sales_order_stepwise(_ops_716("ROL", 66.0))
+    statuses = [r["status"] for r in result["operation_results"]]
+    assert 400 in statuses, f"verwachtte 400 op ROL-PATCH, kreeg {statuses}"
+    fout = next(r for r in result["operation_results"] if r["status"] == 400)
+    assert "ROL" in (fout.get("error") or "")
+    # stop-on-error: de quantity-PATCH erna is nooit uitgevoerd
+    assert len(result["operation_results"]) == 3
+
+
 @pytest.mark.asyncio
 async def test_mix_discount_skipped_when_quantity_below_threshold(tmp_path):
     """UOM = mix PAL but quantity below threshold -> NO discount.

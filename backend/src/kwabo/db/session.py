@@ -55,6 +55,13 @@ _ADDITIVE_MIGRATIONS: list[tuple[str, str, dict[str, str]]] = [
             "postgresql": "BOOLEAN NOT NULL DEFAULT FALSE",
         },
     ),
+    # Fase 3 (E1): NAV Item "Sales Unit of Measure" — sturend voor de
+    # Branch-A-eenheidskeuze. Nullable; de master-sync vult hem.
+    (
+        "artikelkaarten",
+        "verkoop_eenheid",
+        {"sqlite": "VARCHAR", "postgresql": "VARCHAR"},
+    ),
 ]
 
 

@@ -228,3 +228,89 @@ async def test_unmatched_regel_skipped(session):
     out = await _run(session, _state("10001", [regel]))
     assert out["mixprijzen_actief"] is False
     assert "mix_uom_gekozen" not in out["orderregels"][0]
+
+
+# ---- Fase 3: M-regels vastgezet op de ECHTE prod-export (grondwet 4) -------
+
+def _seed_echte_eenheden(session, artikelnr: str) -> None:
+    """Seed de échte ArtikelEenheid-rijen van een artikel uit de prod-export."""
+    import json
+
+    from conftest import STATES_DIR
+
+    p = STATES_DIR / "artikel_eenheden.json"
+    if not p.is_file():
+        pytest.skip("artikel_eenheden.json ontbreekt — draai export_order_states.py")
+    rows = [r for r in json.loads(p.read_text(encoding="utf-8"))
+            if r["kwabo_artikelnr"] == artikelnr]
+    assert rows, f"geen UoM-rijen voor {artikelnr} in export"
+    for r in rows:
+        session.add(ArtikelEenheid(**r))
+    session.commit()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("pallets,verwacht", [(1, "M1PAL30"), (8, "M7PAL30"), (12, "M10PAL30")])
+async def test_m4_staffel_echte_23685(session, pallets, verwacht):
+    """M3/M4 op het échte artikel 23685 (M1/M2/M3/M7/M10 PAL30, 30/pallet):
+    de M-waarde is een staffel-DREMPEL — kies de hoogste M <= totaal-pallets.
+    1 -> M1PAL30, 8 -> M7PAL30, 12 -> M10PAL30."""
+    _set_klant_mix(session, "10001", True)
+    _seed_echte_eenheden(session, "23685")
+    out = await _run(session, _state(
+        "10001", [_regel(1, "23685", pallets * 30.0, eenheid="STUK")]))
+    assert out["order_mix_total_pallets"] == pallets
+    r = out["orderregels"][0]
+    assert r["mix_uom_gekozen"] == verwacht
+    assert r["mix_aantal"] == pallets
+
+
+@pytest.mark.asyncio
+async def test_m4_familie_keuze_echte_238601(session):
+    """M4 "binnen de juiste PAL{Y}-familie": het échte artikel 238601 heeft
+    mixcodes in DRIE families (PAL33/35/42). De verkoopeenheid van de kaart
+    (PALLET33) kiest de familie; 66 base = 2 pallets -> M2PAL33."""
+    from kwabo.db.models import Artikelkaart
+
+    _set_klant_mix(session, "10001", True)
+    session.add(Artikelkaart(kwabo_artikelnr="238601", naam="afdekvlies",
+                             basis_eenheid="STUK", verkoop_eenheid="PALLET33"))
+    session.commit()
+    _seed_echte_eenheden(session, "238601")
+    out = await _run(session, _state(
+        "10001", [_regel(1, "238601", 66.0, eenheid="STUK")]))
+    assert out["order_mix_total_pallets"] == 2
+    r = out["orderregels"][0]
+    assert r["mix_uom_gekozen"] == "M2PAL33"
+    assert r["mix_aantal"] == 2
+    assert all(c.endswith("PAL33") for c in r["mix_uom_kandidaat"])
+
+
+@pytest.mark.asyncio
+async def test_een_tier_clamp(session):
+    """Edge: artikel met één enkele tier -> die tier, ook onder de drempel."""
+    _set_klant_mix(session, "10001", True)
+    _add_mix_tiers(session, "1515155", [7], 30)
+    out = await _run(session, _state("10001", [_regel(1, "1515155", 30)]))  # 1 pallet
+    assert out["orderregels"][0]["mix_uom_gekozen"] == "M7PAL30"
+    assert out["orderregels"][0]["mix_aantal"] == 1
+
+
+@pytest.mark.asyncio
+async def test_artikel_zonder_mixcodes_gaat_via_branch_a(session):
+    """Negatief (M2/verificatie 5): mix-klant, maar artikel zonder mixcodes
+    -> géén mix; Branch A kiest de verkoopeenheid expliciet."""
+    from kwabo.db.models import Artikelkaart
+
+    _set_klant_mix(session, "10001", True)
+    session.add(Artikelkaart(kwabo_artikelnr="909091", naam="t",
+                             basis_eenheid="ROL", verkoop_eenheid="PALLET24"))
+    session.commit()
+    _add_uom(session, "909091", "ROL", 1.0)
+    _add_uom(session, "909091", "PALLET24", 24.0)
+    out = await _run(session, _state("10001", [_regel(1, "909091", 48.0)]))
+    r = out["orderregels"][0]
+    assert out["mixprijzen_actief"] is False
+    assert "mix_uom_gekozen" not in r
+    assert r["verkoop_uom_gekozen"] == "PALLET24"
+    assert r["verkoop_aantal"] == 2

@@ -163,12 +163,21 @@ def _item_to_artikelkaart(row: dict, existing: Optional[Artikelkaart]) -> Artike
     uom = _str_or_none(row.get("Base_Unit_of_Measure")) or _str_or_none(
         row.get("Base_UoM_Code")
     ) or "STUK"
+    # NAV Item "Sales Unit of Measure": de eenheid waarnaar NAV een nieuwe
+    # orderregel default — sturend voor de Branch-A-eenheidskeuze (#716).
+    verkoop = (
+        _str_or_none(row.get("Sales_Unit_of_Measure"))
+        or _str_or_none(row.get("Sales_UoM_Code"))
+        or _str_or_none(row.get("salesUnitOfMeasure"))
+    )
     if existing is not None:
         existing.naam = naam
         existing.basis_eenheid = uom
+        existing.verkoop_eenheid = verkoop
         existing.updated_at = utcnow()
         return existing
-    return Artikelkaart(kwabo_artikelnr=nr, naam=naam, basis_eenheid=uom, mixprijzen=False)
+    return Artikelkaart(kwabo_artikelnr=nr, naam=naam, basis_eenheid=uom,
+                        verkoop_eenheid=verkoop, mixprijzen=False)
 
 
 def _ship_to_to_record(

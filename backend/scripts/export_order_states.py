@@ -149,7 +149,14 @@ def main() -> None:
             "SELECT kwabo_artikelnr, naam, basis_eenheid FROM artikelkaarten"
         )).fetchall()
         kk = conn.execute(text(
-            "SELECT nav_klantnr, naam, email, email_bestelling FROM klantenkaarten"
+            "SELECT nav_klantnr, naam, email, email_bestelling, mixprijzen "
+            "FROM klantenkaarten"
+        )).fetchall()
+        # Item-UoM-mirror (Fase 3): qty-per-base + mixcodes per artikel — nodig
+        # voor de eenheidscode/aantal-omrekening en mix-staffel-tests.
+        ae = conn.execute(text(
+            "SELECT kwabo_artikelnr, eenheid_code, qty_per_base, is_mix_uom "
+            "FROM artikel_eenheden"
         )).fetchall()
         # Alle history-rijen: ook niet-fuzzy matches zijn bruikbaar als
         # bekende-correcte (omschrijving -> kwabo-artikel) paren voor de
@@ -164,8 +171,13 @@ def main() -> None:
                 [{"kwabo_artikelnr": r[0], "naam": r[1], "basis_eenheid": r[2]} for r in ak],
                 indent=2, ensure_ascii=False), encoding="utf-8")
             (STATES_DIR / "klantenkaarten.json").write_text(json.dumps(
-                [{"nav_klantnr": r[0], "naam": r[1], "email": r[2], "email_bestelling": r[3]}
+                [{"nav_klantnr": r[0], "naam": r[1], "email": r[2], "email_bestelling": r[3],
+                  "mixprijzen": bool(r[4])}
                  for r in kk], indent=2, ensure_ascii=False), encoding="utf-8")
+            (STATES_DIR / "artikel_eenheden.json").write_text(json.dumps(
+                [{"kwabo_artikelnr": r[0], "eenheid_code": r[1],
+                  "qty_per_base": float(r[2] or 0), "is_mix_uom": bool(r[3])}
+                 for r in ae], indent=2, ensure_ascii=False), encoding="utf-8")
             (STATES_DIR / "matching_history.json").write_text(json.dumps(
                 [{"klant_nr": r[0], "klant_artikelnr": r[1], "klant_omschrijving": r[2],
                   "kwabo_artikelnr": r[3], "match_methode": r[4], "was_correctie": r[5],
@@ -173,6 +185,7 @@ def main() -> None:
                 indent=2, ensure_ascii=False, default=str), encoding="utf-8")
         print(f"  -> artikelkaarten.json   ({len(ak)} rijen)")
         print(f"  -> klantenkaarten.json   ({len(kk)} rijen)")
+        print(f"  -> artikel_eenheden.json ({len(ae)} rijen)")
         print(f"  -> matching_history.json ({len(fh)} rijen)")
 
     print("\nKlaar. Fixtures in tests/test_data/states/ — check de inhoud vóór commit "

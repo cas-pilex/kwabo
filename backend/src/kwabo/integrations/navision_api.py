@@ -54,6 +54,11 @@ def _extract_id(path: str, segment: str) -> str:
     return m.group(1)
 
 
+class MockNavValidationError(ValueError):
+    """Mock-equivalent van een NAV OnValidate-weigering (HTTP 400) — b.v. een
+    Unit-of-Measure-code die niet in de Item-UoM-tabel van het artikel staat."""
+
+
 def _extract_id_simple(endpoint: str, segment: str) -> str:
     m = re.match(rf"^{segment}\(([^)]+)\)$", endpoint)
     if not m:
@@ -342,7 +347,9 @@ class MockNavisionClient:
             except Exception as exc:
                 results.append({
                     "operation": op,
-                    "status": 0,
+                    # Een NAV-validatieweigering is een 400 (zoals echt NAV);
+                    # al het andere blijft status 0 (transport/mock-fout).
+                    "status": 400 if isinstance(exc, MockNavValidationError) else 0,
                     "response_body": {},
                     "autofilled": {},
                     "error": f"{type(exc).__name__}: {exc}",
@@ -474,7 +481,14 @@ class MockNavisionClient:
             "lineType": body["lineType"],
             "itemNumber": item_no,
             "description": item["displayName"],
-            "unitOfMeasureCode": item.get("baseUnitOfMeasureCode", "STUK"),
+            # NAV trigger-emulatie: een nieuwe regel default naar de SALES
+            # unit van de artikelkaart, NIET naar base (bewezen in order
+            # #716: regel 238601 kwam op PALLET33). Wie daarna quantity
+            # PATCHt zonder expliciete UoM-PATCH bestelt dus pallets.
+            "unitOfMeasureCode": (
+                item.get("salesUnitOfMeasure")
+                or item.get("baseUnitOfMeasureCode", "STUK")
+            ),
             "unitPrice": self.prices.get(item_no, 0.0),
             "quantity": 0,
             "_item_mixprijzen": item.get("mixprijzen", False),
@@ -521,6 +535,26 @@ class MockNavisionClient:
             for line in order["lines"]:
                 if line["id"] == line_id:
                     (key, value), = body.items()
+                    # NAV trigger-emulatie (E3): een UoM-code die niet in de
+                    # Item-UoM-tabel staat weigert NAV met een 400 ("Unit of
+                    # Measure Code ... cannot be found"). Alleen afdwingbaar
+                    # voor items mét mock-UoM-data; zonder data accepteren we
+                    # alles, zoals voorheen.
+                    if key == "unitOfMeasureCode":
+                        uoms = self.item_uoms.get(line["itemNumber"], [])
+                        item = next(
+                            (i for i in self.items
+                             if i["number"] == line["itemNumber"]), {},
+                        )
+                        geldig = {u.get("code") for u in uoms} | {
+                            item.get("baseUnitOfMeasureCode"),
+                            item.get("salesUnitOfMeasure"),
+                        }
+                        if uoms and value not in geldig:
+                            raise MockNavValidationError(
+                                f"Unit of Measure Code {value!r} cannot be "
+                                f"found for item {line['itemNumber']!r}"
+                            )
                     line[key] = value
                     # Trigger emulation: quantity change -> mix-discount rule.
                     # Real NAV's mix-staffel codeunit only fires when the line's

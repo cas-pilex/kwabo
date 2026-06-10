@@ -307,6 +307,13 @@ class NavMasterSync:
                     kwabo_artikelnr=nr,
                     naam=r.get("displayName") or nr,
                     basis_eenheid=r.get("baseUnitOfMeasureCode") or "STUK",
+                    # NAV Item "Sales Unit of Measure" — Branch-A-eenheidskeuze
+                    # (#716). PLX_Item levert NAV-native namen; BC als fallback.
+                    verkoop_eenheid=(
+                        r.get("Sales_Unit_of_Measure")
+                        or r.get("salesUnitOfMeasure")
+                        or None
+                    ),
                     mixprijzen=_nav_bool(
                         r, "mixprijzen", "kwaboMixprijzen", "isMixItem"
                     ),
