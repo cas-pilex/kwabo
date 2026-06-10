@@ -115,6 +115,12 @@ export function OrderReview({ order, items }: Props) {
       const r = await api.patchField(order.id, path, value);
       setMissing(r.needs_review_fields);
       setPreviewKey((k) => k + 1);
+      // Alle badges/pills (ProvenanceBadge "ONTBREEKT", "niet gematcht",
+      // klantnaam) renderen uit initialState — zonder server-refresh blijft
+      // de rode status na een handmatige fix staan (M1, Van Dongen-case).
+      // router.refresh() haalt de page-props opnieuw op en behoudt
+      // client-state, dus in-flight edits in andere velden overleven dit.
+      router.refresh();
     } catch (e) {
       const errMsg = `Patch-fout: ${e instanceof Error ? e.message : String(e)}`;
       setMsg(errMsg);
