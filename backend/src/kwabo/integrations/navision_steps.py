@@ -106,6 +106,10 @@ def _line_uom_to_emit(regel: dict) -> str | None:
     docstring for rationale):
 
       * `mix_uom_gekozen` set by apply_mixprijzen wins outright.
+      * `verkoop_uom_gekozen` (Branch A, E1) is next: ALWAYS emitted, ook als
+        hij gelijk is aan de base-eenheid — NAV default een nieuwe regel naar
+        de VERKOOPEENHEID van de kaart, niet naar base (faalgeval #716), dus
+        "geen PATCH" betekent niet "base".
       * Otherwise, if `eenheid` is non-empty AND differs from
         `eenheid_default` (when supplied) we emit `eenheid`. If no default
         is supplied we emit `eenheid` whenever it is non-empty.
@@ -114,6 +118,9 @@ def _line_uom_to_emit(regel: dict) -> str | None:
     mix_uom = regel.get("mix_uom_gekozen")
     if mix_uom:
         return mix_uom
+    verkoop_uom = regel.get("verkoop_uom_gekozen")
+    if verkoop_uom:
+        return verkoop_uom
     eenheid = regel.get("eenheid") or ""
     if not eenheid:
         return None
@@ -151,9 +158,13 @@ def _emit_line_ops(
         )
     # For a mix line the unit is a pallet-staffel code (M{n}PAL{r}), so the
     # quantity is expressed in that unit (pallets), not the ordered rolls/stuks.
-    # apply_mixprijzen put the pallet count in `mix_aantal`.
+    # apply_mixprijzen put the pallet count in `mix_aantal`. Branch A (E2)
+    # rekent net zo om naar de verkoopeenheid: `verkoop_aantal` hoort bij
+    # `verkoop_uom_gekozen` (66 STUK -> quantity 2 bij PALLET33).
     if regel.get("mix_uom_gekozen") and regel.get("mix_aantal") is not None:
         quantity = regel.get("mix_aantal")
+    elif regel.get("verkoop_uom_gekozen") and regel.get("verkoop_aantal") is not None:
+        quantity = regel.get("verkoop_aantal")
     else:
         quantity = regel.get("hoeveelheid")
     if quantity is not None:
@@ -294,6 +305,10 @@ def compose_navision_operations(state: dict) -> list[NavOperation]:
         ep_nr = (
             europallet.get("artikelnummer_kwabo")
             or europallet.get("artikelnummer_kwabo_matched")
+            # De review-UI (EuropalletEditor "+ Voeg europallet toe") schrijft
+            # het artikel onder deze key — zonder fallback verdwijnt een
+            # handmatig toegevoegde pallet stil uit de operations.
+            or europallet.get("kwabo_artikelnr")
         )
         if ep_nr:
             ops.extend(_emit_line_ops(europallet, ep_nr, "Europallet"))

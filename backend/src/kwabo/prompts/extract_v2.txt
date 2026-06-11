@@ -20,6 +20,11 @@ REGELS (cruciaal):
 - Duitse eenheden: "Palette"/"Paletten"/"EUR-Palette"/"Europalette" → PAL,
   "Stück" → STUK, "Rolle"/"Rollen" → ROL, "Meter"/"lfm" → M1, "m²"/"qm" → M2.
 - Afleveradres ALLEEN als drop-ship/afwijkend van factuuradres; anders null.
+- klantnaam_besteller = de naam van de BESTELLENDE partij (het klantbedrijf dat de
+  inkooporder plaatst): briefhoofd/footer/afzenderblok van het orderdocument,
+  "Besteld door", portal-ordervelden ("Order van <naam>"). NIET het afleveradres
+  (dat is vaak een bouwplaats/contactpersoon), NIET een Kwabo-medewerker, en NIET
+  het doorstuur-portaal zelf (orders.nl, zevij-necomij, e.d.). Bij twijfel null.
 - Forwarded mails: gebruik de ORIGINELE afzender, niet een Kwabo-medewerker.
 - Datums: YYYY-MM-DD; onbekend = null.
 - Duitse weeknummers ("KW<NN>", "KW 24", "KW24/2026", "Lieferung KW24"):
@@ -42,6 +47,7 @@ Output schema (één order; bij multi → JSON array van zulke objecten):
 
 {
   "taal":               {"value":"NL","source":"pdf","source_detail":"Ferney.pdf p.1","confidence":0.99,"needs_review":false},
+  "klantnaam_besteller":{"value":"Ferney Group B.V.","source":"pdf","source_detail":"Ferney.pdf briefhoofd","confidence":0.95,"needs_review":false},
   "bestelnummer_klant": {"value":"4200056148","source":"pdf","source_detail":"Ferney.pdf header","confidence":0.99,"needs_review":false},
   "orderdatum":         {"value":"2026-03-13","source":"pdf","source_detail":"Ferney.pdf header","confidence":0.95,"needs_review":false},
   "gewenste_leverdatum":{"value":null,"source":"missing","source_detail":null,"confidence":0,"needs_review":true},

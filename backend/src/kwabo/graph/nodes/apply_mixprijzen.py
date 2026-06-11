@@ -111,19 +111,108 @@ def _mix_codes_for(eenheden: list) -> list[_MixTier]:
     return list(out.values())
 
 
+def _verkoop_keuze(
+    kaart, eenheden: list, base: str, base_qty: float
+) -> Optional[tuple[str, float]]:
+    """Branch A (E1): kies de verkoopeenheid waarin de regel naar NAV gaat.
+
+    Primair de kaart-`verkoop_eenheid` (NAV Sales_Unit_of_Measure), mits het
+    een geldige eenheid van dit artikel is én het bestelde base-aantal er op
+    een geheel aantal in past. Zonder dat veld: afleiden uit ArtikelEenheid,
+    maar alleen bij PRECIES ÉÉN gehele niet-mix kandidaat (artikel 238601
+    heeft b.v. PALLET33 én 'EXW PAL33', beide 33/base — twee kandidaten is
+    geen keuze maar een gok). Geen keuze -> None; de caller dwingt dan de
+    base-eenheid expliciet af.
+    """
+    per_code = {
+        (e.eenheid_code or "").strip().upper(): float(e.qty_per_base or 0)
+        for e in eenheden
+    }
+
+    def _heel(per: float) -> Optional[int]:
+        if per <= 0:
+            return None
+        n = base_qty / per
+        return int(round(n)) if n >= 1 and abs(n - round(n)) <= _PALLET_TOL else None
+
+    code = ((kaart.verkoop_eenheid if kaart else "") or "").strip()
+    if code and code.upper() != (base or "").upper():
+        per = per_code.get(code.upper(), 0.0)
+        if per > 0 and _heel(per) is not None:
+            return code, per
+        return None  # veld bekend maar ongeldig/niet-geheel -> expliciete base
+
+    kandidaten = [
+        (e.eenheid_code.strip(), float(e.qty_per_base))
+        for e in eenheden
+        if (e.qty_per_base or 0) > 1
+        and not parse_mix_code(e.eenheid_code)
+        and (e.eenheid_code or "").strip().upper() != (base or "").upper()
+        and _heel(float(e.qty_per_base)) is not None
+    ]
+    return kandidaten[0] if len(kandidaten) == 1 else None
+
+
+def _branch_a(regel: dict, art_repo: ArtikelkaartRepo) -> None:
+    """E1/E2: een niet-mix-regel krijgt ALTIJD een expliciete eenheid + het
+    omgerekende aantal in `verkoop_uom_gekozen`/`verkoop_aantal`.
+
+    NAV default een nieuwe orderregel naar de VERKOOPEENHEID van de kaart, niet
+    naar de base-eenheid (faalgeval #716: quantity 66 zonder UoM-PATCH werd 66
+    PALLET33 = €45.738 i.p.v. 2 PALLET33). Op NAV's default vertrouwen kan dus
+    nooit. Een geldige NIET-base bestel-eenheid blijft staan (2-6-fix: "60
+    stuks blijft 60 stuks") — de composer PATCHt die al expliciet.
+    """
+    art = regel.get("artikelnummer_kwabo_matched")
+    if not art:
+        return
+    kaart = art_repo.get(art)
+    base = ((kaart.basis_eenheid if kaart else "") or "").strip()
+    if not kaart or not base:
+        return  # geen mirror-data -> geen veilige keuze mogelijk
+    ordered = (regel.get("eenheid") or "").strip()
+    if ordered and ordered.upper() != base.upper():
+        return  # klant koos expliciet een geldige alternatieve eenheid
+    try:
+        qty = float(regel.get("hoeveelheid") or 0)
+    except (TypeError, ValueError):
+        return
+    if qty <= 0:
+        return
+
+    eenheden = art_repo.list_eenheden(art)
+    # match_articles viel bij een ONgeldige bestel-eenheid al terug op base;
+    # de hoeveelheid staat dan in de oorspronkelijke eenheid. Onbekende codes
+    # tellen als base (qty_per_base 1.0) — zelfde aanname als _to_rolls.
+    base_qty = qty * _qty_per_base(eenheden, regel.get("eenheid_origineel") or "")
+
+    keuze = _verkoop_keuze(kaart, eenheden, base, base_qty)
+    if keuze is not None:
+        code, per = keuze
+        regel["verkoop_uom_gekozen"] = code
+        regel["verkoop_aantal"] = int(round(base_qty / per))
+    else:
+        regel["verkoop_uom_gekozen"] = base
+        regel["verkoop_aantal"] = base_qty
+
+
 def _evaluate(state: dict, klant_repo: KlantRepo, art_repo: ArtikelkaartRepo) -> dict:
     new_state = dict(state)
     new_state["mixprijzen_actief"] = False
     new_state["order_mix_total_pallets"] = None
 
+    regels_in = state.get("orderregels") or []
+    regels_out = [dict(r) for r in regels_in]
+
     klant_match = state.get("klant_match") or {}
     klant_nr = klant_match.get("navision_klantnr")
-    if not klant_nr:
-        return new_state
-
-    klant = klant_repo.by_nav_nr(klant_nr)
+    klant = klant_repo.by_nav_nr(klant_nr) if klant_nr else None
     if not klant or not klant.mixprijzen:
-        # Customer not mix-eligible — short-circuit, leave regels untouched.
+        # Customer not mix-eligible — mix phase is skipped, but Branch A
+        # (expliciete verkoopeenheid, E1/E2) geldt voor élke gematchte regel.
+        for r in regels_out:
+            _branch_a(r, art_repo)
+        new_state["orderregels"] = regels_out
         log.info(
             "apply_mixprijzen",
             email_id=state.get("email_id"),
@@ -132,9 +221,6 @@ def _evaluate(state: dict, klant_repo: KlantRepo, art_repo: ArtikelkaartRepo) ->
             mixprijzen_actief=False,
         )
         return new_state
-
-    regels_in = state.get("orderregels") or []
-    regels_out = [dict(r) for r in regels_in]
 
     # ---- Phase 1: order-wide total pallets across mix-eligible lines ----
     eligible: list[tuple[int, list, int, Optional[int]]] = []  # (idx, codes, rpp, line_pallets)
@@ -148,10 +234,21 @@ def _evaluate(state: dict, klant_repo: KlantRepo, art_repo: ArtikelkaartRepo) ->
         codes = _mix_codes_for(eenheden)
         if not codes:
             continue  # normal-only article — not a mix line
-        # Units-per-pallet is the physical pallet size; it MUST be constant
-        # across an article's mix codes. Use qty_per_base (authoritative), not
-        # the cosmetic PALxx suffix which can have typos (live item 15450).
+        # Units-per-pallet is the physical pallet size. Use qty_per_base
+        # (authoritative), not the cosmetic PALxx suffix which can have typos
+        # (live item 15450). Een artikel kan mixcodes in MEERDERE families
+        # hebben (238601: M*PAL33/35/42) — dan kiest de verkoopeenheid van de
+        # kaart de juiste familie (M4: "binnen de juiste PAL{Y}-familie").
         upps = {c.units_per_pallet for c in codes}
+        if len(upps) > 1:
+            kaart = art_repo.get(art)
+            sales_per = _qty_per_base(
+                eenheden, (kaart.verkoop_eenheid if kaart else "") or ""
+            )
+            familie = [c for c in codes if abs(c.units_per_pallet - sales_per) < 0.01]
+            if sales_per > 1 and familie:
+                codes = familie
+                upps = {sales_per}
         if len(upps) > 1 or any(u <= 0 for u in upps):
             ambiguous = True  # genuinely inconsistent/incomplete NAV data
         rpp = min(upps)
@@ -190,6 +287,14 @@ def _evaluate(state: dict, klant_repo: KlantRepo, art_repo: ArtikelkaartRepo) ->
         r["mix_uom_gekozen"] = pick.code
         r["mix_aantal"] = line_pallets
         n_actief += 1
+
+    # Branch A (E1/E2) voor de niet-mix-regels van een mix-klant: ook die
+    # moeten met een EXPLICIETE eenheid naar NAV. Mix-regels (incl. de
+    # review-gevallen, herkenbaar aan mix_uom_kandidaat) blijven van de
+    # mix-logica.
+    for r in regels_out:
+        if "mix_uom_kandidaat" not in r:
+            _branch_a(r, art_repo)
 
     new_state["orderregels"] = regels_out
     new_state["mixprijzen_actief"] = n_actief > 0

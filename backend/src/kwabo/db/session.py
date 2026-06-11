@@ -55,6 +55,13 @@ _ADDITIVE_MIGRATIONS: list[tuple[str, str, dict[str, str]]] = [
             "postgresql": "BOOLEAN NOT NULL DEFAULT FALSE",
         },
     ),
+    # Fase 3 (E1): NAV Item "Sales Unit of Measure" — sturend voor de
+    # Branch-A-eenheidskeuze. Nullable; de master-sync vult hem.
+    (
+        "artikelkaarten",
+        "verkoop_eenheid",
+        {"sqlite": "VARCHAR", "postgresql": "VARCHAR"},
+    ),
 ]
 
 
@@ -100,9 +107,51 @@ def _apply_additive_migrations(target_engine: Optional[Engine] = None) -> None:
             conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {decl}"))
 
 
+def _rls_statements(dialect_name: str) -> list[str]:
+    """ALTER TABLE ... ENABLE ROW LEVEL SECURITY for every mapped table.
+
+    Postgres-only. Supabase auto-exposes every ``public`` table over its
+    PostgREST/anon API; with RLS off and a *public* anon key, anyone could read
+    sensitive rows (e.g. ``oauth_tokens`` access/refresh tokens). This app never
+    uses that API — it talks to Postgres over a direct SQLAlchemy connection as
+    the table-owner ``postgres`` role, and the frontend hits only the FastAPI
+    backend. Enabling RLS with **no policies** therefore denies the anon API
+    (zero rows) while the owner connection — which bypasses non-forced RLS —
+    keeps full read/write. SQLite has no RLS, so this is a no-op there.
+    """
+    if dialect_name != "postgresql":
+        return []
+    return [
+        f'ALTER TABLE public."{table.name}" ENABLE ROW LEVEL SECURITY'
+        for table in SQLModel.metadata.sorted_tables
+    ]
+
+
+def _enforce_rls(target_engine: Optional[Engine] = None) -> None:
+    """Lock the PostgREST API for every table by enabling RLS (idempotent).
+
+    Defensive by design: each ALTER runs in its own transaction and a failure
+    (e.g. the connecting role doesn't own a table) is logged and skipped —
+    a security-hardening step must never take the app down on boot.
+    """
+    eng = target_engine if target_engine is not None else engine
+    stmts = _rls_statements(eng.dialect.name)
+    if not stmts:
+        return
+    from kwabo.utils.logging import log
+
+    for stmt in stmts:
+        try:
+            with eng.begin() as conn:
+                conn.execute(text(stmt))
+        except Exception as exc:  # noqa: BLE001
+            log.warning("rls_enable_failed", stmt=stmt, error=str(exc))
+
+
 def init_db() -> None:
     SQLModel.metadata.create_all(engine)
     _apply_additive_migrations()
+    _enforce_rls()
 
 
 def get_session() -> Iterator[Session]:

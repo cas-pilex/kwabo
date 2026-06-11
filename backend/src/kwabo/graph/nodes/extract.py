@@ -112,6 +112,7 @@ def _build_state_from_extract(parsed: dict, raw: RawEmail) -> tuple[dict, dict, 
 
     flat: dict[str, Any] = {
         "taal": take("taal"),
+        "klantnaam_besteller": take("klantnaam_besteller"),
         "bestelnummer_klant": take("bestelnummer_klant"),
         "orderdatum": take("orderdatum"),
         "gewenste_leverdatum": take("gewenste_leverdatum"),
@@ -165,7 +166,9 @@ def _build_state_from_extract(parsed: dict, raw: RawEmail) -> tuple[dict, dict, 
     #  - leverdatum (Cas: "leverdatum bij order invullen is overbodig")
     #  - opmerkingen (Cas: opmerkingen optioneel/niet-verplicht). Een lege
     #    opmerking mag de push dus nooit tegenhouden.
-    _optioneel = {"gewenste_leverdatum", "opmerkingen"}
+    #  - klantnaam_besteller (Fase 2 K3): matching-signaal voor de
+    #    naam-fallback, geen push-veld — mag nooit blokkeren.
+    _optioneel = {"gewenste_leverdatum", "opmerkingen", "klantnaam_besteller"}
     needs_review = [p for p in needs_review if p not in _optioneel]
     for _f in _optioneel:
         if isinstance(meta.get(_f), dict):

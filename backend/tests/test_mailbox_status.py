@@ -149,4 +149,9 @@ def test_reset_for_tests_clears_all_fields():
     mail_poll_status.record_token_refresh()
     mail_poll_status.reset_for_tests()
     snap = mail_poll_status.get_status()
-    assert all(v is None for v in snap.values())
+    # Schone lei: tellers (Fase 5 C) terug naar 0, de rest naar None.
+    for k, v in snap.items():
+        if k.startswith("ticks_"):
+            assert v == 0, (k, v)
+        else:
+            assert v is None, (k, v)

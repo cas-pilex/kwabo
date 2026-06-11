@@ -8,6 +8,7 @@ import {
   type EuropalletRegel,
   type FieldMeta,
   type Item,
+  type KlantKandidaat,
   type OrderDetail,
   type ShipToKandidaat,
 } from "@/lib/api";
@@ -21,6 +22,7 @@ import { EuropalletEditor } from "./components/EuropalletEditor";
 import { IncomingDocumentPanel } from "./components/IncomingDocumentPanel";
 import { MixprijzenBadge } from "./components/MixprijzenBadge";
 import { NavOperationsPreview } from "./components/NavOperationsPreview";
+import { KlantPicker } from "./components/KlantPicker";
 import { ShipToPicker } from "./components/ShipToPicker";
 
 type Props = { order: OrderDetail; items: Item[] };
@@ -75,6 +77,7 @@ type State = {
     orderregels?: Array<Record<string, FieldMeta>>;
   };
   needs_review_fields?: string[];
+  klant_kandidaten?: KlantKandidaat[];
   ship_to_kandidaten?: ShipToKandidaat[];
   ship_to_gekozen?: string | null;
   mixprijzen_actief?: boolean;
@@ -115,6 +118,12 @@ export function OrderReview({ order, items }: Props) {
       const r = await api.patchField(order.id, path, value);
       setMissing(r.needs_review_fields);
       setPreviewKey((k) => k + 1);
+      // Alle badges/pills (ProvenanceBadge "ONTBREEKT", "niet gematcht",
+      // klantnaam) renderen uit initialState — zonder server-refresh blijft
+      // de rode status na een handmatige fix staan (M1, Van Dongen-case).
+      // router.refresh() haalt de page-props opnieuw op en behoudt
+      // client-state, dus in-flight edits in andere velden overleven dit.
+      router.refresh();
     } catch (e) {
       const errMsg = `Patch-fout: ${e instanceof Error ? e.message : String(e)}`;
       setMsg(errMsg);
@@ -188,6 +197,27 @@ export function OrderReview({ order, items }: Props) {
         />
       )}
 
+      {/* Fase 5 (D): row.warnings was alleen zichtbaar als teller op het
+          dashboard — de reviewer op deze pagina zag b.v. de bron-doc-skip
+          ("Bron-document is NIET ... gekoppeld") nooit. */}
+      {order.warnings.length > 0 && (
+        <div
+          data-testid="order-warnings-banner"
+          className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+        >
+          <div className="font-semibold">
+            ⚠ {order.warnings.length === 1
+              ? "1 waarschuwing"
+              : `${order.warnings.length} waarschuwingen`}
+          </div>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5">
+            {order.warnings.map((w, i) => (
+              <li key={i}>{w}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {!isNotOrder && (
         <ExtractSummary
           emailFrom={order.email_from}
@@ -239,6 +269,15 @@ export function OrderReview({ order, items }: Props) {
           {/* Klant */}
           <div className="mb-4 rounded-lg border border-[var(--kwabo-border)] bg-slate-50 p-3">
             <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--kwabo-muted)]">Klant</div>
+            {/* K3: kandidaten uit de naam-fallback — alleen zolang er geen
+                klant gekozen is; een keuze loopt via dezelfde patch-flow als
+                handmatig typen (incl. refresh). */}
+            {!initialState.klant_match?.navision_klantnr && (
+              <KlantPicker
+                kandidaten={initialState.klant_kandidaten || []}
+                onPick={(nr) => patch("klant_match", nr)}
+              />
+            )}
             {initialState.klant_match?.klantnaam && (
               <div className="mb-1.5 text-sm font-semibold text-[var(--kwabo-navy)]" data-testid="klant-naam">
                 {initialState.klant_match.klantnaam}
@@ -252,6 +291,26 @@ export function OrderReview({ order, items }: Props) {
               onChange={(v) => patch("klant_match", v)}
               monospace
             />
+            {/* Fase 6 V2: een gevulde-maar-onbevestigde match (CONTROLEER,
+                bron domein/naam/NAV-email) kon alleen bevestigd worden door
+                het klantnr opnieuw te typen of force te gebruiken. Eén klik
+                her-patcht hetzelfde nummer; de backend wist dan de vlag en
+                behoudt de 4+/krediet-context. */}
+            {canAct && meta.klant_match?.needs_review && initialState.klant_match?.navision_klantnr && (
+              <button
+                type="button"
+                data-testid="klant-bevestig"
+                onClick={() => patch("klant_match", initialState.klant_match!.navision_klantnr)}
+                className="mt-1.5 inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100"
+              >
+                ✓ Bevestig deze klant
+                {initialState.klant_match?.match_bron && (
+                  <span className="font-normal text-amber-700">
+                    (gematcht via {initialState.klant_match.match_bron})
+                  </span>
+                )}
+              </button>
+            )}
             {initialState.klant_match?.klantnaam && (
               <div className="mt-1 flex items-center gap-2 text-xs text-[var(--kwabo-muted)]">
                 {initialState.klant_match?.is_4plus === true && (

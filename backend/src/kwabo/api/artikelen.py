@@ -15,7 +15,7 @@ from sqlmodel import Session, select
 from kwabo.api.schemas import ItemOut
 from kwabo.db import session as db_session
 from kwabo.db.models import Artikelkaart
-from kwabo.integrations.navision_api import get_navision_client
+from kwabo.integrations.navision_api import nav_client_scope
 
 router = APIRouter(prefix="/api/artikelen", tags=["artikelen"])
 
@@ -39,9 +39,10 @@ async def search(q: str | None = None) -> list[ItemOut]:
     if rows or mirror_populated:
         return [ItemOut(number=r.kwabo_artikelnr, displayName=r.naam) for r in rows]
     # Mirror leeg (verse/dev-DB): val terug op live/mock NAV zodat de combobox
-    # ook vóór de eerste sync werkt.
-    nav = get_navision_client()
-    items = await nav.search_items(beschrijving=q)
+    # ook vóór de eerste sync werkt. Scope sluit de client na gebruik (Fase 4
+    # §12.D.2 — voorheen lekte hier één httpx.AsyncClient per search-request).
+    async with nav_client_scope() as nav:
+        items = await nav.search_items(beschrijving=q)
     return [
         ItemOut(number=i["number"], displayName=i.get("displayName", ""))
         for i in items[:_SEARCH_LIMIT]

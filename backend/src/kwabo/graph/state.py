@@ -79,6 +79,10 @@ class OrderState(TypedDict, total=False):
 
     # Extraction
     taal: Optional[str]
+    # Fase 2 K3: naam van de bestellende partij uit het orderdocument
+    # (briefhoofd/portal-veld) — matching-signaal voor de naam-fallback;
+    # nooit een blokkerend veld.
+    klantnaam_besteller: Optional[str]
     bestelnummer_klant: Optional[str]
     orderdatum: Optional[str]
     gewenste_leverdatum: Optional[str]
@@ -89,6 +93,10 @@ class OrderState(TypedDict, total=False):
 
     # Matching
     klant_match: Optional[KlantMatch]
+    # Fase 2 K3: kandidaten als de naam-fallback (of NAV-zoektocht) meerdere
+    # plausibele klanten vond — getoond als picker, nooit autopick
+    # (grondwet 5). [{navision_klantnr, klantnaam, score, bron}]
+    klant_kandidaten: list[dict]
 
     # Validation
     alle_artikelen_gematcht: bool

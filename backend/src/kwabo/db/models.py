@@ -118,7 +118,7 @@ class ArtikelMatchingHistory(SQLModel, table=True):
     klant_artikelnr: Optional[str] = Field(default=None, index=True)
     klant_omschrijving: Optional[str] = None
     kwabo_artikelnr: str
-    match_methode: str  # 'exact', 'kruisverwijzing', 'klantenkaart', 'history', 'fuzzy', 'manual'
+    match_methode: str  # 'exact', 'exact_klantnr', 'kruisverwijzing', 'klantenkaart', 'history', 'fuzzy', 'handmatig', 'manual'
     was_correctie: bool = False
     order_datum: Optional[date] = None
     created_at: datetime = Field(default_factory=utcnow)
@@ -132,6 +132,10 @@ class Artikelkaart(SQLModel, table=True):
     kwabo_artikelnr: str = Field(primary_key=True)
     naam: str
     basis_eenheid: str  # NAV UOM code, e.g. "STUK", "ROL"
+    # NAV Item "Sales_Unit_of_Measure" — de eenheid waarnaar NAV een nieuwe
+    # orderregel DEFAULT (bewezen in order #716: regel kwam op PALLET33,
+    # niet op de base-eenheid). Sturend voor de Branch-A-eenheidskeuze.
+    verkoop_eenheid: Optional[str] = Field(default=None)
     mixprijzen: bool = Field(default=False, nullable=False)
     palletable: Optional[bool] = Field(default=None)  # nullable, computed/learned
     created_at: datetime = Field(default_factory=utcnow)

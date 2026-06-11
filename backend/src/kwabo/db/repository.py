@@ -83,6 +83,29 @@ class KlantRepo:
             return matches[0]
         return None
 
+    def by_domain_alias(self, email: str) -> list[Klantenkaart]:
+        """Klanten met een domein-alias ("@pontmeyer.nl"-rij in
+        klant_email_aliases) dat het domein van `email` dekt. Bewust een
+        aparte stap náást by_email: een domein kan bij een franchise
+        meerdere vestigingen dekken, dus de caller bepaalt confidence en
+        review — nooit de vlagvrije conf 1.0 van een exacte match."""
+        if not email or "@" not in email:
+            return []
+        domain = "@" + email.rsplit("@", 1)[1].strip().lower()
+        aliases = self.s.exec(
+            select(KlantEmailAlias).where(func.lower(KlantEmailAlias.email) == domain)
+        ).all()
+        out: list[Klantenkaart] = []
+        seen: set[str] = set()
+        for a in aliases:
+            if a.klant_nr in seen:
+                continue
+            seen.add(a.klant_nr)
+            k = self.by_nav_nr(a.klant_nr)
+            if k:
+                out.append(k)
+        return out
+
     def list_aliases(self, nav_klantnr: str) -> list[KlantEmailAlias]:
         return list(
             self.s.exec(
@@ -379,7 +402,7 @@ class ArtikelkaartRepo:
             # NAV-mirror semantics: unconditional overwrite. If NAV reports
             # False / None, that is the new truth — do NOT preserve prior
             # values the way KlantRepo does for user-edited fields.
-            for field in ("naam", "basis_eenheid", "mixprijzen", "palletable"):
+            for field in ("naam", "basis_eenheid", "verkoop_eenheid", "mixprijzen", "palletable"):
                 setattr(existing, field, getattr(record, field))
             existing.updated_at = utcnow()
             self.s.add(existing)

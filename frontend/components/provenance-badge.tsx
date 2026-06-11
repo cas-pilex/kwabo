@@ -12,6 +12,7 @@ const ICON: Record<string, string> = {
   manual: "✏️",
   default: "•",
   missing: "⚠️",
+  controleer: "👁",
   navision: "🏷",
 };
 
@@ -25,6 +26,7 @@ const LABEL: Record<string, string> = {
   manual: "Handmatig",
   default: "Default",
   missing: "ONTBREEKT",
+  controleer: "CONTROLEER",
   navision: "Navision",
 };
 
@@ -39,6 +41,7 @@ const TONE: Record<string, string> = {
   manual: "bg-sky-50 text-sky-800 ring-sky-300",
   default: "bg-slate-50 text-slate-700 ring-slate-200",
   missing: "bg-rose-100 text-rose-900 ring-rose-300",
+  controleer: "bg-amber-100 text-amber-900 ring-amber-400",
 };
 
 export function ProvenanceBadge({
@@ -51,7 +54,10 @@ export function ProvenanceBadge({
   showLabel?: boolean;
 }) {
   if (!meta) return null;
-  const src = meta.needs_review ? "missing" : meta.source;
+  // Vlag mét ingevulde waarde = zachte "controleer"-staat (3b: naam-/fuzzy-
+  // matches die de operator moet bevestigen); zonder waarde ontbreekt het veld echt.
+  const heeftWaarde = meta.value != null && meta.value !== "";
+  const src = meta.needs_review ? (heeftWaarde ? "controleer" : "missing") : meta.source;
   const icon = ICON[src] ?? "?";
   const label = LABEL[src] ?? src;
   const conf = meta.confidence != null ? Math.round(meta.confidence * 100) : null;

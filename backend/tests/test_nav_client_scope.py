@@ -102,6 +102,119 @@ async def test_aclose_failure_does_not_break_pipeline(monkeypatch):
         pass
 
 
+# ---------- lek-gaatjes buiten de pipeline-scope (Fase 4 A-rest) ----------
+
+
+class _CountingFake:
+    """Telt builds + acloses. Bewust géén Nav2018ODataClient, zodat de
+    isinstance-guard in _run_sync_job het faalpad raakt."""
+
+    def __init__(self, counters: dict) -> None:
+        counters["builds"] += 1
+        self._counters = counters
+
+    async def aclose(self) -> None:
+        self._counters["acloses"] += 1
+
+    async def search_items(self, beschrijving=None):
+        return [{"number": "111", "displayName": "Fake artikel"}]
+
+
+def _job_entry(job_id: str, selected: list[str]) -> dict:
+    return {
+        "job_id": job_id, "state": "running", "started_at": 0.0,
+        "finished_at": None,
+        "progress": {"selected": selected, "dry_run": True, "current": None},
+        "result": None, "error": None,
+    }
+
+
+@pytest.mark.asyncio
+async def test_admin_sync_job_closes_client_on_failure(monkeypatch):
+    """Het faalpad is het belangrijkste lek: een sync-job die crasht moet de
+    client alsnog sluiten. Vóór de fix: client = get_navision_client() zonder
+    scope of aclose ⇒ open sockets per (mislukte) sync-run."""
+    from kwabo.api import admin
+
+    counters = {"builds": 0, "acloses": 0}
+    monkeypatch.setattr(
+        navision_api, "_build_navision_client", lambda: _CountingFake(counters)
+    )
+    job_id = "test-leak-faalpad"
+    admin._JOBS[job_id] = _job_entry(job_id, ["customers"])
+    try:
+        await admin._run_sync_job(job_id, {"customers"}, dry_run=True)
+        job = admin._JOBS[job_id]
+        assert job["state"] == "failed"  # isinstance-guard vuurt op de fake
+        assert counters == {"builds": 1, "acloses": 1}
+    finally:
+        admin._JOBS.pop(job_id, None)
+
+
+@pytest.mark.asyncio
+async def test_admin_sync_job_closes_client_happy_path(monkeypatch):
+    """Happy path: precies één client gebouwd én gesloten over de hele job."""
+    from kwabo.api import admin
+
+    counters = {"builds": 0, "acloses": 0}
+    monkeypatch.setattr(
+        navision_api, "_build_navision_client", lambda: _CountingFake(counters)
+    )
+    # Laat de fake door de isinstance-guard en stub de zware sync-internals —
+    # deze test gaat puur over de client-lifecycle.
+    monkeypatch.setattr(admin, "Nav2018ODataClient", _CountingFake)
+
+    async def _stub_sync(client, session, dry_run):
+        return admin.SyncReport(
+            domain="customers", fetched=0, upserted=0, skipped=0,
+            skipped_reasons={}, sample_keys=[],
+        )
+
+    class _StubCounts:
+        def model_dump(self):
+            return {}
+
+    monkeypatch.setattr(admin, "_sync_customers", _stub_sync)
+    monkeypatch.setattr(admin, "db_counts", lambda: _StubCounts())
+
+    job_id = "test-leak-happy"
+    admin._JOBS[job_id] = _job_entry(job_id, ["customers"])
+    try:
+        await admin._run_sync_job(job_id, {"customers"}, dry_run=True)
+        job = admin._JOBS[job_id]
+        assert job["state"] == "done", job["error"]
+        assert counters == {"builds": 1, "acloses": 1}
+    finally:
+        admin._JOBS.pop(job_id, None)
+
+
+@pytest.mark.asyncio
+async def test_artikelen_fallback_closes_client(monkeypatch, tmp_path):
+    """Lege mirror ⇒ live-NAV-fallback in /api/artikelen/search. Die moet de
+    client sluiten; vóór de fix lekte er één client per search-request."""
+    from sqlmodel import SQLModel, create_engine
+
+    from kwabo.api import artikelen
+    from kwabo.db import session as db_session_mod
+
+    eng = create_engine(
+        f"sqlite:///{tmp_path / 'art.db'}",
+        connect_args={"check_same_thread": False},
+    )
+    SQLModel.metadata.create_all(eng)  # lege mirror: geen Artikelkaart-rijen
+    monkeypatch.setattr(db_session_mod, "engine", eng)
+
+    counters = {"builds": 0, "acloses": 0}
+    monkeypatch.setattr(
+        navision_api, "_build_navision_client", lambda: _CountingFake(counters)
+    )
+
+    out = await artikelen.search(q="iets")
+
+    assert [o.number for o in out] == ["111"]
+    assert counters == {"builds": 1, "acloses": 1}
+
+
 # ---------- match_articles mirror-first ----------
 
 

@@ -57,6 +57,10 @@ class MailboxStatus(BaseModel):
     last_poll_partial: Optional[bool] = None
     last_poll_error_msg: Optional[str] = None
     last_token_refresh_at: Optional[datetime] = None
+    # Fase 5 (C): cumulatieve tick-tellers sinds proces-start — bewijst dat
+    # de poller tikt, óók wanneer elke tick 0 mails oplevert.
+    ticks_total: int = 0
+    ticks_failed: int = 0
 
 
 class OAuthConfigIn(BaseModel):
@@ -121,6 +125,8 @@ def _poll_observability_fields() -> dict:
         "last_poll_partial": snap.get("last_poll_partial"),
         "last_poll_error_msg": snap.get("last_poll_error_msg"),
         "last_token_refresh_at": snap.get("last_token_refresh_at"),
+        "ticks_total": int(snap.get("ticks_total") or 0),
+        "ticks_failed": int(snap.get("ticks_failed") or 0),
     }
 
 

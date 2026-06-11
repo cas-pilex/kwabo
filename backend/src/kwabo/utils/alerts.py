@@ -20,7 +20,10 @@ Gebruik:
 from __future__ import annotations
 
 import os
+import threading
 import time
+from collections import deque
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
@@ -29,6 +32,21 @@ from kwabo.utils.logging import log
 
 _THROTTLE_SECONDS = 300  # max 1 alert per (event, severity) per 5 min
 _recent: dict[tuple[str, str], float] = {}
+
+# Fase 5 (B): in-memory ring buffer als PRIMAIR kanaal — élke alert() landt
+# hier, óók gethrottlede en óók zonder Slack-webhook. /api/diagnostics/
+# health-summary leest hem uit. Bewust in-memory (herstart wist hem): dit is
+# observability, geen audit-log. Lock omdat alert() ook vanuit threads
+# (sync-job, push-pad) gecalld wordt.
+_RECENT_ALERTS: deque[dict[str, Any]] = deque(maxlen=200)
+_BUFFER_LOCK = threading.Lock()
+
+
+def recent_alerts(n: int = 50) -> list[dict[str, Any]]:
+    """Laatste n alert-events, nieuwste eerst."""
+    with _BUFFER_LOCK:
+        items = list(_RECENT_ALERTS)
+    return list(reversed(items[-n:]))
 
 
 def _slack_webhook() -> str:
@@ -67,6 +85,15 @@ def alert(event: str, severity: str, payload: dict[str, Any] | None = None) -> N
     crash loop doesn't flood the channel.
     """
     payload = payload or {}
+    # Registreer VÓÓR de throttle/webhook-beslissing — de ring buffer is het
+    # primaire kanaal; de throttle beschermt alleen het Slack-channel.
+    with _BUFFER_LOCK:
+        _RECENT_ALERTS.append({
+            "event": event,
+            "severity": severity,
+            "payload": dict(payload),
+            "ts": datetime.now(timezone.utc).isoformat(),
+        })
     key = (event, severity)
     if not _throttle_allows(key):
         return
@@ -97,3 +124,10 @@ def alert(event: str, severity: str, payload: dict[str, Any] | None = None) -> N
 def reset_throttle_for_tests() -> None:
     """Test-only: clear the throttle window so each test starts fresh."""
     _recent.clear()
+
+
+def reset_alerts_for_tests() -> None:
+    """Test-only: clear throttle + ring buffer."""
+    _recent.clear()
+    with _BUFFER_LOCK:
+        _RECENT_ALERTS.clear()

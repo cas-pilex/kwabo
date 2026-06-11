@@ -38,13 +38,23 @@ class NavisionPreviewResponse(BaseModel):
     operations: list[dict]
     expected_post_count: int
     expected_patch_count: int
-    status: str          # "ready" | "missing" | "no_customer" | "no_matched_articles"
+    status: str          # "ready" | "missing" | "no_customer" | "no_matched_articles" | "compose_error"
     missing_count: int
+    # Leesbare NL-reviewer-tekst die uitlegt WAAROM er 0 (of te weinig)
+    # operaties zijn — Nico's "0 operaties zonder uitleg". None bij "ready".
+    reason: Optional[str] = None
 
 
 # ---------- helpers ----------
 
 PATH_RE = re.compile(r"([a-zA-Z_]\w*)|\[(\d+)\]")
+REGEL_MATCHED_RE = re.compile(r"orderregels\[(\d+)\]\.artikelnummer_kwabo_matched")
+# Bronvelden waaruit de pipeline per regel afgeleide velden berekent
+# (Branch A: verkoop_uom_gekozen/verkoop_aantal; mix: mix_uom_gekozen/
+# mix_aantal). Een patch hierop maakt die afgeleiden stale (Fase 6 V1).
+REGEL_BRONVELD_RE = re.compile(
+    r"orderregels\[(\d+)\]\.(hoeveelheid|eenheid|artikelnummer_kwabo_matched)"
+)
 
 
 def _split_path(path: str) -> list[Any]:
@@ -146,17 +156,36 @@ def navision_preview(order_id: int) -> NavisionPreviewResponse:
     if not operations:
         try:
             operations = list(compose_navision_operations(state))
-        except ValueError as exc:
-            # Compose refuses header-only orders (no matched articles).
-            # Surface as an explicit status instead of bubbling up a 500.
+        except Exception as exc:  # noqa: BLE001
+            # Compose weigert b.v. header-only orders (no matched articles) of
+            # ongeldige invoer. Elke fout wordt een expliciete status + reden
+            # voor de reviewer i.p.v. een 500 (Fase 5 A).
             compose_error = str(exc)
             operations = []
+    reason: str | None = None
     if compose_error:
-        status = "no_matched_articles"
+        if "no matched articles" in compose_error.lower():
+            status = "no_matched_articles"
+            reason = (
+                "Geen artikelregel gematcht — vul de Kwabo-artikelnummers aan "
+                "(handmatig of via de kandidaten) en probeer opnieuw."
+            )
+        else:
+            status = "compose_error"
+            reason = f"Order samenstellen mislukt: {compose_error}"
     elif not klant:
         status = "no_customer"
+        reason = (
+            "Geen klant gematcht — kies eerst een klant "
+            "(kandidaat of handmatig klantnummer)."
+        )
     elif missing:
         status = "missing"
+        n = len(missing)
+        reason = (
+            f"{n} veld vereist aanvulling vóór push." if n == 1
+            else f"{n} velden vereisen aanvulling vóór push."
+        )
     else:
         status = "ready"
     post_count = sum(1 for op in operations if op.get("op") == "POST")
@@ -167,14 +196,19 @@ def navision_preview(order_id: int) -> NavisionPreviewResponse:
         expected_patch_count=patch_count,
         status=status,
         missing_count=len(missing),
+        reason=reason,
     )
 
 
 @router.patch("/{order_id}/patch-field")
 def patch_field(order_id: int, body: PatchFieldBody) -> dict:
     state, _ = _load(order_id)
-    # Special-case top-level fields with klant_match shorthand
-    if body.path == "klant_match":
+    # Special-case top-level fields with klant_match shorthand. Het sub-pad
+    # klant_match.navision_klantnr is semantisch dezelfde actie (reviewer zet
+    # een klantnummer) en moet dezelfde verrijking + review-clear krijgen —
+    # anders blijft _meta.klant_match.needs_review True staan en blijft de
+    # rode badge na een handmatige fix zichtbaar (M1, Van Dongen-case).
+    if body.path in ("klant_match", "klant_match.navision_klantnr"):
         kn = body.value if isinstance(body.value, str) else (body.value or {}).get("navision_klantnr")
         # Verrijk met de NAAM uit de klantenkaart zodat de reviewer een naam
         # ziet i.p.v. alleen een nummer. Lukt de lookup niet (klant niet in de
@@ -182,6 +216,7 @@ def patch_field(order_id: int, body: PatchFieldBody) -> dict:
         # anders leeg (de UI toont dan het nummer).
         prev = state.get("klant_match") or {}
         naam = ""
+        k = None
         if kn:
             with Session(db_session.engine) as s:
                 k = KlantRepo(s).by_nav_nr(kn)
@@ -194,6 +229,15 @@ def patch_field(order_id: int, body: PatchFieldBody) -> dict:
             "match_confidence": 1.0,
             "match_bron": "manual",
         }
+        # Fase 6 (V2/V8): 4+/krediet-context meenemen zoals match_customer
+        # dat doet — een handmatige keuze of bevestiging mag de badges en
+        # de kredietcheck niet wegvagen.
+        if k is not None:
+            state["klant_match"].update({
+                "is_4plus": k.is_4plus,
+                "kredietlimiet": k.kredietlimiet,
+                "betalingsconditie": k.betalingsconditie,
+            })
         meta = dict(state.get("_meta") or {})
         meta["klant_match"] = {
             "value": kn, "source": "manual", "source_detail": "dashboard",
@@ -214,6 +258,62 @@ def patch_field(order_id: int, body: PatchFieldBody) -> dict:
         except Exception:  # noqa: BLE001
             pass
 
+    # M1 (Fase 2): een handmatige artikel-match moet plakken. De generieke
+    # meta-update hierboven dekt het matched-veld, maar laat de regel zelf op
+    # match_methode="manual"/confidence 0.0 staan en wist de raw-extract-flag
+    # (orderregels[i].artikelnummer_kwabo) niet — terwijl match_articles dat
+    # bij een confident automatische match wél doet. Gevolg was een order die
+    # eeuwig "ONTBREEKT" toonde na een correcte handmatige fix (#721).
+    m = REGEL_MATCHED_RE.fullmatch(body.path)
+    if m:
+        i = int(m.group(1))
+        regels = state.get("orderregels") or []
+        if i < len(regels) and isinstance(regels[i], dict):
+            heeft_waarde = bool(body.value)
+            regels[i]["match_methode"] = "handmatig" if heeft_waarde else "manual"
+            regels[i]["match_confidence"] = 1.0 if heeft_waarde else 0.0
+            meta = state.setdefault("_meta", {})
+            regels_meta = meta.setdefault("orderregels", [])
+            while len(regels_meta) <= i:
+                regels_meta.append({})
+            rm = regels_meta[i] if isinstance(regels_meta[i], dict) else {}
+            rm["artikelnummer_kwabo_matched"] = {
+                "value": body.value, "source": "manual",
+                "source_detail": f"reviewer:{body.reviewer or 'dashboard'}",
+                "confidence": 1.0 if heeft_waarde else 0.0,
+                # Leegmaken = de regel is wéér ongematcht en moet terug in
+                # review (grondwet 5) — de generieke patch-meta zou hier
+                # needs_review=False zetten.
+                "needs_review": not heeft_waarde,
+            }
+            if heeft_waarde:
+                raw = rm.get("artikelnummer_kwabo")
+                if isinstance(raw, dict):
+                    raw["needs_review"] = False
+                    raw["source_detail"] = (
+                        f"{raw.get('source_detail') or ''} | cleared by manual match"
+                    ).strip(" |")
+            regels_meta[i] = rm
+
+    # Fase 6 (V1): de composer geeft mix_*/verkoop_* voorrang boven
+    # hoeveelheid/eenheid. Blijven die afgeleiden na een bronveld-patch
+    # staan, dan toont de UI de correctie maar pusht NAV de oude waarde
+    # (#716-foutklasse). Daarom: afgeleiden wissen; de fallback-keten in
+    # _emit_line_ops pakt dan de letterlijke reviewer-waarden. Bij een
+    # artikel-wissel zijn ook de mix-kandidaten en de per-artikel
+    # geresolvede default-eenheid van het oude artikel.
+    mb = REGEL_BRONVELD_RE.fullmatch(body.path)
+    if mb:
+        i = int(mb.group(1))
+        regels = state.get("orderregels") or []
+        if i < len(regels) and isinstance(regels[i], dict):
+            stale = ["verkoop_uom_gekozen", "verkoop_aantal",
+                     "mix_uom_gekozen", "mix_aantal"]
+            if mb.group(2) == "artikelnummer_kwabo_matched":
+                stale += ["mix_uom_kandidaat", "eenheid_default"]
+            for veld in stale:
+                regels[i].pop(veld, None)
+
     needs = _all_needs_review_paths(state)
     state["needs_review_fields"] = needs
     state["needs_review_count"] = len(needs)
@@ -232,10 +332,15 @@ def patch_field(order_id: int, body: PatchFieldBody) -> dict:
     extra = {}
     if body.path.startswith("orderregels[") and body.path.endswith(".artikelnummer_kwabo_matched"):
         regels = state.get("orderregels") or []
-        extra["alle_artikelen_gematcht"] = bool(regels) and all(
+        alle_gematcht = bool(regels) and all(
             r.get("artikelnummer_kwabo_matched") for r in regels
         )
-    if body.path == "klant_match":
+        # Zowel de OrderLog-kolom (lijstweergave) als de state-JSON (de
+        # review-UI rendert uit order_state) — alleen de kolom bijwerken
+        # liet de UI op "niet alles gematcht" staan na een handmatige fix.
+        extra["alle_artikelen_gematcht"] = alle_gematcht
+        state["alle_artikelen_gematcht"] = alle_gematcht
+    if body.path in ("klant_match", "klant_match.navision_klantnr"):
         extra["klant_nr"] = (state.get("klant_match") or {}).get("navision_klantnr")
 
     _save(order_id, state, **extra)

@@ -82,6 +82,8 @@ export type NavPreviewResponse = {
   expected_patch_count: number;
   status: string;
   missing_count: number;
+  /** Leesbare NL-uitleg waarom er 0 (of te weinig) operaties zijn; null bij "ready". */
+  reason?: string | null;
 };
 
 export type ShipToKandidaat = {
@@ -93,6 +95,14 @@ export type ShipToKandidaat = {
   plaats: string;
   land: string;
   is_default: boolean;
+};
+
+// Fase 2 K3: kandidaat uit de klant-naam-fallback (of NAV-zoektocht)
+export type KlantKandidaat = {
+  navision_klantnr: string;
+  klantnaam: string;
+  score: number | null;
+  bron: string;
 };
 
 export type EuropalletRegel = {

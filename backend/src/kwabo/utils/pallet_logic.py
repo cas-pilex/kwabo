@@ -120,6 +120,20 @@ def compute_europallet(state: dict, *, repo, uom_repo=None) -> Optional[dict]:
                 pass
             continue
 
+        # Branch A (E1/E2) koos een verkoopeenheid + omgerekend aantal. Is die
+        # eenheid een pallet (PAL-prefix, zelfde signaal als hieronder), tel
+        # het aantal dan direct — de UoM-route eronder zou bij artikelen met
+        # meerdere pallet-varianten (238601: PALLET30/33/35/42) ambigu zijn
+        # en níéts tellen (faalgeval #716: geen europallet-regel).
+        verkoop_uom = (regel.get("verkoop_uom_gekozen") or "").strip().upper()
+        verkoop_aantal = regel.get("verkoop_aantal")
+        if verkoop_uom.startswith("PAL") and verkoop_aantal:
+            try:
+                total += float(verkoop_aantal)
+            except (TypeError, ValueError):
+                pass
+            continue
+
         # match_articles preserves the customer's ORIGINALLY ordered unit in
         # `eenheid_origineel` (where PAL/STUK/ROL shows up), falling back to
         # the NAV-facing `eenheid` for older state.

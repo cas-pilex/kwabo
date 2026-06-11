@@ -240,6 +240,32 @@ def _basename(s: str) -> str:
     return (s or "").rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
 
 
+def _zip_path_parts(name: str) -> tuple[str, str] | None:
+    """Interpreteer "outer.zip:inner.ext" — alleen wanneer het deel vóór de
+    ':' echt een .zip-naam is. Gewone bijlagenamen mogen een ':' bevatten
+    (prod #706, PPG: "New PO Output: ... - Vendor: ....pdf"); die zijn géén
+    zip-pad en moeten als directe bijlagenaam behandeld worden."""
+    if ":" not in name:
+        return None
+    outer, inner = name.split(":", 1)
+    if outer.strip().lower().endswith(".zip"):
+        return outer, inner
+    return None
+
+
+def _part_content_type(part, fname: str) -> str:
+    """Content-type van een MIME-part; een generieke application/octet-stream
+    (veel mail-clients labelen PDF's zo) wordt via de bestandsextensie
+    herleid zodat 'Open in nieuw tabblad' een PDF echt inline rendert. De
+    SAFE_INLINE-allowlist in _safe_response_headers blijft de poortwachter
+    voor wat daadwerkelijk inline mag."""
+    ctype = (part.get_content_type() or "").lower()
+    if not ctype or ctype == "application/octet-stream":
+        guessed, _ = mimetypes.guess_type(fname)
+        return guessed or "application/octet-stream"
+    return ctype
+
+
 def _extract_attachment_bytes(raw_eml: bytes, wanted_name: str) -> tuple[bytes, str] | None:
     """Walk the .eml bytes and return (bytes, content_type) matching `wanted_name`.
 
@@ -253,15 +279,17 @@ def _extract_attachment_bytes(raw_eml: bytes, wanted_name: str) -> tuple[bytes, 
     attachment of the requested extension — that single attachment. This
     fixes the prod 404 "Bijlage ... niet gevonden" where the stored name and
     the MIME part name differed only by encoding/whitespace.
+
+    A ':' in the name is only treated as a ZIP path when the part before it
+    actually ends in ".zip" — plain filenames may contain ':' (prod #706,
+    PPG "New PO Output: ... - Vendor: ....pdf") and exact match always runs
+    first. The .eml itself is resolved by the caller (Supabase Storage →
+    legacy disk → source_path → Graph re-fetch); there is no separate
+    per-attachment storage copy.
     """
     from kwabo.utils.logging import log
 
     msg = email.message_from_bytes(raw_eml, policy=email.policy.default)
-
-    zip_outer = None
-    zip_inner = None
-    if ":" in wanted_name:
-        zip_outer, zip_inner = wanted_name.split(":", 1)
 
     # Collect all attachment parts once (filename + decoded bytes).
     parts: list[tuple[str, "email.message.Message", bytes]] = []
@@ -277,8 +305,18 @@ def _extract_attachment_bytes(raw_eml: bytes, wanted_name: str) -> tuple[bytes, 
             continue
         parts.append((fname, part, content))
 
+    # 0) exact match op de volledige naam — vóór elke zip-interpretatie,
+    #    zodat een ':' in een gewone bijlagenaam (#706) nooit als zip-pad
+    #    gelezen wordt.
+    for fname, part, content in parts:
+        if fname == wanted_name:
+            return content, _part_content_type(part, fname)
+
+    zp = _zip_path_parts(wanted_name)
+
     # --- ZIP inner attachment (name "archive.zip:inner.pdf") ---------------
-    if zip_outer is not None and zip_inner is not None:
+    if zp is not None:
+        zip_outer, zip_inner = zp
         want_outer = _norm_name(zip_outer)
         want_inner = _norm_name(zip_inner)
         for fname, _part, content in parts:
@@ -311,18 +349,14 @@ def _extract_attachment_bytes(raw_eml: bytes, wanted_name: str) -> tuple[bytes, 
         )
         return None
 
-    # --- Direct attachment -------------------------------------------------
-    # 1) exact
-    for fname, part, content in parts:
-        if fname == wanted_name:
-            return content, part.get_content_type() or "application/octet-stream"
-    # 2) normalised / basename
+    # --- Direct attachment (exact match al geprobeerd in stap 0) -----------
+    # 1) normalised / basename
     want_norm = _norm_name(wanted_name)
     want_base_norm = _norm_name(_basename(wanted_name))
     for fname, part, content in parts:
         if _norm_name(fname) == want_norm or _norm_name(_basename(fname)) == want_base_norm:
-            return content, part.get_content_type() or "application/octet-stream"
-    # 3) single-attachment-of-this-extension fallback
+            return content, _part_content_type(part, fname)
+    # 2) single-attachment-of-this-extension fallback
     want_ext = os.path.splitext(want_base_norm)[1]
     ext_matches = [
         (fname, part, content)
@@ -334,7 +368,7 @@ def _extract_attachment_bytes(raw_eml: bytes, wanted_name: str) -> tuple[bytes, 
         log.warning(
             "attachment_single_fallback_match", wanted=wanted_name, matched=fname
         )
-        return content, part.get_content_type() or "application/octet-stream"
+        return content, _part_content_type(part, fname)
 
     log.warning(
         "attachment_not_found",
@@ -687,7 +721,10 @@ def download_attachment(
     # Plus: non-safe-inline content-types worden force-downloaded (zie
     # _safe_response_headers — defense-in-depth tegen stored-XSS via
     # reviewer-uploaded HTML/SVG).
-    display_name = naam.split(":")[-1] if ":" in naam else naam
+    # Alleen bij een echt zip-pad ("archive.zip:inner.pdf") tonen we de
+    # inner-naam; een ':' in een gewone bijlagenaam blijft volledig staan.
+    zp = _zip_path_parts(naam)
+    display_name = zp[1].strip() if zp else naam
     _, headers = _safe_response_headers(ctype, disposition, display_name)
     return Response(
         content=data,

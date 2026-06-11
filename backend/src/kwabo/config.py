@@ -102,6 +102,15 @@ class Settings(BaseSettings):
     nav_page_ship_to: str = "PLX_ShipToAddress"
     nav_page_item_uom: str = "PLX_ItemUnitOfMeasure"
     nav_verify_ssl: bool = True
+    # Fase 4 (B2): retry/backoff voor idempotente NAV-GETs (429/5xx/transport).
+    # Nooit toegepast op POST/PATCH — die zijn niet idempotent (dubbele orders).
+    nav_get_retry_attempts: int = 3
+    nav_get_retry_base_delay_s: float = 0.5
+    nav_get_retry_max_delay_s: float = 30.0
+    # Fase 4 (B1, audit §12.D.1): max parallelle regel-matches in
+    # match_articles. 1 = serieel (oud gedrag). Niet >~10 zetten zonder de
+    # DB-pool te herzien (5 taken × 1 connectie past in pool 5 + overflow 10).
+    match_concurrency: int = 5
 
     @property
     def inbox_path(self) -> Path:
@@ -121,3 +130,47 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+# Sentinel: the in-repo dev default for jwt_secret. If this value survives into
+# a Postgres (production) deployment, admin session tokens are forgeable by
+# anyone who reads this public repository.
+DEV_JWT_SECRET_DEFAULT = "dev-only-change-me-in-prod"
+
+
+def validate_production_security(
+    *,
+    database_url: str | None = None,
+    admin_password: str | None = None,
+    jwt_secret: str | None = None,
+) -> None:
+    """Fail closed on an insecure production (Postgres) deployment.
+
+    SQLite (dev/CI/docker) is never blocked. On Postgres we refuse to boot when
+    the API would be trivially compromised:
+      * ADMIN_PASSWORD empty      → require_admin() short-circuits → API fully open.
+      * JWT_SECRET == dev default → session tokens forgeable with a public secret.
+
+    A loud failed deploy is far safer than a silently-open or forgeable prod API.
+    Args default to the live settings; they're injectable for testing.
+    """
+    db = settings.database_url if database_url is None else database_url
+    pw = settings.admin_password if admin_password is None else admin_password
+    secret = settings.jwt_secret if jwt_secret is None else jwt_secret
+    if not (db or "").startswith(("postgresql", "postgres")):
+        return
+    problems: list[str] = []
+    if not pw:
+        problems.append(
+            "ADMIN_PASSWORD is leeg — de admin-gate staat dan UIT en de hele API "
+            "is publiek. Zet ADMIN_PASSWORD in de productie-env (Railway)."
+        )
+    if not secret or secret == DEV_JWT_SECRET_DEFAULT:
+        problems.append(
+            "JWT_SECRET staat op de publieke dev-default — sessietokens zijn te "
+            "vervalsen. Zet een uniek JWT_SECRET in de productie-env (Railway)."
+        )
+    if problems:
+        raise RuntimeError(
+            "Onveilige productie-config geweigerd:\n- " + "\n- ".join(problems)
+        )

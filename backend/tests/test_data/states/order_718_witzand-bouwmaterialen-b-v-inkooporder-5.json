@@ -1,0 +1,279 @@
+{
+  "order_id": 718,
+  "email_from": "inkoop@witzand.nl",
+  "email_subject": "Witzand Bouwmaterialen B.V. Inkooporder- 50040984",
+  "status": "review",
+  "order_state": {
+    "email_id": "AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAAVY9pGAAA=",
+    "email_from": "inkoop@witzand.nl",
+    "email_subject": "Witzand Bouwmaterialen B.V. Inkooporder- 50040984",
+    "email_body": "Geachte Heer, Mevrouw,\r\n\r\nBijgaand ontvangt u de inkooporder van Witzand Bouwmaterialen B.V.\r\nWij vragen u altijd een orderbevestiging te sturen naar inkoop@witzand.nl.\r\nGelieve ons inkoopordernummer te vermelden op alle correspondentie.\r\n\r\nMet vriendelijke groet,\r\nWitzand Bouwmaterialen B.V.",
+    "email_date": "Tue, 09 Jun 2026 13:24:19 +0200",
+    "bijlagen": [
+      {
+        "naam": "Witzand Bouwmaterialen B.V. Inkooporder- 50040984.pdf",
+        "type": "pdf",
+        "inhoud_tekst": "--- PAGE 1 ---\nCrediteur Behandeld door Orderdatum Ordernr.\n6000515 Joel Hennink 09-06-2026 PN50040984\nUw Contact Uw Referentie Pag.\n. 1\nAantal Product Benodigd op Prijs\n-----------------------------------------------------------------------------------------------\n33 RL Afdekvlies 0,67x37 mt wit met 11-06-2026 21,35/RL\nzelfklevende onderlaag\n5021180003 Uw artikelnr: 238601\n* Graag franco leveren *\nGoederen afleveren bij: Totaal excl. BTW : € 704,55\nVriezenveen Afhaalcenter\nHammerweg 11\n7671 JE Vriezenveen Goederen geleverd aan ons magazijn,\nzullen uitsluitend in ontvangst worden genomen van:\nmaandag t/m vrijdag van 8:00 - 15:00 uur.\nonbekend Na genoemde tijden wordt er niet meer gelost.\nWitzand Bouwmaterialen B.V. IBAN NL90INGB0655476482\nPostbus 633, 7600 AP Almelo BIC INGBNL2A\nT (0546) 559 559 KVK 06049339\ninfo@witzand.nl BTW NL006401314B01\nwww.witzand.nl\nInkooporder Ordernr.\nPN50040984\nAan: Factuur aan:\nKwabo Techniek B.V. Witzand Bouwmaterialen\nJulianaweg 210a Sluiskade N.Z. 36\n1131 DL Volendam 7602 HR Almelo\nNamens Vriezenveen Afhaalcenter\nCrediteur Behandeld door Orderdatum Ordernr.\n6000515 Joel Hennink 09-06-2026 PN50040984\nUw Contact Uw Referentie Pag.\n. 1\nWij verzoeken u deze order te bevestigen.\nZonder vermelding van ordernummer PN50040984 op uw factuur kunnen wij deze niet in behandeling\nnemen. U kunt facturen m.b.t. deze bestelling in PDF formaat versturen naar invoice@witzand.nl\nAantal Product Benodigd op Prijs\n-----------------------------------------------------------------------------------------------\n33 RL Afdekvlies 0,67x37 mt wit met 11-06-2026 21,35/RL\nzelfklevende onderlaag\n5021180003 Uw artikelnr: 238601\n* Graag franco leveren *\nGoederen afleveren bij: Totaal excl. BTW : € 704,55\nVriezenveen Afhaalcenter\nHammerweg 11\n7671 JE Vriezenveen Goederen geleverd aan ons magazijn,\nzullen uitsluitend in ontvangst worden genomen van:\nmaandag t/m vrijdag van 8:00 - 15:00 uur.\nonbekend Na genoemde tijden wordt er niet meer gelost.\nALMELO EIBERGEN ENSCHEDE LICHTENVOORDE RUURLO VRIEZENVEEN\nSluiskade NZ 36 Kiefteweg 2 H. ter Kuilestraat 202 Nobelstraat 17 De Vente 2 Hammerweg 11\n7602 HR Almelo 7151 HT Eibergen 7547 SK Enschede 7131 PZ Lichtenvoorde 7261 ST Ruurlo 7671 JE Vriezenveen"
+      }
+    ],
+    "source_path": "graph://AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAAVY9pGAAA=",
+    "is_order": true,
+    "classificatie_reden": "Inkooporder van Witzand met ordernummer 50040984, bevat artikel met hoeveelheid en prijs in PDF-bijlage",
+    "classificatie_confidence": 1.0,
+    "taal": "NL",
+    "bestelnummer_klant": "PN50040984",
+    "orderdatum": "2026-06-09",
+    "gewenste_leverdatum": "2026-06-11",
+    "afleveradres": {
+      "naam": "Vriezenveen Afhaalcenter",
+      "straat": "Hammerweg 11",
+      "postcode": "7671 JE",
+      "plaats": "Vriezenveen",
+      "land": "NL"
+    },
+    "afleverinstructies": "Graag franco leveren. Goederen geleverd aan ons magazijn, zullen uitsluitend in ontvangst worden genomen van: maandag t/m vrijdag van 8:00 - 15:00 uur. Na genoemde tijden wordt er niet meer gelost.",
+    "orderregels": [
+      {
+        "positie": 1,
+        "artikelnummer_klant": "238601",
+        "artikelnummer_kwabo": "5021180003",
+        "omschrijving": "Afdekvlies 0,67x37 mt wit met zelfklevende onderlaag",
+        "hoeveelheid": 33.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": 21.35,
+        "ean_code": null,
+        "leverdatum_regel": "2026-06-11",
+        "opmerkingen": "Graag franco leveren",
+        "artikelnummer_kwabo_matched": "11190",
+        "match_methode": "fuzzy",
+        "match_confidence": 0.84,
+        "eenheid_origineel": "ROL",
+        "eenheid_default": "STUK",
+        "prijs_validated": null
+      }
+    ],
+    "opmerkingen": "Wij verzoeken u deze order te bevestigen. Zonder vermelding van ordernummer PN50040984 op uw factuur kunnen wij deze niet in behandeling nemen. U kunt facturen m.b.t. deze bestelling in PDF formaat versturen naar invoice@witzand.nl. Namens Vriezenveen Afhaalcenter. Crediteur: 6000515, Behandeld door: Joel Hennink, Uw Contact: onbekend, Uw Referentie: .",
+    "klant_match": null,
+    "alle_artikelen_gematcht": true,
+    "alle_prijzen_valide": true,
+    "validatie_warnings": [
+      "KLANT NIET GEVONDEN: inkoop@witzand.nl. Handmatige selectie nodig.",
+      "⚠ EENHEID CONTROLEREN (regel 1): klant bestelde 'ROL' maar dit is geen geldige eenheid voor artikel 11190 (gebruikt nu standaard 'STUK')."
+    ],
+    "review_status": "pending",
+    "mixprijzen_actief": false,
+    "order_mix_total_pallets": null,
+    "europallet_regel": null,
+    "incoming_document_storage_key": "by_email_id/AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1h-dde568771f73148b.eml",
+    "stappen_log": [
+      {
+        "stap": "intake",
+        "timestamp": "2026-06-09T11:25:47.694442+00:00",
+        "beslissing": "E-mail opgehaald, 1 bijlagen geëxtraheerd",
+        "details": {
+          "bijlage_namen": [
+            "Witzand Bouwmaterialen B.V. Inkooporder- 50040984.pdf"
+          ]
+        }
+      },
+      {
+        "stap": "classify",
+        "timestamp": "2026-06-09T11:25:49.787141+00:00",
+        "beslissing": "ORDER (conf=1.0)",
+        "details": {
+          "is_order": true,
+          "reden": "Inkooporder van Witzand met ordernummer 50040984, bevat artikel met hoeveelheid en prijs in PDF-bijlage",
+          "confidence": 1.0
+        }
+      },
+      {
+        "stap": "extract",
+        "timestamp": "2026-06-09T11:26:08.750594+00:00",
+        "beslissing": "Geëxtraheerd: 1 regels, taal=NL, 0 velden needs_review",
+        "details": {
+          "bestelnummer": "PN50040984",
+          "multi_orders": 1
+        }
+      },
+      {
+        "stap": "match_customer",
+        "timestamp": "2026-06-09T11:26:10.421571+00:00",
+        "beslissing": "Klant NIET gematcht",
+        "details": {
+          "email": "inkoop@witzand.nl"
+        }
+      },
+      {
+        "stap": "match_articles",
+        "timestamp": "2026-06-09T11:26:26.789696+00:00",
+        "beslissing": "1/1 regels gematcht",
+        "details": {
+          "per_methode": {
+            "exact": 0,
+            "kruisverwijzing": 0,
+            "klantenkaart": 0,
+            "history": 0,
+            "fuzzy": 1,
+            "manual": 0
+          }
+        }
+      },
+      {
+        "stap": "validate_prices",
+        "timestamp": "2026-06-09T11:26:27.525437+00:00",
+        "beslissing": "0/1 prijzen ok",
+        "details": {
+          "warnings_new": []
+        }
+      }
+    ],
+    "errors": [],
+    "_meta": {
+      "taal": {
+        "value": "NL",
+        "source": "pdf",
+        "source_detail": "Witzand Bouwmaterialen B.V. Inkooporder- 50040984.pdf p.1",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "bestelnummer_klant": {
+        "value": "PN50040984",
+        "source": "pdf",
+        "source_detail": "Witzand Bouwmaterialen B.V. Inkooporder- 50040984.pdf p.1 header",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "orderdatum": {
+        "value": "2026-06-09",
+        "source": "pdf",
+        "source_detail": "Witzand Bouwmaterialen B.V. Inkooporder- 50040984.pdf p.1 table row 'Orderdatum'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "gewenste_leverdatum": {
+        "value": "2026-06-11",
+        "source": "pdf",
+        "source_detail": "Witzand Bouwmaterialen B.V. Inkooporder- 50040984.pdf p.1 table col 'Benodigd op'",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "afleveradres": {
+        "value": {
+          "naam": "Vriezenveen Afhaalcenter",
+          "straat": "Hammerweg 11",
+          "postcode": "7671 JE",
+          "plaats": "Vriezenveen",
+          "land": "NL"
+        },
+        "source": "pdf",
+        "source_detail": "Witzand Bouwmaterialen B.V. Inkooporder- 50040984.pdf p.1 footer 'Goederen afleveren bij'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "afleverinstructies": {
+        "value": "Graag franco leveren. Goederen geleverd aan ons magazijn, zullen uitsluitend in ontvangst worden genomen van: maandag t/m vrijdag van 8:00 - 15:00 uur. Na genoemde tijden wordt er niet meer gelost.",
+        "source": "pdf",
+        "source_detail": "Witzand Bouwmaterialen B.V. Inkooporder- 50040984.pdf p.1 body and footer",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "opmerkingen": {
+        "value": "Wij verzoeken u deze order te bevestigen. Zonder vermelding van ordernummer PN50040984 op uw factuur kunnen wij deze niet in behandeling nemen. U kunt facturen m.b.t. deze bestelling in PDF formaat versturen naar invoice@witzand.nl. Namens Vriezenveen Afhaalcenter. Crediteur: 6000515, Behandeld door: Joel Hennink, Uw Contact: onbekend, Uw Referentie: .",
+        "source": "pdf",
+        "source_detail": "Witzand Bouwmaterialen B.V. Inkooporder- 50040984.pdf p.1 body",
+        "confidence": 0.9,
+        "needs_review": false
+      },
+      "orderregels": [
+        {
+          "artikelnummer_klant": {
+            "value": "238601",
+            "source": "pdf",
+            "source_detail": "Witzand Bouwmaterialen B.V. Inkooporder- 50040984.pdf p.1 table row 1 'Uw artikelnr'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": "5021180003",
+            "source": "pdf",
+            "source_detail": "Witzand Bouwmaterialen B.V. Inkooporder- 50040984.pdf p.1 table row 1 product code",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "omschrijving": {
+            "value": "Afdekvlies 0,67x37 mt wit met zelfklevende onderlaag",
+            "source": "pdf",
+            "source_detail": "Witzand Bouwmaterialen B.V. Inkooporder- 50040984.pdf p.1 table row 1 'Product'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 33,
+            "source": "pdf",
+            "source_detail": "Witzand Bouwmaterialen B.V. Inkooporder- 50040984.pdf p.1 table row 1 'Aantal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "ROL",
+            "source": "pdf",
+            "source_detail": "Witzand Bouwmaterialen B.V. Inkooporder- 50040984.pdf p.1 table row 1 'Aantal' (RL)",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": 21.35,
+            "source": "pdf",
+            "source_detail": "Witzand Bouwmaterialen B.V. Inkooporder- 50040984.pdf p.1 table row 1 'Prijs' (21,35/RL)",
+            "confidence": 0.99,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": "2026-06-11",
+            "source": "pdf",
+            "source_detail": "Witzand Bouwmaterialen B.V. Inkooporder- 50040984.pdf p.1 table row 1 'Benodigd op'",
+            "confidence": 0.95,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": "Graag franco leveren",
+            "source": "pdf",
+            "source_detail": "Witzand Bouwmaterialen B.V. Inkooporder- 50040984.pdf p.1 table row 1",
+            "confidence": 0.95,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "11190",
+            "source": "fuzzy",
+            "source_detail": "match-methode=fuzzy",
+            "confidence": 0.84,
+            "needs_review": true
+          }
+        }
+      ],
+      "klant_match": {
+        "value": null,
+        "source": "missing",
+        "source_detail": null,
+        "confidence": 0.0,
+        "needs_review": true
+      }
+    },
+    "needs_review_fields": [
+      "klant_match",
+      "orderregels[0].artikelnummer_kwabo_matched",
+      "orderregels[0].eenheid"
+    ],
+    "needs_review_count": 3,
+    "extra_orders_raw": [],
+    "nav_operations": []
+  }
+}

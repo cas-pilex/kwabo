@@ -439,6 +439,32 @@ def test_europallet_uses_artikelnummer_kwabo_key():
     assert line_posts[1]["body"]["itemNumber"] == "98765"
 
 
+def test_europallet_accepts_ui_legacy_key_kwabo_artikelnr():
+    """De review-UI ("+ Voeg europallet toe", EuropalletEditor) schrijft het
+    artikel onder `kwabo_artikelnr`. Een handmatig toegevoegde pallet moet
+    net zo goed in de operations belanden als een pipeline-pallet — anders
+    verdwijnt hij stil tussen dashboard en NAV.
+    """
+    state = _state_with_klant(
+        orderregels=[
+            {
+                "artikelnummer_kwabo_matched": "1515155",
+                "hoeveelheid": 5,
+                "eenheid": "ROL",
+                "eenheid_default": "ROL",
+            }
+        ],
+        europallet_regel={"kwabo_artikelnr": "19820", "hoeveelheid": 2, "eenheid": "STUK"},
+    )
+    ops = compose_navision_operations(state)
+    _assert_all_invariants(ops)
+    line_posts = [
+        o for o in ops if o["op"] == "POST" and o["path"].endswith("/salesOrderLines")
+    ]
+    assert len(line_posts) == 2
+    assert line_posts[1]["body"]["itemNumber"] == "19820"
+
+
 def test_europallet_skipped_when_artikelnr_missing():
     """Empty/missing artikelnummer on europallet_regel → no line emitted."""
     state = _state_with_klant(

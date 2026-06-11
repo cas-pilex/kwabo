@@ -149,6 +149,12 @@ class GraphEmailClient:
         except Exception as e:  # noqa: BLE001
             # Update in-memory token at least, so the current scan can proceed.
             log.warning("graph_token_persist_failed", error=str(e))
+            from kwabo.utils.alerts import alert
+            alert(
+                "graph_token_persist_failed", "high",
+                {"error": str(e)[:300],
+                 "impact": "refresh-token overleeft herstart niet"},
+            )
             tok.access_token = new_access
             tok.refresh_token = new_refresh
             tok.expires_at = new_expires_at
@@ -252,6 +258,13 @@ class GraphEmailClient:
                     "graph_mark_seen_forbidden",
                     message_id=email_id,
                     hint="App registration mist Mail.ReadWrite scope — voeg toe in Azure en re-consent.",
+                )
+                from kwabo.utils.alerts import alert
+                alert(
+                    "graph_mark_seen_forbidden", "high",
+                    {"message_id": email_id,
+                     "impact": "mail blijft unread -> elke tick opnieuw verwerkt",
+                     "fix": "Mail.ReadWrite scope toevoegen in Azure + re-consent"},
                 )
                 return
             if resp.status_code >= 400:

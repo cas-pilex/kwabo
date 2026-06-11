@@ -292,7 +292,16 @@ def _hash(b: bytes) -> str:
 
 
 class FileDropEmailClient:
-    """Reads .eml files from an inbox dir, moves them to processed after `mark_seen`."""
+    """Reads .eml files from an inbox dir, moves them to processed after `mark_seen`.
+
+    Dev/replay-kanaal — productie gebruikt Graph (EMAIL_MODE=graph). mark_seen
+    is herstart-robuust (§14.7): `_path_by_id` is slechts een cache; valt de
+    lookup weg (proces-herstart tussen list_new en mark_seen), dan wordt het
+    pad herleid uit de inbox-bestanden zelf — email_id is sha256(bytes)[:16],
+    dus deterministisch per bestand. Zonder die fallback bleef de mail in de
+    inbox staan en verwerkte élke volgende scan hem opnieuw (duplicaat in
+    order_log; de intake dedupt niet op email_id).
+    """
 
     def __init__(self, inbox: Path | None = None, processed: Path | None = None) -> None:
         self.inbox = inbox or settings.inbox_path
@@ -309,8 +318,20 @@ class FileDropEmailClient:
             out.append(em)
         return out
 
+    def _find_by_id(self, email_id: str) -> Path | None:
+        """Herleid het inbox-pad uit de bestandsinhoud (id = hash van bytes)."""
+        for q in sorted(self.inbox.glob("*.eml")):
+            try:
+                if _hash(q.read_bytes()) == email_id:
+                    return q
+            except OSError:
+                continue
+        return None
+
     def mark_seen(self, email_id: str) -> None:
         p = self._path_by_id.get(email_id)
+        if p is None or not p.exists():
+            p = self._find_by_id(email_id)
         if p and p.exists():
             shutil.move(str(p), str(self.processed / p.name))
 

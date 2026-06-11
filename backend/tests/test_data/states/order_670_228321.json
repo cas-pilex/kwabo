@@ -1,0 +1,46 @@
+{
+  "order_id": 670,
+  "email_from": "Jordin Been <Jordin.Been@pontmeyer.nl>",
+  "email_subject": "228321",
+  "status": "not_order",
+  "order_state": {
+    "email_id": "AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAARKIIJAAA=",
+    "email_from": "Jordin Been <Jordin.Been@pontmeyer.nl>",
+    "email_subject": "228321",
+    "email_body": "Sommige mensen die dit bericht hebben ontvangen, ontvangen niet vaak e-mail van jordin.been@pontmeyer.nl. Ontdek waarom dit belangrijk is<https://aka.ms/LearnAboutSenderIdentification>\r\nGoedemorgen,\r\n\r\nZouden jullie mij de productsheet van bovengenoemd artikelnummer kunnen toesturen?\r\n\r\nDank.\r\n\r\nMet vriendelijke groet,\r\n\r\nJordin Been\r\nVestigingsmanager\r\n(aanwezig op ma, di, do, vr)\r\n[cid:image001.jpg@01DCF594.6E44A670]\r\n\r\n[cid:image002.png@01DCF594.6E44A670]\r\nBereik ons ook via WhatsApp<https://api.whatsapp.com/send?phone=31543520020>\r\nPontMeyer Winterswijk\r\nHandelscentrum 4\r\n7102 AL Winterswijk\r\ntel: 0543-520020\r\nMobiel: 06-22488226\r\nwww.pontmeyer.nl<http://www.pontmeyer.nl/>\r\n\r\n\r\n\r\n\r\n\r\n",
+    "email_date": "Sat, 06 Jun 2026 07:11:18 +0000",
+    "bijlagen": [],
+    "source_path": "graph://AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAARKIIJAAA=",
+    "is_order": false,
+    "classificatie_reden": "Dit is een vraag om een productsheet/informatie, geen bestelling",
+    "classificatie_confidence": 0.95,
+    "orderregels": [],
+    "alle_artikelen_gematcht": false,
+    "alle_prijzen_valide": false,
+    "validatie_warnings": [],
+    "review_status": "pending",
+    "incoming_document_storage_key": "by_email_id/AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1h-4f747e07cdea46ab.eml",
+    "stappen_log": [
+      {
+        "stap": "intake",
+        "timestamp": "2026-06-06T07:14:54.776664+00:00",
+        "beslissing": "E-mail opgehaald, 0 bijlagen geëxtraheerd",
+        "details": {
+          "bijlage_namen": []
+        }
+      },
+      {
+        "stap": "classify",
+        "timestamp": "2026-06-06T07:14:56.887816+00:00",
+        "beslissing": "GEEN_ORDER (conf=0.95)",
+        "details": {
+          "is_order": false,
+          "reden": "Dit is een vraag om een productsheet/informatie, geen bestelling",
+          "confidence": 0.95
+        }
+      }
+    ],
+    "errors": [],
+    "nav_operations": []
+  }
+}

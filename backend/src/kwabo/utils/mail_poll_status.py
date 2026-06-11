@@ -19,6 +19,10 @@ _STATE: dict[str, Any] = {
     "last_poll_partial": None,       # bool or None
     "last_poll_error_msg": None,     # str or None
     "last_token_refresh_at": None,   # datetime or None
+    # Fase 5 (C): cumulatieve tellers sinds proces-start — de heartbeat
+    # bewijst óók bij 0 mails dat de poller daadwerkelijk tikt (§12.B).
+    "ticks_total": 0,
+    "ticks_failed": 0,
 }
 
 
@@ -31,6 +35,9 @@ def record_poll_tick(
     error_msg: Optional[str] = None,
 ) -> None:
     """Called by _mail_poll_loop after each tick (success or exception)."""
+    _STATE["ticks_total"] = int(_STATE.get("ticks_total") or 0) + 1
+    if not success:
+        _STATE["ticks_failed"] = int(_STATE.get("ticks_failed") or 0) + 1
     _STATE["last_poll_at"] = datetime.now(timezone.utc)
     _STATE["last_poll_status"] = "ok" if success else "error"
     _STATE["last_poll_processed"] = processed
@@ -52,4 +59,4 @@ def get_status() -> dict[str, Any]:
 def reset_for_tests() -> None:
     """Test-only: wipe state so assertions start from a clean slate."""
     for k in _STATE:
-        _STATE[k] = None
+        _STATE[k] = 0 if k.startswith("ticks_") else None

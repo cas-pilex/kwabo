@@ -1,6 +1,7 @@
-"""Match articles: exact → kruisverwijzing → klantenkaart → history → fuzzy → manual."""
+"""Match articles: exact → exact_klantnr → kruisverwijzing → klantenkaart → history → fuzzy → manual."""
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 
 from kwabo.utils import utcnow
@@ -8,6 +9,7 @@ from kwabo.utils import utcnow
 from rapidfuzz import fuzz, process
 from sqlmodel import Session
 
+from kwabo.config import settings
 from kwabo.db.repository import ArtikelkaartRepo, ArtikelRepo, KruisverwijzingRepo
 from kwabo.db.session import engine
 from kwabo.graph.state import OrderRegel, OrderState
@@ -15,7 +17,11 @@ from kwabo.integrations.navision_api import NavisionClient, get_navision_client
 from kwabo.utils.logging import log
 
 
-async def _match_single(regel: dict, klant_nr: str | None, nav: NavisionClient) -> OrderRegel:
+async def _match_single(
+    regel: dict, klant_nr: str | None, nav: NavisionClient, s: Session
+) -> OrderRegel:
+    """Match één regel. `s` is de regel-eigen DB-sessie (Fase 4 C2: één
+    sessie per regel i.p.v. drie — de aanroeper opent en sluit hem)."""
     result: OrderRegel = dict(regel)
 
     # 1) Exact Kwabo-nummer vermeld en bestaat in Nav
@@ -26,12 +32,11 @@ async def _match_single(regel: dict, klant_nr: str | None, nav: NavisionClient) 
         # expliciet kwabo-artnr. Cache-miss (artikel niet gesynced, of mirror
         # leeg) valt door naar live NAV zodat nieuwe artikelen niet onnodig
         # de fuzzy-cascade in gaan.
-        with Session(engine) as s:
-            if ArtikelkaartRepo(s).get(kw) is not None:
-                result["artikelnummer_kwabo_matched"] = kw
-                result["match_confidence"] = 1.0
-                result["match_methode"] = "exact"
-                return result
+        if ArtikelkaartRepo(s).get(kw) is not None:
+            result["artikelnummer_kwabo_matched"] = kw
+            result["match_confidence"] = 1.0
+            result["match_methode"] = "exact"
+            return result
         item = await nav.get_item(kw)
         if item:
             result["artikelnummer_kwabo_matched"] = kw
@@ -39,34 +44,59 @@ async def _match_single(regel: dict, klant_nr: str | None, nav: NavisionClient) 
             result["match_methode"] = "exact"
             return result
 
-    if klant_nr and regel.get("artikelnummer_klant"):
-        with Session(engine) as s:
-            # 2) Kruisverwijzing (NAV item-reference table 5717): customer's own
-            # SKU → kwabo_artikelnr. Authoritative customer-supplied mapping,
-            # so it takes precedence over klantenkaart and history.
-            kv_repo = KruisverwijzingRepo(s)
-            kv_kwabo = kv_repo.lookup(klant_nr, regel["artikelnummer_klant"])
-            if kv_kwabo and await nav.get_item(kv_kwabo):
-                result["artikelnummer_kwabo_matched"] = kv_kwabo
-                result["match_confidence"] = 0.95
-                result["match_methode"] = "kruisverwijzing"
-                return result
+    # 1b) Klant-artnr dat zélf een geldig Kwabo-nummer is (Fase 2 A1).
+    # De LLM zet soms het Kwabo-nummer in de klant-kolom (Witzand #718:
+    # "238601" → werd fuzzy 11190 "Vloerschraper") of wisselt beide kolommen
+    # om (#550/#635). Een expliciete mapping voor (klant, nummer) —
+    # kruisverwijzing of klantenkaart — blijft gezaghebbend en wint van de
+    # collisie-interpretatie; A1 vuurt alleen als die er niet zijn.
+    # Bewust alléén de lokale mirror (geen live-NAV-fallback): elke
+    # ongematchte regel zou anders een extra NAV-round-trip kosten, en een
+    # nummer dat niet in de gesyncde mirror staat is vrijwel zeker geen
+    # Kwabo-nummer.
+    ka = regel.get("artikelnummer_klant")
+    if ka:
+        expliciete_mapping = klant_nr is not None and (
+            KruisverwijzingRepo(s).lookup(klant_nr, ka) is not None
+            or ArtikelRepo(s).mapping(klant_nr, ka) is not None
+        )
+        if not expliciete_mapping and ArtikelkaartRepo(s).get(ka) is not None:
+            result["artikelnummer_kwabo_matched"] = ka
+            # Zonder klant_nr is de afwezigheid van een kruisverwijzing
+            # niet verifieerbaar → onder de review-drempel (0.85) zodat de
+            # reviewer de collisie-interpretatie bevestigt; na approve leert
+            # _learn_from_approved de mapping anders ongezien aan (Fase 6 V3).
+            result["match_confidence"] = 1.0 if klant_nr else 0.84
+            result["match_methode"] = "exact_klantnr"
+            return result
 
-            repo = ArtikelRepo(s)
-            # 3) Klantenkaart mapping
-            mapping = repo.mapping(klant_nr, regel["artikelnummer_klant"])
-            if mapping and await nav.get_item(mapping.kwabo_artikelnr):
-                result["artikelnummer_kwabo_matched"] = mapping.kwabo_artikelnr
-                result["match_confidence"] = 0.9
-                result["match_methode"] = "klantenkaart"
-                return result
-            # 4) History
-            hist = repo.best_history(klant_nr, regel["artikelnummer_klant"])
-            if hist and await nav.get_item(hist.kwabo_artikelnr):
-                result["artikelnummer_kwabo_matched"] = hist.kwabo_artikelnr
-                result["match_confidence"] = 0.95
-                result["match_methode"] = "history"
-                return result
+    if klant_nr and regel.get("artikelnummer_klant"):
+        # 2) Kruisverwijzing (NAV item-reference table 5717): customer's own
+        # SKU → kwabo_artikelnr. Authoritative customer-supplied mapping,
+        # so it takes precedence over klantenkaart and history.
+        kv_repo = KruisverwijzingRepo(s)
+        kv_kwabo = kv_repo.lookup(klant_nr, regel["artikelnummer_klant"])
+        if kv_kwabo and await nav.get_item(kv_kwabo):
+            result["artikelnummer_kwabo_matched"] = kv_kwabo
+            result["match_confidence"] = 0.95
+            result["match_methode"] = "kruisverwijzing"
+            return result
+
+        repo = ArtikelRepo(s)
+        # 3) Klantenkaart mapping
+        mapping = repo.mapping(klant_nr, regel["artikelnummer_klant"])
+        if mapping and await nav.get_item(mapping.kwabo_artikelnr):
+            result["artikelnummer_kwabo_matched"] = mapping.kwabo_artikelnr
+            result["match_confidence"] = 0.9
+            result["match_methode"] = "klantenkaart"
+            return result
+        # 4) History
+        hist = repo.best_history(klant_nr, regel["artikelnummer_klant"])
+        if hist and await nav.get_item(hist.kwabo_artikelnr):
+            result["artikelnummer_kwabo_matched"] = hist.kwabo_artikelnr
+            result["match_confidence"] = 0.95
+            result["match_methode"] = "history"
+            return result
 
     # 5) Fuzzy op omschrijving tegen Nav item search
     oms = regel.get("omschrijving") or ""
@@ -77,11 +107,16 @@ async def _match_single(regel: dict, klant_nr: str | None, nav: NavisionClient) 
         if candidates:
             names = {c["number"]: c.get("displayName", "") for c in candidates}
             best = process.extractOne(oms, names, scorer=fuzz.WRatio)
-            # Raise the floor to 80: at 70 WRatio matches two unrelated short
-            # strings (e.g. "JOKA JK 145 Maler-Abdeckvlies" → "Stekker 220V"
-            # scored 85 on Nico's order #58). 80 is still permissive enough
-            # for typo-tolerant matches but cuts the worst false positives.
-            if best and best[1] >= 80:
+            # Drempel 90, empirisch bepaald op de echte faalorders (Fase 2 A5,
+            # scripts/analyze_fuzzy_thresholds.py, 10-06-2026): álle junk-
+            # auto-fills uit prod scoorden precies 86 (WRatio's partial-ratio
+            # plafond), o.a. "Stucloper grijs rol a 36m2…" → 18390 "Tork rol
+            # Katrien" en "Afdekvlies 0,67x37…" → 11190 "Vloerschraper". Van
+            # de 16 bekend-correcte paren koos fuzzy er 15 fout — WRatio in
+            # [80,99) had op deze catalogus géén terecht-positieve waarde.
+            # Onder de drempel: NIET invullen (grondwet 5) — doorvallen naar
+            # manual zodat de reviewer een leeg veld ziet i.p.v. onzin.
+            if best and best[1] >= 90:
                 number = best[2]
                 score = best[1]
                 result["artikelnummer_kwabo_matched"] = number
@@ -109,29 +144,52 @@ async def _match_single(regel: dict, klant_nr: str | None, nav: NavisionClient) 
 async def match_articles_node(state: OrderState) -> OrderState:
     nav = get_navision_client()
     klant_nr = (state.get("klant_match") or {}).get("navision_klantnr")
-
-    matched: list[OrderRegel] = []
-    crash_count = 0
     regels_in = state.get("orderregels") or []
-    for idx, r in enumerate(regels_in):
-        try:
-            matched.append(await _match_single(r, klant_nr, nav))
-        except Exception as exc:  # noqa: BLE001
-            log.exception(
-                "match_single_crash",
-                email_id=state.get("email_id"),
-                regel_idx=idx,
-                klant_art=r.get("artikelnummer_klant"),
-                oms=(r.get("omschrijving") or "")[:80],
-                exc_type=type(exc).__name__,
-                exc_msg=str(exc)[:300],
-            )
-            fallback = dict(r)
-            fallback["artikelnummer_kwabo_matched"] = None
-            fallback["match_confidence"] = 0.0
-            fallback["match_methode"] = "manual"
-            matched.append(fallback)
-            crash_count += 1
+
+    # Fase 4 (B1, audit §12.D.1): regels matchen parallel met begrensde
+    # concurrency. Vóór de fix waren 10 regels × 1-3 NAV-calls serieel —
+    # 5-15 s pure wachttijd per order in productie. De semaphore begrenst
+    # de druk op NAV én op de DB-pool (elke taak houdt 1 sessie vast).
+    # Determinisme: gather bewaart argumentvolgorde; de (idx, ...)-tuples +
+    # sort maken die invariant expliciet. Kanttekening: sqlmodel-sessies
+    # zijn sync — elke DB-query blokkeert de event loop ~ms; geaccepteerd
+    # (geen thread-executor: thread-safety-risico zonder gemeten winst).
+    sem = asyncio.Semaphore(max(1, int(settings.match_concurrency)))
+
+    async def _guarded(idx: int, regel: dict) -> tuple[int, OrderRegel, bool]:
+        async with sem:
+            try:
+                # Fase 4 (C2): één sessie per regel (was: tot 3 per regel).
+                with Session(engine) as s:
+                    return idx, await _match_single(regel, klant_nr, nav, s), False
+            except Exception as exc:  # noqa: BLE001
+                log.exception(
+                    "match_single_crash",
+                    email_id=state.get("email_id"),
+                    regel_idx=idx,
+                    klant_art=regel.get("artikelnummer_klant"),
+                    oms=(regel.get("omschrijving") or "")[:80],
+                    exc_type=type(exc).__name__,
+                    exc_msg=str(exc)[:300],
+                )
+                from kwabo.utils.alerts import alert
+                alert(
+                    "match_single_crash", "warning",
+                    {"email_id": state.get("email_id"), "regel_idx": idx,
+                     "exc": f"{type(exc).__name__}: {str(exc)[:200]}"},
+                )
+                fallback = dict(regel)
+                fallback["artikelnummer_kwabo_matched"] = None
+                fallback["match_confidence"] = 0.0
+                fallback["match_methode"] = "manual"
+                return idx, fallback, True
+
+    results = await asyncio.gather(
+        *(_guarded(idx, r) for idx, r in enumerate(regels_in))
+    )
+    results = sorted(results, key=lambda t: t[0])
+    matched: list[OrderRegel] = [r for _, r, _ in results]
+    crash_count = sum(1 for _, _, crashed in results if crashed)
 
     # If half (or more) of the lines crashed it's almost certainly a NAV
     # outage rather than per-line data quality. Add a visible warning so
@@ -219,7 +277,7 @@ async def match_articles_node(state: OrderState) -> OrderState:
         "details": {
             "per_methode": {
                 m: sum(1 for r in matched if r.get("match_methode") == m)
-                for m in ("exact", "kruisverwijzing", "klantenkaart", "history", "fuzzy", "manual")
+                for m in ("exact", "exact_klantnr", "kruisverwijzing", "klantenkaart", "history", "fuzzy", "manual")
             }
         },
     }

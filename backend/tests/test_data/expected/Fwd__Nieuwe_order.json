@@ -3,10 +3,10 @@
   "is_order": true,
   "klant_match_bron": "forward_email",
   "klant_nr": "10008",
-  "n_matched": 3,
+  "n_matched": 2,
   "n_regels": 4,
-  "needs_review_count": 10,
+  "needs_review_count": 11,
   "sub_orders_count": 0,
   "taal": "NL",
-  "warnings_count": 2
+  "warnings_count": 4
 }
