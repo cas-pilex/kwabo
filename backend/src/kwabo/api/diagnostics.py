@@ -8,7 +8,7 @@ run curl from a developer machine.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 from kwabo.config import settings
 
@@ -192,5 +192,52 @@ def config_summary() -> dict:
             "storage_active": bool(
                 settings.supabase_url and settings.supabase_service_role_key
             ),
+        },
+    }
+
+
+@router.get("/health-summary")
+def health_summary(request: Request) -> dict:
+    """Fase 5 (B): één overzicht van de silent-failure-observability.
+
+    In-app alert-kanaal: de laatste N alert()-events (in-memory ring buffer,
+    ook gethrottlede), de poller-heartbeat (incl. cumulatieve tick-tellers),
+    de Graph-token-expiry en de worker/poller-status — zodat een operator
+    in één GET ziet of er iets stilletjes misgaat, zonder Railway-logs te
+    grijpen. Buffer is bewust in-memory: herstart wist hem (observability,
+    geen audit-log).
+    """
+    import os as _os
+
+    from sqlmodel import Session
+
+    from kwabo.db import session as db_session
+    from kwabo.db.models import OAuthToken
+    from kwabo.utils import mail_poll_status
+    from kwabo.utils.alerts import recent_alerts
+
+    token_info: dict | None = None
+    try:
+        with Session(db_session.engine) as s:
+            row = s.get(OAuthToken, 1)
+            if row:
+                token_info = {
+                    "account_email": row.account_email,
+                    "expires_at": row.expires_at,
+                    "updated_at": row.updated_at,
+                }
+    except Exception as exc:  # noqa: BLE001
+        # Observability mag nooit zelf de fout zijn — toon de leesfout.
+        token_info = {"error": str(exc)[:200]}
+
+    poll_task = getattr(request.app.state, "poll_task", None)
+    return {
+        "alerts": recent_alerts(50),
+        "poller": mail_poll_status.get_status(),
+        "token": token_info,
+        "workers": {
+            "web_concurrency": int(_os.environ.get("WEB_CONCURRENCY", "1") or "1"),
+            "poller_task_present": poll_task is not None,
+            "poller_alive": bool(poll_task is not None and not poll_task.done()),
         },
     }

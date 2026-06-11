@@ -170,6 +170,12 @@ async def match_articles_node(state: OrderState) -> OrderState:
                     exc_type=type(exc).__name__,
                     exc_msg=str(exc)[:300],
                 )
+                from kwabo.utils.alerts import alert
+                alert(
+                    "match_single_crash", "warning",
+                    {"email_id": state.get("email_id"), "regel_idx": idx,
+                     "exc": f"{type(exc).__name__}: {str(exc)[:200]}"},
+                )
                 fallback = dict(regel)
                 fallback["artikelnummer_kwabo_matched"] = None
                 fallback["match_confidence"] = 0.0

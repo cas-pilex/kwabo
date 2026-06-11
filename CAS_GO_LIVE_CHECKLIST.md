@@ -194,6 +194,8 @@ Als alle vier kloppen → veilig om productie aan te zetten.
 | `EMAIL_MODE` | Railway | bij Graph | `graph` |
 | `KWABO_CORS_EXTRA` | Railway | ✓ | `https://kwabo-pilex.vercel.app` |
 | `NEXT_PUBLIC_API_BASE` | Vercel | ✓ | `https://kwabo-production.up.railway.app` |
+| `WEB_CONCURRENCY` | Railway | moet `1` (of ongezet) | Bij >1 workers pollt GÉÉN enkele worker de mailbox (bewuste guardrail: liever geen poller dan N× dubbele Graph-scans). `/api/health` en `/api/diagnostics/health-summary` maken dat zichtbaar. |
+| `KWABO_SLACK_WEBHOOK_URL` | Railway | optioneel | Push-kanaal voor silent-failure-alerts; zonder webhook blijven alerts in-app zichtbaar via `/api/diagnostics/health-summary`. |
 
 ## Hoe je deze stack pauseert / debugt
 

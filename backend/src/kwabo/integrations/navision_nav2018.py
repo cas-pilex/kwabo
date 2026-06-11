@@ -596,6 +596,11 @@ class Nav2018ODataClient:
                 # Dedup probe is best-effort; never block the create on a
                 # bad probe. Log and continue.
                 log.warning("nav2018_dedup_probe_failed", error=str(exc)[:200])
+                from kwabo.utils.alerts import alert
+                alert(
+                    "nav2018_dedup_probe_failed", "warning",
+                    {"error": str(exc)[:300], "external_doc_no": external},
+                )
 
         for idx, op in enumerate(operations):
             method = op["op"]
@@ -635,6 +640,11 @@ class Nav2018ODataClient:
                     sales_order_no=sales_order_no,
                     hint="NAV 2018 PLX_IncomingDocument page not exposed yet — "
                     "header+lines pushed without attachment.",
+                )
+                from kwabo.utils.alerts import alert
+                alert(
+                    "nav2018_incoming_doc_skipped", "warning",
+                    {"sales_order_no": sales_order_no, "path": raw_path},
                 )
                 results.append(
                     NavOpResult(
