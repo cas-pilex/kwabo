@@ -305,6 +305,10 @@ def compose_navision_operations(state: dict) -> list[NavOperation]:
         ep_nr = (
             europallet.get("artikelnummer_kwabo")
             or europallet.get("artikelnummer_kwabo_matched")
+            # De review-UI (EuropalletEditor "+ Voeg europallet toe") schrijft
+            # het artikel onder deze key — zonder fallback verdwijnt een
+            # handmatig toegevoegde pallet stil uit de operations.
+            or europallet.get("kwabo_artikelnr")
         )
         if ep_nr:
             ops.extend(_emit_line_ops(europallet, ep_nr, "Europallet"))

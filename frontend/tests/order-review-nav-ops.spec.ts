@@ -1,8 +1,14 @@
 import { expect } from "@playwright/test";
 import { test, resetEnv, dropEml, BACKEND } from "./helpers";
 
-test.beforeEach(async () => {
+test.beforeEach(async ({ context }) => {
   await resetEnv();
+  // De middleware checkt alleen het BESTAAN van het kwabo_admin-cookie;
+  // validatie gebeurt backend-side en de e2e-backend draait zonder
+  // ADMIN_PASSWORD (require_admin is dan open).
+  await context.addCookies([
+    { name: "kwabo_admin", value: "e2e", url: "http://localhost:3100" },
+  ]);
 });
 
 /**
