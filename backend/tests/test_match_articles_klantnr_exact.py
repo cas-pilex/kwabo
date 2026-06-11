@@ -129,9 +129,12 @@ async def test_klantenkaart_mapping_wint_van_exact_klantnr(session, app_engine):
 
 
 @pytest.mark.asyncio
-async def test_zonder_klant_nr_conf_95(session, app_engine):
+async def test_zonder_klant_nr_krijgt_review_vlag(session, app_engine):
     """Klant onbekend → kruisverwijzing-afwezigheid niet verifieerbaar →
-    wel matchen maar conf 0.95 i.p.v. 1.0."""
+    wel invullen (beste gok) maar onder de review-drempel (0.85), zodat de
+    reviewer de collisie-interpretatie bevestigt. Fase 6 V3: vlagvrij 0.95
+    was zelfversterkend — na approve leerde _learn_from_approved de foute
+    mapping permanent aan."""
     _insert_artikelkaart(session, "238601", "Quality Covers|Top coat Heavy-duty/25m²/67cm")
 
     state = _state(None, [{
@@ -146,7 +149,8 @@ async def test_zonder_klant_nr_conf_95(session, app_engine):
     regel = out["orderregels"][0]
     assert regel["artikelnummer_kwabo_matched"] == "238601"
     assert regel["match_methode"] == "exact_klantnr"
-    assert regel["match_confidence"] == 0.95
+    assert regel["match_confidence"] == 0.84
+    assert "orderregels[0].artikelnummer_kwabo_matched" in out["needs_review_fields"]
 
 
 @pytest.mark.asyncio

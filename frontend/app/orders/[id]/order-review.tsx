@@ -291,6 +291,26 @@ export function OrderReview({ order, items }: Props) {
               onChange={(v) => patch("klant_match", v)}
               monospace
             />
+            {/* Fase 6 V2: een gevulde-maar-onbevestigde match (CONTROLEER,
+                bron domein/naam/NAV-email) kon alleen bevestigd worden door
+                het klantnr opnieuw te typen of force te gebruiken. Eén klik
+                her-patcht hetzelfde nummer; de backend wist dan de vlag en
+                behoudt de 4+/krediet-context. */}
+            {canAct && meta.klant_match?.needs_review && initialState.klant_match?.navision_klantnr && (
+              <button
+                type="button"
+                data-testid="klant-bevestig"
+                onClick={() => patch("klant_match", initialState.klant_match!.navision_klantnr)}
+                className="mt-1.5 inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100"
+              >
+                ✓ Bevestig deze klant
+                {initialState.klant_match?.match_bron && (
+                  <span className="font-normal text-amber-700">
+                    (gematcht via {initialState.klant_match.match_bron})
+                  </span>
+                )}
+              </button>
+            )}
             {initialState.klant_match?.klantnaam && (
               <div className="mt-1 flex items-center gap-2 text-xs text-[var(--kwabo-muted)]">
                 {initialState.klant_match?.is_4plus === true && (

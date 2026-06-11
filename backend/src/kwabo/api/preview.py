@@ -49,6 +49,12 @@ class NavisionPreviewResponse(BaseModel):
 
 PATH_RE = re.compile(r"([a-zA-Z_]\w*)|\[(\d+)\]")
 REGEL_MATCHED_RE = re.compile(r"orderregels\[(\d+)\]\.artikelnummer_kwabo_matched")
+# Bronvelden waaruit de pipeline per regel afgeleide velden berekent
+# (Branch A: verkoop_uom_gekozen/verkoop_aantal; mix: mix_uom_gekozen/
+# mix_aantal). Een patch hierop maakt die afgeleiden stale (Fase 6 V1).
+REGEL_BRONVELD_RE = re.compile(
+    r"orderregels\[(\d+)\]\.(hoeveelheid|eenheid|artikelnummer_kwabo_matched)"
+)
 
 
 def _split_path(path: str) -> list[Any]:
@@ -210,6 +216,7 @@ def patch_field(order_id: int, body: PatchFieldBody) -> dict:
         # anders leeg (de UI toont dan het nummer).
         prev = state.get("klant_match") or {}
         naam = ""
+        k = None
         if kn:
             with Session(db_session.engine) as s:
                 k = KlantRepo(s).by_nav_nr(kn)
@@ -222,6 +229,15 @@ def patch_field(order_id: int, body: PatchFieldBody) -> dict:
             "match_confidence": 1.0,
             "match_bron": "manual",
         }
+        # Fase 6 (V2/V8): 4+/krediet-context meenemen zoals match_customer
+        # dat doet — een handmatige keuze of bevestiging mag de badges en
+        # de kredietcheck niet wegvagen.
+        if k is not None:
+            state["klant_match"].update({
+                "is_4plus": k.is_4plus,
+                "kredietlimiet": k.kredietlimiet,
+                "betalingsconditie": k.betalingsconditie,
+            })
         meta = dict(state.get("_meta") or {})
         meta["klant_match"] = {
             "value": kn, "source": "manual", "source_detail": "dashboard",
@@ -278,6 +294,25 @@ def patch_field(order_id: int, body: PatchFieldBody) -> dict:
                         f"{raw.get('source_detail') or ''} | cleared by manual match"
                     ).strip(" |")
             regels_meta[i] = rm
+
+    # Fase 6 (V1): de composer geeft mix_*/verkoop_* voorrang boven
+    # hoeveelheid/eenheid. Blijven die afgeleiden na een bronveld-patch
+    # staan, dan toont de UI de correctie maar pusht NAV de oude waarde
+    # (#716-foutklasse). Daarom: afgeleiden wissen; de fallback-keten in
+    # _emit_line_ops pakt dan de letterlijke reviewer-waarden. Bij een
+    # artikel-wissel zijn ook de mix-kandidaten en de per-artikel
+    # geresolvede default-eenheid van het oude artikel.
+    mb = REGEL_BRONVELD_RE.fullmatch(body.path)
+    if mb:
+        i = int(mb.group(1))
+        regels = state.get("orderregels") or []
+        if i < len(regels) and isinstance(regels[i], dict):
+            stale = ["verkoop_uom_gekozen", "verkoop_aantal",
+                     "mix_uom_gekozen", "mix_aantal"]
+            if mb.group(2) == "artikelnummer_kwabo_matched":
+                stale += ["mix_uom_kandidaat", "eenheid_default"]
+            for veld in stale:
+                regels[i].pop(veld, None)
 
     needs = _all_needs_review_paths(state)
     state["needs_review_fields"] = needs

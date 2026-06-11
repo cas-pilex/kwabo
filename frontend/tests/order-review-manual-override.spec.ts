@@ -131,3 +131,63 @@ test("kwabo-artnr handmatig invullen: 'niet gematcht'-pil verdwijnt zonder reloa
     timeout: 10_000,
   });
 });
+
+test("CONTROLEER-klant: één klik op 'Bevestig deze klant' wist de vlag", async ({
+  page,
+  request,
+}) => {
+  // Fase 6 V2: een gevulde-maar-onbevestigde klant-match (naam/domein/NAV-
+  // email, conf < 1.0) blokkeerde approve maar had geen bevestig-route —
+  // de reviewer moest het identieke klantnr her-typen of force gebruiken.
+  // Seed de staat zoals de naam-fallback die maakt.
+  const files = await fs.readdir(STATES);
+  const file = files.find((f) => f.startsWith("order_718"));
+  expect(file, "fixture order_718* moet bestaan — draai export_order_states.py").toBeTruthy();
+  const env = JSON.parse(await fs.readFile(path.join(STATES, file!), "utf-8"));
+  const st = env.order_state;
+  st.klant_match = {
+    navision_klantnr: "10001",
+    klantnaam: "Ferney Diabolo B.V.",
+    match_confidence: 0.8,
+    match_bron: "naam_extract",
+  };
+  st._meta = {
+    ...(st._meta || {}),
+    klant_match: {
+      value: "10001", source: "naam_extract",
+      source_detail: "naam-fallback", confidence: 0.8, needs_review: true,
+    },
+  };
+  st.needs_review_fields = Array.from(
+    new Set([...(st.needs_review_fields || []), "klant_match"]),
+  );
+  st.needs_review_count = st.needs_review_fields.length;
+  const r = await request.post(`${BACKEND}/api/testing/seed-order`, {
+    data: {
+      order_state: st,
+      email_from: env.email_from,
+      email_subject: env.email_subject,
+      status: "review",
+    },
+  });
+  expect(r.ok(), `seed-order should succeed (got ${r.status()})`).toBeTruthy();
+  const { id } = (await r.json()) as { id: number };
+
+  await page.goto(`/orders/${id}`);
+
+  // Uitgangssituatie: knop zichtbaar met de match-bron als context.
+  const knop = page.getByTestId("klant-bevestig");
+  await expect(knop).toBeVisible();
+  await expect(knop).toContainText("naam_extract");
+
+  await knop.click();
+  await page.waitForResponse(
+    (res) => res.url().includes("/patch-field") && res.ok(),
+  );
+
+  // ZONDER reload: vlag weg (knop verdwijnt), naam blijft staan.
+  await expect(page.getByTestId("klant-bevestig")).toHaveCount(0, {
+    timeout: 10_000,
+  });
+  await expect(page.getByTestId("klant-naam")).toHaveText("Ferney Diabolo B.V.");
+});

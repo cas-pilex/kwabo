@@ -63,8 +63,10 @@ async def _match_single(
         if not expliciete_mapping and ArtikelkaartRepo(s).get(ka) is not None:
             result["artikelnummer_kwabo_matched"] = ka
             # Zonder klant_nr is de afwezigheid van een kruisverwijzing
-            # niet verifieerbaar → iets lager dan exact.
-            result["match_confidence"] = 1.0 if klant_nr else 0.95
+            # niet verifieerbaar → onder de review-drempel (0.85) zodat de
+            # reviewer de collisie-interpretatie bevestigt; na approve leert
+            # _learn_from_approved de mapping anders ongezien aan (Fase 6 V3).
+            result["match_confidence"] = 1.0 if klant_nr else 0.84
             result["match_methode"] = "exact_klantnr"
             return result
 

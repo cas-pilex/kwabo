@@ -45,7 +45,10 @@ def _state(session, oid: int) -> dict:
 
 
 def _seed_witzand(session) -> None:
-    session.add(Klantenkaart(nav_klantnr="60892", naam="Witzand Bouwmaterialen B.V."))
+    session.add(Klantenkaart(
+        nav_klantnr="60892", naam="Witzand Bouwmaterialen B.V.",
+        is_4plus=True, kredietlimiet=5000.0, betalingsconditie="30 dagen",
+    ))
     session.commit()
 
 
@@ -86,6 +89,23 @@ def test_patch_klant_match_subpad_wist_ook(client, session):
     assert st["klant_match"]["navision_klantnr"] == "60892"
     assert st["klant_match"]["klantnaam"] == "Witzand Bouwmaterialen B.V."
     assert st["_meta"]["klant_match"]["needs_review"] is False
+
+
+def test_patch_klant_match_verrijkt_4plus_en_krediet(client, session):
+    """Fase 6 V2/V8: een handmatige klant-keuze (of bevestiging van een
+    CONTROLEER-vlag) mag de 4+/krediet-context niet wegvagen — de UI-badges
+    en de kredietcheck lezen die uit klant_match."""
+    _seed_witzand(session)
+    oid, _ = _maak_order(session, "order_718")
+
+    r = client.patch(f"/api/orders/{oid}/patch-field",
+                     json={"path": "klant_match", "value": "60892"})
+    assert r.status_code == 200
+
+    km = _state(session, oid)["klant_match"]
+    assert km["is_4plus"] is True
+    assert km["kredietlimiet"] == 5000.0
+    assert km["betalingsconditie"] == "30 dagen"
 
 
 # --- Artikel-override ---------------------------------------------------
@@ -138,3 +158,99 @@ def test_patch_regel_matched_leegmaken_herflagt(client, session):
     assert regel["match_confidence"] == 0.0
     assert st["_meta"]["orderregels"][0]["artikelnummer_kwabo_matched"]["needs_review"] is True
     assert st["alle_artikelen_gematcht"] is False
+
+
+# --- Fase 6 V1: afgeleide Branch-A/mix-velden stale na regel-patch -------
+#
+# De pipeline leidt verkoop_uom_gekozen/verkoop_aantal (Branch A) en
+# mix_uom_gekozen/mix_aantal (mixprijzen) af uit hoeveelheid + artikel.
+# De composer geeft die velden voorrang boven hoeveelheid/eenheid — een
+# handmatige correctie die ze laat staan wordt bij push dus genegeerd
+# (UI toont de fix, NAV krijgt de oude waarde; zelfde foutklasse als #716).
+
+
+def _maak_order_met_regel(session, regel_extra: dict) -> int:
+    regel = {
+        "positie": 1,
+        "artikelnummer_klant": None,
+        "artikelnummer_kwabo": "238601",
+        "artikelnummer_kwabo_matched": "238601",
+        "omschrijving": "Afdekvlies",
+        "hoeveelheid": 66,
+        "eenheid": "STUK",
+        "match_methode": "exact",
+        "match_confidence": 1.0,
+    }
+    regel.update(regel_extra)
+    state = {
+        "email_id": f"t-v1-{abs(hash(json.dumps(regel_extra, sort_keys=True)))}",
+        "email_from": "x@y.nl",
+        "email_subject": "V1",
+        "klant_match": {"navision_klantnr": "60892", "klantnaam": "Witzand"},
+        "orderregels": [regel],
+        "needs_review_fields": [],
+        "stappen_log": [],
+    }
+    row = OrderLogRepo(session).create(
+        email_id=state["email_id"], order_state=json.dumps(state)
+    )
+    return row.id
+
+
+def test_patch_hoeveelheid_wist_afgeleide_verkoopvelden(client, session):
+    """66→6 stuks corrigeren: de oude omrekening (2 PALLET33) mag niet
+    blijven staan, anders pusht NAV alsnog 2 PALLET33."""
+    oid = _maak_order_met_regel(session, {
+        "verkoop_uom_gekozen": "PALLET33", "verkoop_aantal": 2,
+    })
+
+    r = client.patch(f"/api/orders/{oid}/patch-field",
+                     json={"path": "orderregels[0].hoeveelheid", "value": 6})
+    assert r.status_code == 200
+
+    regel = _state(session, oid)["orderregels"][0]
+    assert regel["hoeveelheid"] == 6
+    assert not regel.get("verkoop_uom_gekozen")
+    assert regel.get("verkoop_aantal") is None
+
+
+def test_patch_artikel_wist_afgeleide_mix_en_eenheidvelden(client, session):
+    """Ander artikel kiezen: mix-keuze, kandidaten én eenheid_default horen
+    bij het óúde artikel en moeten weg."""
+    oid = _maak_order_met_regel(session, {
+        "mix_uom_gekozen": "M7PAL30", "mix_aantal": 7,
+        "mix_uom_kandidaat": ["M7PAL30", "M33PAL35"],
+        "eenheid_default": "ROL",
+    })
+
+    r = client.patch(f"/api/orders/{oid}/patch-field",
+                     json={"path": "orderregels[0].artikelnummer_kwabo_matched",
+                           "value": "228321"})
+    assert r.status_code == 200
+
+    regel = _state(session, oid)["orderregels"][0]
+    assert regel["artikelnummer_kwabo_matched"] == "228321"
+    assert not regel.get("mix_uom_gekozen")
+    assert regel.get("mix_aantal") is None
+    assert not regel.get("mix_uom_kandidaat")
+    assert not regel.get("eenheid_default")
+
+
+def test_patch_eenheid_wist_afgeleide_uom_keuzes(client, session):
+    """Reviewer kiest expliciet een eenheid: die moet winnen — de composer
+    geeft verkoop/mix-keuzes anders voorrang en negeert de patch."""
+    oid = _maak_order_met_regel(session, {
+        "verkoop_uom_gekozen": "PALLET33", "verkoop_aantal": 2,
+        "mix_uom_gekozen": "M7PAL30", "mix_aantal": 7,
+    })
+
+    r = client.patch(f"/api/orders/{oid}/patch-field",
+                     json={"path": "orderregels[0].eenheid", "value": "DOOS"})
+    assert r.status_code == 200
+
+    regel = _state(session, oid)["orderregels"][0]
+    assert regel["eenheid"] == "DOOS"
+    assert not regel.get("verkoop_uom_gekozen")
+    assert regel.get("verkoop_aantal") is None
+    assert not regel.get("mix_uom_gekozen")
+    assert regel.get("mix_aantal") is None
