@@ -79,3 +79,32 @@ async def test_skipped_attachment_lands_in_row_warnings(session, monkeypatch):
     assert any("handmatig" in w.lower() for w in warns), warns
     # bestaande warnings blijven behouden
     assert "bestaande prijs-warning" in warns
+
+
+async def test_skipped_attachment_zichtbaar_in_order_detail_api(
+    session, client, monkeypatch
+):
+    """Fase 5 (D): contract waar de reviewer-banner op leunt — de
+    incoming-doc-skip-warning komt mee in GET /api/orders/{id}.warnings."""
+    from kwabo.db.repository import OrderLogRepo
+    from kwabo.graph.nodes import push_navision as pn
+
+    monkeypatch.setattr(pn, "engine", session.get_bind())
+    monkeypatch.setattr(pn, "get_navision_client", lambda: _StubSkipClient())
+
+    row = OrderLogRepo(session).create(
+        email_id="att-skip-api-1", status="review", is_order=True,
+        order_state=json.dumps({"orderregels": []}),
+    )
+    oid = row.id
+
+    state = {"order_log_id": oid, "email_id": "att-skip-api-1",
+             "nav_operations": [{"op": "POST", "path": "/salesOrders",
+                                 "body": {"customerNumber": "50000"}}]}
+    await push_navision_node(state)
+
+    r = client.get(f"/api/orders/{oid}")
+    assert r.status_code == 200, r.text
+    warns = r.json()["warnings"]
+    assert any("bron-document" in w.lower() and "handmatig" in w.lower()
+               for w in warns), warns

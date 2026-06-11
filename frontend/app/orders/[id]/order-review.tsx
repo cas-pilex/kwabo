@@ -197,6 +197,27 @@ export function OrderReview({ order, items }: Props) {
         />
       )}
 
+      {/* Fase 5 (D): row.warnings was alleen zichtbaar als teller op het
+          dashboard — de reviewer op deze pagina zag b.v. de bron-doc-skip
+          ("Bron-document is NIET ... gekoppeld") nooit. */}
+      {order.warnings.length > 0 && (
+        <div
+          data-testid="order-warnings-banner"
+          className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+        >
+          <div className="font-semibold">
+            ⚠ {order.warnings.length === 1
+              ? "1 waarschuwing"
+              : `${order.warnings.length} waarschuwingen`}
+          </div>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5">
+            {order.warnings.map((w, i) => (
+              <li key={i}>{w}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {!isNotOrder && (
         <ExtractSummary
           emailFrom={order.email_from}
