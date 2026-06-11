@@ -38,8 +38,11 @@ class NavisionPreviewResponse(BaseModel):
     operations: list[dict]
     expected_post_count: int
     expected_patch_count: int
-    status: str          # "ready" | "missing" | "no_customer" | "no_matched_articles"
+    status: str          # "ready" | "missing" | "no_customer" | "no_matched_articles" | "compose_error"
     missing_count: int
+    # Leesbare NL-reviewer-tekst die uitlegt WAAROM er 0 (of te weinig)
+    # operaties zijn — Nico's "0 operaties zonder uitleg". None bij "ready".
+    reason: Optional[str] = None
 
 
 # ---------- helpers ----------
@@ -147,17 +150,36 @@ def navision_preview(order_id: int) -> NavisionPreviewResponse:
     if not operations:
         try:
             operations = list(compose_navision_operations(state))
-        except ValueError as exc:
-            # Compose refuses header-only orders (no matched articles).
-            # Surface as an explicit status instead of bubbling up a 500.
+        except Exception as exc:  # noqa: BLE001
+            # Compose weigert b.v. header-only orders (no matched articles) of
+            # ongeldige invoer. Elke fout wordt een expliciete status + reden
+            # voor de reviewer i.p.v. een 500 (Fase 5 A).
             compose_error = str(exc)
             operations = []
+    reason: str | None = None
     if compose_error:
-        status = "no_matched_articles"
+        if "no matched articles" in compose_error.lower():
+            status = "no_matched_articles"
+            reason = (
+                "Geen artikelregel gematcht — vul de Kwabo-artikelnummers aan "
+                "(handmatig of via de kandidaten) en probeer opnieuw."
+            )
+        else:
+            status = "compose_error"
+            reason = f"Order samenstellen mislukt: {compose_error}"
     elif not klant:
         status = "no_customer"
+        reason = (
+            "Geen klant gematcht — kies eerst een klant "
+            "(kandidaat of handmatig klantnummer)."
+        )
     elif missing:
         status = "missing"
+        n = len(missing)
+        reason = (
+            f"{n} veld vereist aanvulling vóór push." if n == 1
+            else f"{n} velden vereisen aanvulling vóór push."
+        )
     else:
         status = "ready"
     post_count = sum(1 for op in operations if op.get("op") == "POST")
@@ -168,6 +190,7 @@ def navision_preview(order_id: int) -> NavisionPreviewResponse:
         expected_patch_count=patch_count,
         status=status,
         missing_count=len(missing),
+        reason=reason,
     )
 
 

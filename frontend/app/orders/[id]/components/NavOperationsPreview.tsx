@@ -26,6 +26,18 @@ function statusBadge(status: string, missing: number) {
       text: "🔴 Klant niet gematcht",
     };
   }
+  if (status === "no_matched_articles") {
+    return {
+      cls: "bg-rose-100 text-rose-800 ring-rose-300",
+      text: "🔴 Geen artikelen gematcht",
+    };
+  }
+  if (status === "compose_error") {
+    return {
+      cls: "bg-rose-100 text-rose-800 ring-rose-300",
+      text: "🔴 Samenstellen mislukt",
+    };
+  }
   return {
     cls: "bg-amber-100 text-amber-800 ring-amber-300",
     text: `🟡 ${missing} velden ontbreken`,
@@ -166,8 +178,13 @@ export function NavOperationsPreview({ orderId, refreshKey, operations }: Props)
       </div>
 
       {ops.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-center text-xs text-slate-500">
-          Geen operaties — klant nog niet gematcht of preview leeg.
+        <div
+          data-testid="nav-op-empty-reason"
+          className="rounded-lg border border-dashed border-amber-300 bg-amber-50 p-4 text-center text-xs text-amber-900"
+        >
+          <span className="font-semibold">0 operaties.</span>{" "}
+          {preview.reason ??
+            "Geen operaties — klant nog niet gematcht of preview leeg."}
         </div>
       ) : (
         <ol className="space-y-1.5">

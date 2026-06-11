@@ -82,6 +82,8 @@ export type NavPreviewResponse = {
   expected_patch_count: number;
   status: string;
   missing_count: number;
+  /** Leesbare NL-uitleg waarom er 0 (of te weinig) operaties zijn; null bij "ready". */
+  reason?: string | null;
 };
 
 export type ShipToKandidaat = {
