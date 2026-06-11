@@ -241,17 +241,51 @@ async def match_customer_node(state: OrderState) -> OrderState:
             ambiguous_candidates = res
             ambiguous_term = effective_email
 
+    # K2b: domein-alias — een beheerder koppelt een heel e-maildomein aan
+    # een klant via een klant_email_aliases-rij van de vorm "@pontmeyer.nl"
+    # (#635: TABS Holland 61793 stond nooit in de kandidatenlijst). Bewust
+    # géén conf 1.0 zoals K1: een domein kan bij een franchise meerdere
+    # vestigingen dekken — 0.9 krijgt automatisch de CONTROLEER-vlag, en
+    # bij meerdere alias-klanten alleen een kandidatenlijst.
+    klant_kandidaten: list[dict] = []
+    kandidaten_term: str | None = None
+    if not match and ambiguous_candidates is None and effective_email:
+        with Session(engine) as s:
+            alias_klanten = KlantRepo(s).by_domain_alias(effective_email)
+        if len(alias_klanten) == 1:
+            k = alias_klanten[0]
+            match = {
+                "navision_klantnr": k.nav_klantnr,
+                "klantnaam": k.naam,
+                "match_confidence": 0.9,
+                "match_bron": "domein_alias",
+                "is_4plus": k.is_4plus,
+                "kredietlimiet": k.kredietlimiet,
+                "betalingsconditie": k.betalingsconditie,
+            }
+        elif len(alias_klanten) > 1:
+            klant_kandidaten = [
+                {
+                    "navision_klantnr": k.nav_klantnr,
+                    "klantnaam": k.naam,
+                    "score": None,
+                    "bron": "domein_alias",
+                }
+                for k in alias_klanten[:6]
+            ]
+            kandidaten_term = "@" + effective_email.rsplit("@", 1)[1]
+
     # K3 (Fase 2): naam-fallback — de geëxtraheerde KLANTNAAM uit de
     # bestelling (niet de afzender!) fuzzy tegen de klantenkaarten-mirror.
     # Bij portaal/agent-mails (zevij-portaal, pontmeyer-agent) is dit het
     # enige betrouwbare signaal. Forward-naam als tweede signaal.
-    klant_kandidaten: list[dict] = []
     naam_signaal = (
         (state.get("klantnaam_besteller") or "").strip()
         or (fwd.original_from_name or "").strip()
     )
-    if not match and ambiguous_candidates is None and naam_signaal:
+    if not match and ambiguous_candidates is None and not klant_kandidaten and naam_signaal:
         match, klant_kandidaten = _match_by_name(naam_signaal)
+        kandidaten_term = naam_signaal
 
     if not match and ambiguous_candidates is None and not klant_kandidaten:
         # Name fuzzy search via Nav — gebruik forward-domein indien aanwezig.
@@ -307,8 +341,8 @@ async def match_customer_node(state: OrderState) -> OrderState:
             f"{k['navision_klantnr']} ({k['klantnaam']})" for k in klant_kandidaten
         )
         warnings.append(
-            f"⚠ MEERDERE KLANTEN mogelijk voor '{naam_signaal}' — geen unieke "
-            f"naam-match. Handmatige selectie nodig. Kandidaten: {namen}"
+            f"⚠ MEERDERE KLANTEN mogelijk voor '{kandidaten_term or naam_signaal}' — geen unieke "
+            f"match. Handmatige selectie nodig. Kandidaten: {namen}"
         )
     elif not match:
         warnings.append(f"KLANT NIET GEVONDEN: {email_from}. Handmatige selectie nodig.")
@@ -357,7 +391,7 @@ async def match_customer_node(state: OrderState) -> OrderState:
     klant_meta = {
         "value": (match or {}).get("navision_klantnr"),
         "source": (
-            "klantenkaart" if bron in ("email", "forward_email", "naam_extract")
+            "klantenkaart" if bron in ("email", "forward_email", "naam_extract", "domein_alias")
             else "navision" if bron and bron.startswith("navision_")
             else "missing"
         ),
