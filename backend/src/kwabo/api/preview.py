@@ -13,7 +13,8 @@ from pydantic import BaseModel
 from sqlmodel import Session
 
 from kwabo.db import session as db_session
-from kwabo.db.repository import KlantRepo, OrderLogRepo
+from kwabo.db.repository import KlantRepo, OrderLogRepo, ShipToRepo
+from kwabo.graph.nodes.select_ship_to import _decide as _decide_ship_to
 from kwabo.integrations.navision_steps import compose_navision_operations
 from kwabo.utils.logging import log
 
@@ -141,6 +142,44 @@ def _save(order_id: int, state: dict, **extra_fields: Any) -> None:
         s.commit()
 
 
+def _reresolve_ship_to(state: dict, klant_nr: str) -> dict:
+    """Herbepaal het verzendadres voor een NIEUWE klant (Functie 2).
+
+    Na een handmatige klant-wijziging hoort de oude ship-to (van de oude klant)
+    niet meer te gelden. We laden de ship-to-mirror van de nieuwe klant opnieuw
+    en scoren die op het leveradres via dezelfde logica als de ingest-node
+    (`select_ship_to._decide`): 0 → NAV-default, 1 → autopick, ≥2 → score op
+    leveradres / ambigu → review.
+
+    De keuze van de oude klant wordt eerst gewist. De review-uitkomst wordt
+    naar `_meta["ship_to_gekozen"]` gespiegeld zodat de meta-gebaseerde
+    needs_review-herberekening in patch_field (en het needs-review-endpoint)
+    de verse vlag overneemt — de handmatige ship-to-pick schrijft óók `_meta`.
+    """
+    with Session(db_session.engine) as s:
+        candidates = ShipToRepo(s).list_for_klant(klant_nr)
+
+    base = dict(state)
+    base.pop("ship_to_gekozen", None)
+    base["needs_review_fields"] = [
+        f for f in (base.get("needs_review_fields") or []) if f != "ship_to_gekozen"
+    ]
+
+    new_state = _decide_ship_to(base, candidates)
+
+    ambiguous = "ship_to_gekozen" in (new_state.get("needs_review_fields") or [])
+    meta = dict(new_state.get("_meta") or {})
+    meta["ship_to_gekozen"] = {
+        "value": new_state.get("ship_to_gekozen"),
+        "source": "auto",
+        "source_detail": "opnieuw bepaald na klant-wijziging",
+        "confidence": 0.0 if ambiguous else 1.0,
+        "needs_review": ambiguous,
+    }
+    new_state["_meta"] = meta
+    return new_state
+
+
 # ---------- endpoints ----------
 
 
@@ -244,6 +283,14 @@ def patch_field(order_id: int, body: PatchFieldBody) -> dict:
             "confidence": 1.0, "needs_review": not kn,
         }
         state["_meta"] = meta
+        # Functie 2: een gewijzigd klantnr trekt het verzendadres mee. De oude
+        # ship-to hoort bij de oude klant — herbepaal hem voor de nieuwe klant
+        # (kandidaten herladen + scoren op het leveradres). Alleen bij een
+        # ECHTE wijziging: een her-bevestiging van dezelfde klant (de "Bevestig
+        # deze klant"-knop patcht hetzelfde nummer) mag een al gekozen ship-to
+        # niet wissen.
+        if kn and kn != prev.get("navision_klantnr"):
+            state = _reresolve_ship_to(state, kn)
     else:
         _set(state, body.path, body.value)
         # Update _meta path
