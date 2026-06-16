@@ -56,7 +56,7 @@ type Address = {
 };
 
 type State = {
-  klant_match?: { navision_klantnr?: string; klantnaam?: string; match_bron?: string; match_confidence?: number; is_4plus?: boolean; kredietlimiet?: number | null; betalingsconditie?: string | null };
+  klant_match?: { navision_klantnr?: string; klantnaam?: string; plaats?: string | null; match_bron?: string; match_uitleg?: string; match_confidence?: number; is_4plus?: boolean; kredietlimiet?: number | null; betalingsconditie?: string | null };
   bestelnummer_klant?: string | null;
   orderdatum?: string | null;
   gewenste_leverdatum?: string | null;
@@ -281,6 +281,9 @@ export function OrderReview({ order, items }: Props) {
             {initialState.klant_match?.klantnaam && (
               <div className="mb-1.5 text-sm font-semibold text-[var(--kwabo-navy)]" data-testid="klant-naam">
                 {initialState.klant_match.klantnaam}
+                {initialState.klant_match.plaats && (
+                  <span className="font-normal text-[var(--kwabo-muted)]"> · {initialState.klant_match.plaats}</span>
+                )}
               </div>
             )}
             <FieldInput
@@ -301,12 +304,15 @@ export function OrderReview({ order, items }: Props) {
                 type="button"
                 data-testid="klant-bevestig"
                 onClick={() => patch("klant_match", initialState.klant_match!.navision_klantnr)}
+                title="CONTROLEER verschijnt bij elke match die geen directe e-mailmatch op de klantenkaart is (naam, NAV-zoektocht of domein-alias). Een directe e-mailmatch is zeker en draagt geen vlag."
                 className="mt-1.5 inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100"
               >
                 ✓ Bevestig deze klant
-                {initialState.klant_match?.match_bron && (
+                {(initialState.klant_match?.match_uitleg || initialState.klant_match?.match_bron) && (
                   <span className="font-normal text-amber-700">
-                    (gematcht via {initialState.klant_match.match_bron})
+                    ({initialState.klant_match?.match_uitleg
+                      ? initialState.klant_match.match_uitleg
+                      : `gematcht via ${initialState.klant_match!.match_bron}`})
                   </span>
                 )}
               </button>

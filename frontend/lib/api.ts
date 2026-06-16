@@ -101,6 +101,7 @@ export type ShipToKandidaat = {
 export type KlantKandidaat = {
   navision_klantnr: string;
   klantnaam: string;
+  plaats?: string | null;
   score: number | null;
   bron: string;
 };
