@@ -1,0 +1,275 @@
+{
+  "order_id": 765,
+  "email_from": "Ede <ede@terhoevenverfgroep.nl>",
+  "email_subject": "Inkooporder 4040-480052705 / 11-06-26",
+  "status": "review",
+  "order_state": {
+    "email_id": "AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAAW611GAAA=",
+    "email_from": "Ede <ede@terhoevenverfgroep.nl>",
+    "email_subject": "Inkooporder 4040-480052705 / 11-06-26",
+    "email_body": "Goedemiddag,\r\n\r\nHierbij een bestelling van Ter Hoeven Verfgroep Ede.\r\n\r\n\r\nMet vriendelijke groet,\r\n\r\nJoran van Wikselaar\r\n\r\nTer Hoeven Verfgroep Ede\r\n[Afbeelding met tekst, Lettertype, schermopname, wit  Automatisch gegenereerde beschrijving]\r\nP Please consider the environment before printing this email\r\n________________________________\r\nDit e-mailbericht is uitsluitend bestemd voor de geadresseerde. Als dit bericht niet voor u bestemd is, wordt u vriendelijk verzocht dit aan de afzender te melden. Ter Hoeven Verfgroep B.V. staat door de elektronische verzending van dit bericht niet in voor de juiste en volledige overbrenging van de inhoud, noch voor tijdige ontvangst daarvan. Deze voetnoot bevestigt ook dat deze email is gescand op de aanwezigheid van computervirussen.\r\n________________________________\r\n\r\n\r\n\r\n",
+    "email_date": "Thu, 11 Jun 2026 11:12:35 +0000",
+    "bijlagen": [
+      {
+        "naam": "Inkoop Order 480052705.pdf",
+        "type": "pdf",
+        "inhoud_tekst": "--- PAGE 1 ---\nReg. nr. Ons\nArt.nr. Uw Art.nr. |  |  | Aantal |  | Omschrijving en Inhoud |  | Leverdatum\n10 1006741 |  | 23559 | 45 | ST | 804600 ProGold Rol Afdek | v | lies 25X1Mtr 11-06-26\n |  |  |  |  | >>> EINDE ORDER |  | <<<\nAfleveradres\nLeverancier Kwabo Techniek B.V. (Vedined)\nTer Hoeven Verfgroep Ede Leverancier nr. 400186\nMorsestraat 2\nBestelnr./Datum 480052705 / 11-06-26\n6716 AH EDE\nS.V.P. nummer vermelden\nNederland\nContactpersoon Joran van Wikselaar\nTelefoonnummer +31 318 62 26 36\nLeverancier\nInkooporder\nKwabo Techniek B.V. (Vedined) Leveringscondities: FH 1 pallet\nPostbus 266 Valuta: EUR Pagina 1 van 1\n1130 AG VOLENDAM\nNederland\n>> Indien een artikel niet voorradig, of bestelling is niet franco, graag direct contact opnemen met bovenstaande contactpersoon <<\nReg. nr. Ons\nArt.nr. Uw Art.nr. Aantal Omschrijving en Inhoud Leverdatum\n10 1006741 23559 45 ST 804600 ProGold Rol Afdekvlies 25X1Mtr 11-06-26\n>>> EINDE ORDER <<<\nScan voor\nde vestigingen"
+      }
+    ],
+    "source_path": "graph://AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAAW611GAAA=",
+    "is_order": true,
+    "classificatie_reden": "E-mail bevat inkooporder met artikelnummer, hoeveelheid en leverdatum in PDF-bijlage",
+    "classificatie_confidence": 0.98,
+    "taal": "NL",
+    "bestelnummer_klant": "480052705",
+    "orderdatum": "2026-06-11",
+    "gewenste_leverdatum": "2026-06-11",
+    "afleveradres": {
+      "naam": "Ter Hoeven Verfgroep Ede",
+      "straat": "Morsestraat 2",
+      "postcode": "6716 AH",
+      "plaats": "EDE",
+      "land": "NL"
+    },
+    "afleverinstructies": "FH 1 pallet",
+    "orderregels": [
+      {
+        "positie": 1,
+        "artikelnummer_klant": "23559",
+        "artikelnummer_kwabo": "1006741",
+        "omschrijving": "804600 ProGold Rol Afdekvlies 25X1Mtr",
+        "hoeveelheid": 45.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": null,
+        "ean_code": null,
+        "leverdatum_regel": "2026-06-11",
+        "opmerkingen": null,
+        "artikelnummer_kwabo_matched": null,
+        "match_confidence": 0.0,
+        "match_methode": "manual",
+        "prijs_validated": null
+      }
+    ],
+    "opmerkingen": "Indien een artikel niet voorradig, of bestelling is niet franco, graag direct contact opnemen met contactpersoon",
+    "klant_match": null,
+    "alle_artikelen_gematcht": false,
+    "alle_prijzen_valide": true,
+    "validatie_warnings": [
+      "KLANT NIET GEVONDEN: Ede <ede@terhoevenverfgroep.nl>. Handmatige selectie nodig."
+    ],
+    "review_status": "pending",
+    "mixprijzen_actief": false,
+    "order_mix_total_pallets": null,
+    "europallet_regel": null,
+    "incoming_document_storage_key": "by_email_id/AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1h-9ad240795605e51a.eml",
+    "stappen_log": [
+      {
+        "stap": "intake",
+        "timestamp": "2026-06-11T11:14:38.165439+00:00",
+        "beslissing": "E-mail opgehaald, 1 bijlagen geëxtraheerd",
+        "details": {
+          "bijlage_namen": [
+            "Inkoop Order 480052705.pdf"
+          ]
+        }
+      },
+      {
+        "stap": "classify",
+        "timestamp": "2026-06-11T11:14:40.178487+00:00",
+        "beslissing": "ORDER (conf=0.98)",
+        "details": {
+          "is_order": true,
+          "reden": "E-mail bevat inkooporder met artikelnummer, hoeveelheid en leverdatum in PDF-bijlage",
+          "confidence": 0.98
+        }
+      },
+      {
+        "stap": "extract",
+        "timestamp": "2026-06-11T11:14:56.376472+00:00",
+        "beslissing": "Geëxtraheerd: 1 regels, taal=NL, 0 velden needs_review",
+        "details": {
+          "bestelnummer": "480052705",
+          "multi_orders": 1
+        }
+      },
+      {
+        "stap": "match_customer",
+        "timestamp": "2026-06-11T11:14:58.075531+00:00",
+        "beslissing": "Klant NIET gematcht",
+        "details": {
+          "email": "ede@terhoevenverfgroep.nl"
+        }
+      },
+      {
+        "stap": "match_articles",
+        "timestamp": "2026-06-11T11:15:12.587233+00:00",
+        "beslissing": "0/1 regels gematcht",
+        "details": {
+          "per_methode": {
+            "exact": 0,
+            "kruisverwijzing": 0,
+            "klantenkaart": 0,
+            "history": 0,
+            "fuzzy": 0,
+            "manual": 1
+          }
+        }
+      },
+      {
+        "stap": "validate_prices",
+        "timestamp": "2026-06-11T11:15:12.589673+00:00",
+        "beslissing": "0/1 prijzen ok",
+        "details": {
+          "warnings_new": []
+        }
+      }
+    ],
+    "errors": [],
+    "_meta": {
+      "taal": {
+        "value": "NL",
+        "source": "pdf",
+        "source_detail": "Inkoop Order 480052705.pdf p.1",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "bestelnummer_klant": {
+        "value": "480052705",
+        "source": "pdf",
+        "source_detail": "Inkoop Order 480052705.pdf p.1 header",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "orderdatum": {
+        "value": "2026-06-11",
+        "source": "pdf",
+        "source_detail": "Inkoop Order 480052705.pdf p.1 header 'Bestelnr./Datum 480052705 / 11-06-26'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "gewenste_leverdatum": {
+        "value": "2026-06-11",
+        "source": "pdf",
+        "source_detail": "Inkoop Order 480052705.pdf p.1 tabel kolom 'Leverdatum' regel 10",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "afleveradres": {
+        "value": {
+          "naam": "Ter Hoeven Verfgroep Ede",
+          "straat": "Morsestraat 2",
+          "postcode": "6716 AH",
+          "plaats": "EDE",
+          "land": "NL"
+        },
+        "source": "pdf",
+        "source_detail": "Inkoop Order 480052705.pdf p.1 section 'Afleveradres'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "afleverinstructies": {
+        "value": "FH 1 pallet",
+        "source": "pdf",
+        "source_detail": "Inkoop Order 480052705.pdf p.1 'Leveringscondities: FH 1 pallet'",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "opmerkingen": {
+        "value": "Indien een artikel niet voorradig, of bestelling is niet franco, graag direct contact opnemen met contactpersoon",
+        "source": "pdf",
+        "source_detail": "Inkoop Order 480052705.pdf p.1 footer instructies",
+        "confidence": 0.9,
+        "needs_review": false
+      },
+      "orderregels": [
+        {
+          "artikelnummer_klant": {
+            "value": "23559",
+            "source": "pdf",
+            "source_detail": "Inkoop Order 480052705.pdf p.1 tabel regel 10 kolom 'Uw Art.nr.'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": "1006741",
+            "source": "pdf",
+            "source_detail": "Inkoop Order 480052705.pdf p.1 tabel regel 10 kolom 'Ons Art.nr.'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "omschrijving": {
+            "value": "804600 ProGold Rol Afdekvlies 25X1Mtr",
+            "source": "pdf",
+            "source_detail": "Inkoop Order 480052705.pdf p.1 tabel regel 10 kolom 'Omschrijving en Inhoud'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 45,
+            "source": "pdf",
+            "source_detail": "Inkoop Order 480052705.pdf p.1 tabel regel 10 kolom 'Aantal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "STUK",
+            "source": "pdf",
+            "source_detail": "Inkoop Order 480052705.pdf p.1 tabel regel 10 kolom 'Aantal' (ST)",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": null,
+            "source": "nav_default",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": "2026-06-11",
+            "source": "pdf",
+            "source_detail": "Inkoop Order 480052705.pdf p.1 tabel regel 10 kolom 'Leverdatum'",
+            "confidence": 0.95,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": null,
+            "source": "manual",
+            "source_detail": "match-methode=manual",
+            "confidence": 0.0,
+            "needs_review": true
+          }
+        }
+      ],
+      "klant_match": {
+        "value": null,
+        "source": "missing",
+        "source_detail": null,
+        "confidence": 0.0,
+        "needs_review": true
+      }
+    },
+    "needs_review_fields": [
+      "klant_match",
+      "orderregels[0].artikelnummer_kwabo_matched"
+    ],
+    "needs_review_count": 2,
+    "extra_orders_raw": [],
+    "nav_operations": []
+  }
+}

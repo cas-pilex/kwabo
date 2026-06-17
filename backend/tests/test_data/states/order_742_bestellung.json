@@ -1,0 +1,349 @@
+{
+  "order_id": 742,
+  "email_from": "lager-sb <lager-sb@farbenklein.de>",
+  "email_subject": "Bestellung  ",
+  "status": "review",
+  "order_state": {
+    "email_id": "AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAAVY9peAAA=",
+    "email_from": "lager-sb <lager-sb@farbenklein.de>",
+    "email_subject": "Bestellung  ",
+    "email_body": "Sehr geehrte Damen und Herren,\r\n\r\nanbei erhalten Sie unsere Bestellung im PDF-Format.\r\nWir bitten um schnellstmögliche Lieferung und Zusendung einer Auftragsbestätigung.\r\n\r\nMit freundlichen Grüßen\r\nUwe Heit\r\n\r\nFarben Klein GmbH       Filiale Bexbach              Filiale Hermeskeil\r\nIm Rotfeld 11              Am Butterhügel 3           Wallonenweg 2\r\n66115 Saarbrücken      66450 Bexbach             54411 Hermeskeil\r\nTel: 0681 94835-0         Tel: 06826 96559-0       Tel: 06503 95242-0\r\n\r\nGeschäftsführer:  Daniel Klein / Jan Ambos\r\nAmtsgericht Saarbrücken HRB 7332\r\n\r\nDer Inhalt dieser E-Mail ist vertraulich und ausschließlich für den bezeichneten Adressaten bestimmt. Wenn Sie nicht der vorgesehene Adressat dieser E-Mail oder dessen Vertreter sein sollten, so beachten Sie bitte, dass der Inhalt urheberrechtlich geschützt ist und dass jede Form der Kenntnisnahme, Veröffentlichung, Vervielfältigung oder Weitergabe des Inhalts dieser E-Mail unzulässig und ggf. strafbar ist. Wir bitten Sie, sich in diesem Fall umgehend mit dem Absender der E-Mail in Verbindung zu setzen. Der Inhalt der E-Mail ist nur rechtsverbindlich, wenn er unsererseits durch einen unterzeichneten Brief gleich lautend bestätigt wird.\r\n\r\nDer kostenlose Adobe Acrobat Reader erlaubt Ihnen das Ansehen, Navigieren\r\nund Drucken von PDF-Dateien ueber alle gaengigen Plattformen.\r\nEr kann bei Adobe unter http://www.adobe.de heruntergeladen werden.\r\n",
+    "email_date": "Wed, 10 Jun 2026 12:47:43 +0000",
+    "bijlagen": [
+      {
+        "naam": "Bestellung_109312.pdf",
+        "type": "pdf",
+        "inhoud_tekst": "--- PAGE 1 ---\n1\nKwabo Techniek B.V. Seite\nDatum 10.06.2026\nLieferant 72117\nJ @ ul @ ia N n U a M we M g E R 2 @ 10 @ A 0,00 Unsere Kunden-Nr. 60597\nNL - 1131 DL Volendam\nBei Rückfragen wenden Sie sich bitte an\nBearbeiter Uwe Heit\nBestellung 109312\nTelefon 0681 94835-11\nFax 0681 94835-95\nE-Mail lager-sb@farbenklein.de\n*109312*\nFarben Klein GmbH\nIm Rotfeld 11\n66115 Saarbrücken\nAuftragsbestätigung bitte an:\nlager@farbenklein.de\nPos Artikel-Nr Menge\nBezeichnung\n1 4112315 150,00 RLL\nOptima Bodenabdeckkarton 50m x 1,3m 65qm\n5 PAL x 30 RLL = 150 RLL"
+      }
+    ],
+    "source_path": "graph://AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAAVY9peAAA=",
+    "is_order": true,
+    "classificatie_reden": "Duitse bestelling (Bestellung 109312) met PDF-bijlage bevat artikel 4112315 met hoeveelheid 150 stuks",
+    "classificatie_confidence": 0.98,
+    "taal": "DE",
+    "bestelnummer_klant": "109312",
+    "orderdatum": "2026-06-10",
+    "gewenste_leverdatum": null,
+    "afleveradres": null,
+    "afleverinstructies": "Auftragsbestätigung bitte an: lager@farbenklein.de",
+    "orderregels": [
+      {
+        "positie": 1,
+        "artikelnummer_klant": "4112315",
+        "artikelnummer_kwabo": null,
+        "omschrijving": "Optima Bodenabdeckkarton 50m x 1,3m 65qm",
+        "hoeveelheid": 150.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": null,
+        "ean_code": null,
+        "leverdatum_regel": null,
+        "opmerkingen": "5 PAL x 30 RLL = 150 RLL - 30 rollen per pallet, 5 pallets total",
+        "artikelnummer_kwabo_matched": "15500",
+        "match_methode": "fuzzy",
+        "match_confidence": 0.84,
+        "eenheid_origineel": "ROL",
+        "eenheid_default": "STUK",
+        "prijs_validated": null
+      }
+    ],
+    "opmerkingen": "schnellstmögliche Lieferung - ASAP delivery requested in email body",
+    "klant_match": {
+      "navision_klantnr": "60597",
+      "klantnaam": "Farben Klein GmbH",
+      "match_confidence": 1.0,
+      "match_bron": "email",
+      "is_4plus": false,
+      "kredietlimiet": 10000.0,
+      "betalingsconditie": "14DAG3%",
+      "kredietlimiet_status": "ok"
+    },
+    "alle_artikelen_gematcht": true,
+    "alle_prijzen_valide": true,
+    "validatie_warnings": [
+      "⚠ KLANT IS GEEN 4+ LID — controleer aankoopvoorwaarden",
+      "⚠ EENHEID CONTROLEREN (regel 1): klant bestelde 'ROL' maar dit is geen geldige eenheid voor artikel 15500 (gebruikt nu standaard 'STUK')."
+    ],
+    "review_status": "pending",
+    "ship_to_kandidaten": [
+      {
+        "klant_nr": "60597",
+        "ship_to_code": "54411",
+        "naam": "Farben Klein GmbH",
+        "straat": "Wallonenweg 2",
+        "postcode": "54411",
+        "plaats": "Hermeskeil",
+        "land": "DE",
+        "is_default": false
+      },
+      {
+        "klant_nr": "60597",
+        "ship_to_code": "66115",
+        "naam": "Farben Klein GmbH",
+        "straat": "Im Rotfeld 11",
+        "postcode": "66115",
+        "plaats": "Saarbrücken",
+        "land": "DE",
+        "is_default": false
+      }
+    ],
+    "ship_to_gekozen": null,
+    "mixprijzen_actief": false,
+    "order_mix_total_pallets": null,
+    "europallet_regel": null,
+    "incoming_document_storage_key": "by_email_id/AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1h-8d6fadcceb8debc6.eml",
+    "stappen_log": [
+      {
+        "stap": "intake",
+        "timestamp": "2026-06-10T12:49:03.056580+00:00",
+        "beslissing": "E-mail opgehaald, 1 bijlagen geëxtraheerd",
+        "details": {
+          "bijlage_namen": [
+            "Bestellung_109312.pdf"
+          ]
+        }
+      },
+      {
+        "stap": "classify",
+        "timestamp": "2026-06-10T12:49:05.833845+00:00",
+        "beslissing": "ORDER (conf=0.98)",
+        "details": {
+          "is_order": true,
+          "reden": "Duitse bestelling (Bestellung 109312) met PDF-bijlage bevat artikel 4112315 met hoeveelheid 150 stuks",
+          "confidence": 0.98
+        }
+      },
+      {
+        "stap": "extract",
+        "timestamp": "2026-06-10T12:49:18.676039+00:00",
+        "beslissing": "Geëxtraheerd: 1 regels, taal=DE, 1 velden needs_review",
+        "details": {
+          "bestelnummer": "109312",
+          "multi_orders": 1
+        }
+      },
+      {
+        "stap": "match_customer",
+        "timestamp": "2026-06-10T12:49:19.259233+00:00",
+        "beslissing": "Klant gematcht: 60597 (email)",
+        "details": {
+          "navision_klantnr": "60597",
+          "klantnaam": "Farben Klein GmbH",
+          "match_confidence": 1.0,
+          "match_bron": "email",
+          "is_4plus": false,
+          "kredietlimiet": 10000.0,
+          "betalingsconditie": "14DAG3%",
+          "kredietlimiet_status": "ok"
+        }
+      },
+      {
+        "stap": "match_articles",
+        "timestamp": "2026-06-10T12:49:39.087013+00:00",
+        "beslissing": "1/1 regels gematcht",
+        "details": {
+          "per_methode": {
+            "exact": 0,
+            "kruisverwijzing": 0,
+            "klantenkaart": 0,
+            "history": 0,
+            "fuzzy": 1,
+            "manual": 0
+          }
+        }
+      },
+      {
+        "stap": "validate_prices",
+        "timestamp": "2026-06-10T12:49:40.414606+00:00",
+        "beslissing": "0/1 prijzen ok",
+        "details": {
+          "warnings_new": []
+        }
+      }
+    ],
+    "errors": [],
+    "_meta": {
+      "taal": {
+        "value": "DE",
+        "source": "pdf",
+        "source_detail": "Bestellung_109312.pdf p.1",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "bestelnummer_klant": {
+        "value": "109312",
+        "source": "pdf",
+        "source_detail": "Bestellung_109312.pdf p.1 header",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "orderdatum": {
+        "value": "2026-06-10",
+        "source": "pdf",
+        "source_detail": "Bestellung_109312.pdf p.1 header 'Datum'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "gewenste_leverdatum": {
+        "value": null,
+        "source": "email_body",
+        "source_detail": "schnellstmögliche Lieferung",
+        "confidence": 0.85,
+        "needs_review": false
+      },
+      "afleveradres": {
+        "value": null,
+        "source": "missing",
+        "source_detail": null,
+        "confidence": 0.0,
+        "needs_review": false
+      },
+      "afleverinstructies": {
+        "value": "Auftragsbestätigung bitte an: lager@farbenklein.de",
+        "source": "pdf",
+        "source_detail": "Bestellung_109312.pdf p.1 header",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "opmerkingen": {
+        "value": "schnellstmögliche Lieferung - ASAP delivery requested in email body",
+        "source": "email_body",
+        "source_detail": "email body text",
+        "confidence": 0.9,
+        "needs_review": false
+      },
+      "orderregels": [
+        {
+          "artikelnummer_klant": {
+            "value": "4112315",
+            "source": "pdf",
+            "source_detail": "Bestellung_109312.pdf p.1 row 1 col 'Artikel-Nr'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": true
+          },
+          "omschrijving": {
+            "value": "Optima Bodenabdeckkarton 50m x 1,3m 65qm",
+            "source": "pdf",
+            "source_detail": "Bestellung_109312.pdf p.1 row 1 'Bezeichnung'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 150,
+            "source": "pdf",
+            "source_detail": "Bestellung_109312.pdf p.1 row 1 'Menge'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "ROL",
+            "source": "pdf",
+            "source_detail": "Bestellung_109312.pdf p.1 row 1 'RLL' (Rollen)",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": null,
+            "source": "nav_default",
+            "source_detail": "NAV-standaard (geen prijsafspraak)",
+            "confidence": 0.0,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": "5 PAL x 30 RLL = 150 RLL - 30 rollen per pallet, 5 pallets total",
+            "source": "pdf",
+            "source_detail": "Bestellung_109312.pdf p.1 row 1 additional info",
+            "confidence": 0.95,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "15500",
+            "source": "fuzzy",
+            "source_detail": "match-methode=fuzzy",
+            "confidence": 0.84,
+            "needs_review": true
+          }
+        }
+      ],
+      "klant_match": {
+        "value": "60597",
+        "source": "klantenkaart",
+        "source_detail": "email",
+        "confidence": 1.0,
+        "needs_review": false
+      }
+    },
+    "needs_review_fields": [
+      "orderregels[0].artikelnummer_kwabo",
+      "ship_to_gekozen",
+      "orderregels[0].artikelnummer_kwabo_matched",
+      "orderregels[0].eenheid"
+    ],
+    "needs_review_count": 4,
+    "extra_orders_raw": [],
+    "nav_operations": [
+      {
+        "op": "POST",
+        "path": "/salesOrders",
+        "body": {
+          "customerNumber": "60597"
+        },
+        "label": "Klant kiezen (Sell-to Customer No. 60597)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrders({id})",
+        "body": {
+          "externalDocumentNumber": "109312"
+        },
+        "label": "PO-nummer klant (109312)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrders({id})",
+        "body": {
+          "shipmentDate": "2026-06-11"
+        },
+        "label": "Verzenddatum (2026-06-11)"
+      },
+      {
+        "op": "POST",
+        "path": "/salesOrders({id})/salesOrderLines",
+        "body": {
+          "lineType": "Item",
+          "itemNumber": "15500"
+        },
+        "label": "Regel 1: regel toevoegen (15500)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrderLines({id})",
+        "body": {
+          "quantity": 150.0
+        },
+        "label": "Regel 1: aantal invullen (150.0)"
+      }
+    ]
+  }
+}
