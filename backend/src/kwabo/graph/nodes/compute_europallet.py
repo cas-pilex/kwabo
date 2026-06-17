@@ -25,13 +25,34 @@ from sqlmodel import Session
 from kwabo.db.repository import ArtikelkaartRepo, PalletKennisRepo
 from kwabo.db.session import engine
 from kwabo.utils.logging import log
-from kwabo.utils.pallet_logic import PALLET_ARTIKELNR, compute_europallet
+from kwabo.utils.pallet_logic import PALLET_ARTIKELNR, europallet_breakdown
+
+
+def _onderbouwing(bd: dict) -> str:
+    n = bd["europallet_aantal"]
+    if n == 0:
+        return (f"{bd['totaal_pallets']} pallets in order — onder de drempel, "
+                "geen europallet.")
+    return (f"{bd['totaal_pallets']} pallets in order → {n} europallet"
+            f"{'s' if n != 1 else ''} (afgerond naar boven).")
 
 
 def _evaluate(state: dict, repo: PalletKennisRepo, uom_repo=None) -> dict:
     new_state = dict(state)
-    regel = compute_europallet(state, repo=repo, uom_repo=uom_repo)
+    bd = europallet_breakdown(state, repo=repo, uom_repo=uom_repo)
+    regel = bd["regel"]
     new_state["europallet_regel"] = regel
+
+    # Functie 4 (DEEL B): leg de telling vast in _meta zodat de reviewer kan
+    # zien WAAROP de N europallets gebaseerd zijn (per regel + totaal + regel).
+    meta = dict(state.get("_meta") or {})
+    meta["europallet"] = {
+        "regels": bd["regels"],
+        "totaal_pallets": bd["totaal_pallets"],
+        "europallet_aantal": bd["europallet_aantal"],
+        "uitleg": _onderbouwing(bd),
+    }
+    new_state["_meta"] = meta
 
     log.info(
         "compute_europallet",
