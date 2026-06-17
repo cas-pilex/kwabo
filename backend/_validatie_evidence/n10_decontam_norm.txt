@@ -1,0 +1,331 @@
+masterdata: 1787 klanten, 3757 artikelen, 12963 eenheden, 3000 kruisverw., 2506 ship-to's, 20 kaart-mappings, 20 history, 16 pallet-kennis
+
+=== #706  'New PO Output: 4510686252 - Vendor: 95042039'
+    van: 'Gerard BEENSE <Gerard.BEENSE@ppg.com>'  signaal: None  referentie: '60282'
+    KLANT  '60282' (email, conf 1.0) vlag=vertrouwd
+    SHIP-TO  '1047 BP' 'AMSTERDAM' '1047 BP' (van 13 kandidaten)
+    REGEL0  'PG AFDEKVLIES ETP 25M²' qty=1485.0 'STUK'
+        was: None (manual)  ->  nu: None (manual, conf 0.0)
+    EUROPALLET  geen
+    REVIEW-VELDEN  needs_review_fields=['orderregels[0].artikelnummer_kwabo_matched']  _meta-flags=[]
+    OPERATIONS: 0 — reden: ValueError: Cannot compose NAV order for n10-706: no matched articles (1 regels, all unmatched).
+
+=== #707  'Order van GBI Borne - 2601922 - 2601922'
+    van: '"[portal.zevij-necomij.com]" <support@zevij-necomij.com'  signaal: 'GBI Borne'  referentie: '61948'
+    KLANT  '61948' (naam_extract, conf 0.8) vlag=CONTROLEER
+    SHIP-TO  geen gekozen (kandidaten: 0) -> NAV-default
+    REGEL0  'TFC STUCLOPER BLOK 4, 50M2 / C2S / 130 CM' qty=35.0 'STUK'
+        was: '23374' (fuzzy)  ->  nu: '23512' (exact_klantnr, conf 1.0)  verkoop: 1 x PALLET
+    EUROPALLET  1 x 19820
+    REVIEW-VELDEN  needs_review_fields=['klant_match']  _meta-flags=['klant_match']
+    OPERATIONS (10):
+        POST  /salesOrders  {"customerNumber": "61948"}
+        PATCH /salesOrders({id})  {"externalDocumentNumber": "2601922"}
+        PATCH /salesOrders({id})  {"requestedDeliveryDate": "2026-06-09"}
+        PATCH /salesOrders({id})  {"shipmentDate": "2026-06-18"}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "23512"}
+        PATCH /salesOrderLines({id})  {"unitOfMeasureCode": "PALLET"}
+        PATCH /salesOrderLines({id})  {"quantity": 1}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "19820"}
+        PATCH /salesOrderLines({id})  {"unitOfMeasureCode": "STUK"}
+        PATCH /salesOrderLines({id})  {"quantity": 1}
+
+=== #717  'Inkooporder Kuipers BMH (Inkoopordernummer: 20173111)'
+    van: 'hardenberg@kuipers-bmh.nl'  signaal: None  referentie: '61844'
+    KLANT  '61844' (email, conf 1.0) vlag=vertrouwd
+    SHIP-TO  '7783 DC' 'GRAMSBERGEN' '7783 DC' (van 1 kandidaten)
+    REGEL0  'Stucloper grijs rol a 36 m2 breedte 60-65c' qty=360.0 'STUK'
+        was: '18390' (fuzzy)  ->  nu: None (manual, conf 0.0)
+    EUROPALLET  geen
+    REVIEW-VELDEN  needs_review_fields=['orderregels[0].artikelnummer_kwabo_matched']  _meta-flags=[]
+    OPERATIONS: 0 — reden: ValueError: Cannot compose NAV order for n10-717: no matched articles (1 regels, all unmatched).
+
+=== #718  'Witzand Bouwmaterialen B.V. Inkooporder- 50040984'
+    van: 'inkoop@witzand.nl'  signaal: 'Witzand Bouwmaterialen B.V.'  referentie: '60892'
+    KLANT  '60892' (naam_extract, conf 0.8) vlag=CONTROLEER
+    SHIP-TO  '7671 JE' 'VRIEZENVEEN' '7671 JE' (van 5 kandidaten)
+    REGEL0  'Afdekvlies 0,67x37 mt wit met zelfklevende' qty=33.0 'STUK'
+        was: '11190' (fuzzy)  ->  nu: '238601' (exact_klantnr, conf 1.0)
+    EUROPALLET  geen
+    REVIEW-VELDEN  needs_review_fields=['klant_match', 'mix_uom:1']  _meta-flags=['klant_match']
+    OPERATIONS (7):
+        POST  /salesOrders  {"customerNumber": "60892"}
+        PATCH /salesOrders({id})  {"shipToCode": "7671 JE"}
+        PATCH /salesOrders({id})  {"externalDocumentNumber": "PN50040984"}
+        PATCH /salesOrders({id})  {"requestedDeliveryDate": "2026-06-11"}
+        PATCH /salesOrders({id})  {"shipmentDate": "2026-06-18"}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "238601"}
+        PATCH /salesOrderLines({id})  {"quantity": 33.0}
+
+=== #721  'Van Dongen Verf BV - Inkooporder 2601382'
+    van: '"Corine Meeles | Van Dongen Verf B.V." <c.meeles@vandon'  signaal: 'Van Dongen Verf BV'  referentie: '61472'
+    KLANT  '61472' (naam_extract, conf 0.8) vlag=CONTROLEER
+    SHIP-TO  '3240 AG' 'MIDDELHARNIS' '3240 AG' (van 3 kandidaten)
+    REGEL0  'Stucloper 50m²-100cm' qty=30.0 'STUK'
+        was: '228321' (manual)  ->  nu: '228321' (exact_klantnr, conf 1.0)  verkoop: 30.0 x STUK
+    EUROPALLET  geen
+    REVIEW-VELDEN  needs_review_fields=['klant_match', 'orderregels[0].eenheid']  _meta-flags=['klant_match']
+    OPERATIONS (8):
+        POST  /salesOrders  {"customerNumber": "61472"}
+        PATCH /salesOrders({id})  {"shipToCode": "3240 AG"}
+        PATCH /salesOrders({id})  {"externalDocumentNumber": "2601382"}
+        PATCH /salesOrders({id})  {"requestedDeliveryDate": "2026-06-09"}
+        PATCH /salesOrders({id})  {"shipmentDate": "2026-06-18"}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "228321"}
+        PATCH /salesOrderLines({id})  {"unitOfMeasureCode": "STUK"}
+        PATCH /salesOrderLines({id})  {"quantity": 30.0}
+
+=== #635  'Bestelling 4506860196 633'
+    van: 'Joran de Waard <Joran.de.Waard@pontmeyer.nl>'  signaal: 'TABS Holland'  referentie: 'kandidaten'
+    KLANT  None (None, conf None) vlag=CONTROLEER  kandidaten: [('60773', 'AST Holland B.V.')]
+    SHIP-TO  geen gekozen (kandidaten: 0) -> NAV-default
+    REGEL0  'stucloper/protectiekarton 600mm rol a 30m2' qty=60.0 'STUK'
+        was: '18390' (fuzzy)  ->  nu: '224681' (exact_klantnr, conf 0.84)  verkoop: 60.0 x STUK
+    EUROPALLET  geen
+    REVIEW-VELDEN  needs_review_fields=['klant_match', 'orderregels[0].artikelnummer_kwabo_matched']  _meta-flags=['klant_match']
+    OPERATIONS: 0 — reden: (geen compose_error gezet)
+
+=== #550  'Bestelling 4506855359 642'
+    van: 'Joost Kremer <J.Kremer@jongeneel.nl>'  signaal: 'Jongeneel'  referentie: 'kandidaten'
+    KLANT  None (None, conf None) vlag=CONTROLEER  kandidaten: [('61482', 'Koninklijke Jongeneel'), ('50067', 'Jongeneel Haarlem BA654'), ('50069', 'Jongeneel Hengelo BA691'), ('50071', 'Jongeneel Het Houten Hart BA669'), ('50072', 'Jongeneel Leiden BA686'), ('50073', 'Jongeneel Lichtenvoorde BA692')]
+    SHIP-TO  geen gekozen (kandidaten: 0) -> NAV-default
+    REGEL0  'tfc top coat premium afdekvlies 1000mm rol' qty=45.0 'STUK'
+        was: '11530' (fuzzy)  ->  nu: '238531' (exact_klantnr, conf 0.84)  verkoop: 45.0 x STUK
+    REGEL1  'stucloper/protectiekarton onbedrukt 950-10' qty=20.0 'STUK'
+        was: '11530' (fuzzy)  ->  nu: '228321' (exact_klantnr, conf 0.84)  verkoop: 20.0 x STUK
+    EUROPALLET  geen
+    REVIEW-VELDEN  needs_review_fields=['klant_match', 'orderregels[0].artikelnummer_kwabo_matched', 'orderregels[1].artikelnummer_kwabo_matched']  _meta-flags=['klant_match']
+    OPERATIONS: 0 — reden: (geen compose_error gezet)
+
+=== #716  'Bestelling 0095588334'
+    van: 'Richard Verhagen <Richard.Verhagen@wurth.nl>'  signaal: None  referentie: '61030'
+    KLANT  '61030' (email, conf 1.0) vlag=vertrouwd
+    SHIP-TO  '5215 MK' "'S-HERTOGENBOSCH" '5215 MK' (van 2 kandidaten)
+    REGEL0  'ZELFKLEVEND-AFDEKVLIES-170GR-B0,67ML25M' qty=66.0 'STUK'
+        was: '238601' (exact)  ->  nu: '238601' (exact, conf 1.0)  verkoop: 66.0 x STUK
+    EUROPALLET  3 x 19820
+    REVIEW-VELDEN  needs_review_fields=[]  _meta-flags=[]
+    OPERATIONS (11):
+        POST  /salesOrders  {"customerNumber": "61030"}
+        PATCH /salesOrders({id})  {"shipToCode": "5215 MK"}
+        PATCH /salesOrders({id})  {"externalDocumentNumber": "95588334"}
+        PATCH /salesOrders({id})  {"requestedDeliveryDate": "2026-06-29"}
+        PATCH /salesOrders({id})  {"shipmentDate": "2026-06-18"}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "238601"}
+        PATCH /salesOrderLines({id})  {"unitOfMeasureCode": "STUK"}
+        PATCH /salesOrderLines({id})  {"quantity": 66.0}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "19820"}
+        PATCH /salesOrderLines({id})  {"unitOfMeasureCode": "STUK"}
+        PATCH /salesOrderLines({id})  {"quantity": 3}
+
+=== #765  'Inkooporder 4040-480052705 / 11-06-26'
+    van: 'Ede <ede@terhoevenverfgroep.nl>'  signaal: 'Ter Hoeven Verfgroep Ede'  referentie: None
+    KLANT  '61360' (naam_extract, conf 0.8) vlag=CONTROLEER
+    SHIP-TO  '6716 AH' 'EDE GLD' '6716 AH' (van 8 kandidaten)
+    REGEL0  '804600 ProGold Rol Afdekvlies 25X1Mtr' qty=45.0 'STUK'
+        was: None (manual)  ->  nu: '23559' (exact_klantnr, conf 1.0)
+    EUROPALLET  geen
+    REVIEW-VELDEN  needs_review_fields=['klant_match', 'mix_uom:1']  _meta-flags=['klant_match']
+    OPERATIONS (7):
+        POST  /salesOrders  {"customerNumber": "61360"}
+        PATCH /salesOrders({id})  {"shipToCode": "6716 AH"}
+        PATCH /salesOrders({id})  {"externalDocumentNumber": "480052705"}
+        PATCH /salesOrders({id})  {"requestedDeliveryDate": "2026-06-11"}
+        PATCH /salesOrders({id})  {"shipmentDate": "2026-06-18"}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "23559"}
+        PATCH /salesOrderLines({id})  {"quantity": 45.0}
+
+=== #742  'Bestellung  '
+    van: 'lager-sb <lager-sb@farbenklein.de>'  signaal: None  referentie: '60597'
+    KLANT  '60597' (email, conf 1.0) vlag=vertrouwd
+    SHIP-TO  geen gekozen (kandidaten: 2) — AMBIGU, review-vlag
+    REGEL0  'Optima Bodenabdeckkarton 50m x 1,3m 65qm' qty=150.0 'STUK'
+        was: '15500' (fuzzy)  ->  nu: None (manual, conf 0.0)
+    EUROPALLET  geen
+    REVIEW-VELDEN  needs_review_fields=['ship_to_gekozen', 'orderregels[0].artikelnummer_kwabo_matched']  _meta-flags=[]
+    OPERATIONS: 0 — reden: ValueError: Cannot compose NAV order for n10-742: no matched articles (1 regels, all unmatched).
+
+=== #712  'Bestelnummer 12600242'
+    van: 'Jonny van Putten <j.vanputten@stucshowroom.nl>'  signaal: None  referentie: '60228'
+    KLANT  '60228' (email, conf 1.0) vlag=vertrouwd
+    SHIP-TO  '2321 BM' 'LEIDEN' '2321 BM' (van 3 kandidaten)
+    REGEL0  'MULTI-CUTTER TFC | elektrische schaar' qty=10.0 'STUK'
+        was: '23374' (fuzzy)  ->  nu: '23384' (exact_klantnr, conf 1.0)  verkoop: 10.0 x STUK
+    EUROPALLET  geen
+    REVIEW-VELDEN  needs_review_fields=[]  _meta-flags=[]
+    OPERATIONS (7):
+        POST  /salesOrders  {"customerNumber": "60228"}
+        PATCH /salesOrders({id})  {"shipToCode": "2321 BM"}
+        PATCH /salesOrders({id})  {"externalDocumentNumber": "12600242"}
+        PATCH /salesOrders({id})  {"shipmentDate": "2026-06-18"}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "23384"}
+        PATCH /salesOrderLines({id})  {"unitOfMeasureCode": "STUK"}
+        PATCH /salesOrderLines({id})  {"quantity": 10.0}
+
+=== #700  '122338 - Kwabo Techniek B.V. - ORDERS.NL - PRODUKTIVBET'
+    van: 'supplier@bahag.com'  signaal: 'BAUHAUS Nederland C.V.'  referentie: None
+    KLANT  '61854' (naam_extract, conf 0.8) vlag=CONTROLEER
+    SHIP-TO  '3981 LB' 'BUNNIK' '3981 LB' (van 5 kandidaten)
+    REGEL0  'AFDEKVLIES 25M² VLOEISTOFDI. TOPLAAG' qty=45.0 'STUK'
+        was: None (manual)  ->  nu: '238531' (exact_klantnr, conf 1.0)  verkoop: 45.0 x STUK
+    EUROPALLET  geen
+    REVIEW-VELDEN  needs_review_fields=['klant_match']  _meta-flags=['klant_match']
+    OPERATIONS (8):
+        POST  /salesOrders  {"customerNumber": "61854"}
+        PATCH /salesOrders({id})  {"shipToCode": "3981 LB"}
+        PATCH /salesOrders({id})  {"externalDocumentNumber": "1049410746"}
+        PATCH /salesOrders({id})  {"requestedDeliveryDate": "2026-06-08"}
+        PATCH /salesOrders({id})  {"shipmentDate": "2026-06-18"}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "238531"}
+        PATCH /salesOrderLines({id})  {"unitOfMeasureCode": "STUK"}
+        PATCH /salesOrderLines({id})  {"quantity": 45.0}
+
+=== #678  'Inkooporder IO2603392'
+    van: 'No Reply Carel Lurvink <noreply@carellurvink.nl>'  signaal: 'Carel Lurvink Logistics B.V.'  referentie: None
+    KLANT  '60857' (naam_extract, conf 0.8) vlag=CONTROLEER
+    SHIP-TO  '7547 TB' 'ENSCHEDE' '7547 TB' (van 2 kandidaten)
+    REGEL0  'Zelfklevend ademvlies wit 1mtrx25mtr' qty=5.0 'STUK'
+        was: '21355' (fuzzy)  ->  nu: '229081' (exact_klantnr, conf 1.0)
+    REGEL1  'CaluPaint zelfklevend afdekvlies 1x25m 160' qty=45.0 'STUK'
+        was: '10710' (fuzzy)  ->  nu: None (manual, conf 0.0)
+    EUROPALLET  geen
+    REVIEW-VELDEN  needs_review_fields=['klant_match', 'orderregels[1].artikelnummer_kwabo_matched', 'mix_uom:1']  _meta-flags=['klant_match']
+    OPERATIONS (7):
+        POST  /salesOrders  {"customerNumber": "60857"}
+        PATCH /salesOrders({id})  {"shipToCode": "7547 TB"}
+        PATCH /salesOrders({id})  {"externalDocumentNumber": "IO2603392"}
+        PATCH /salesOrders({id})  {"requestedDeliveryDate": "2026-06-15"}
+        PATCH /salesOrders({id})  {"shipmentDate": "2026-06-18"}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "229081"}
+        PATCH /salesOrderLines({id})  {"quantity": 5.0}
+
+=== #660  'FW: Order / OTI303808'
+    van: 'Ivar Dofferhoff <Ivar.Dofferhoff@kwabo.nl>'  signaal: 'Kopadi'  referentie: None
+    KLANT  '61955' (naam_extract, conf 0.8) vlag=CONTROLEER
+    SHIP-TO  geen gekozen (kandidaten: 0) -> NAV-default
+    REGEL0  'Self adhesive top coat 160g 1x50M rolls / ' qty=30.0 'STUK'
+        was: '24469' (exact)  ->  nu: '24469' (exact, conf 1.0)  verkoop: 30.0 x STUK
+    REGEL1  'Strong board white - white / Kopadi Strong' qty=12.0 'STUK'
+        was: '24460' (exact)  ->  nu: '24460' (exact, conf 1.0)  verkoop: 12.0 x STUK
+    REGEL2  'Top Coat 120gr 0,67m x 37,3 m / ITSELIIMAU' qty=2.0 'STUK'
+        was: '10800' (fuzzy)  ->  nu: None (manual, conf 0.0)
+    EUROPALLET  42 x 19820
+    REVIEW-VELDEN  needs_review_fields=['klant_match', 'orderregels[2].artikelnummer_kwabo_matched']  _meta-flags=['klant_match']
+    OPERATIONS (12):
+        POST  /salesOrders  {"customerNumber": "61955"}
+        PATCH /salesOrders({id})  {"externalDocumentNumber": "OTI303808"}
+        PATCH /salesOrders({id})  {"shipmentDate": "2026-06-18"}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "24469"}
+        PATCH /salesOrderLines({id})  {"unitOfMeasureCode": "STUK"}
+        PATCH /salesOrderLines({id})  {"quantity": 30.0}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "24460"}
+        PATCH /salesOrderLines({id})  {"unitOfMeasureCode": "STUK"}
+        PATCH /salesOrderLines({id})  {"quantity": 12.0}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "19820"}
+        PATCH /salesOrderLines({id})  {"unitOfMeasureCode": "STUK"}
+        PATCH /salesOrderLines({id})  {"quantity": 42}
+
+=== #628  'Inkooporder 00177810'
+    van: 'Ron Berlang <rb@omtzigt-bouwmaterialen.nl>'  signaal: 'Omtzigt Bouwmaterialen B.V.'  referentie: None
+    KLANT  None (None, conf None) vlag=CONTROLEER  kandidaten: [('50910', 'Omtzigt Bouwmaterialen B.V.'), ('50911', 'Omtzigt Bouwmaterialen B.V.'), ('51060', 'Omtzigt Bouwmaterialen B.V.')]
+    SHIP-TO  geen gekozen (kandidaten: 0) -> NAV-default
+    REGEL0  'Gipslijsten volgens specificatie T Cirkel ' qty=1.0 'STUK'
+        was: '10130' (fuzzy)  ->  nu: None (manual, conf 0.0)
+    EUROPALLET  geen
+    REVIEW-VELDEN  needs_review_fields=['klant_match', 'orderregels[0].artikelnummer_kwabo_matched']  _meta-flags=['klant_match']
+    OPERATIONS: 0 — reden: (geen compose_error gezet)
+
+=== #619  'Bestelling 4506859249 157'
+    van: 'TABS Supply Chain <supplychain@tabsholland.nl>'  signaal: None  referentie: '61793'
+    KLANT  '61793' (email, conf 1.0) vlag=vertrouwd
+    SHIP-TO  '8447 GH' 'HEERENVEEN' '8447 GH' (van 1 kandidaten)
+    REGEL0  'stucloper/protectiekarton onbedrukt 950-10' qty=30.0 'STUK'
+        was: '228321' (exact)  ->  nu: '228321' (exact, conf 1.0)  verkoop: 30.0 x STUK
+    REGEL1  'beschermfolie harde vloeren zelfklev 700mm' qty=5.0 'STUK'
+        was: '229231' (exact)  ->  nu: '229231' (exact, conf 1.0)  verkoop: 5.0 x STUK
+    EUROPALLET  geen
+    REVIEW-VELDEN  needs_review_fields=[]  _meta-flags=[]
+    OPERATIONS (11):
+        POST  /salesOrders  {"customerNumber": "61793"}
+        PATCH /salesOrders({id})  {"shipToCode": "8447 GH"}
+        PATCH /salesOrders({id})  {"externalDocumentNumber": "4506859249"}
+        PATCH /salesOrders({id})  {"requestedDeliveryDate": "2026-06-08"}
+        PATCH /salesOrders({id})  {"shipmentDate": "2026-06-18"}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "228321"}
+        PATCH /salesOrderLines({id})  {"unitOfMeasureCode": "STUK"}
+        PATCH /salesOrderLines({id})  {"quantity": 30.0}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "229231"}
+        PATCH /salesOrderLines({id})  {"unitOfMeasureCode": "STUK"}
+        PATCH /salesOrderLines({id})  {"quantity": 5.0}
+
+=== #595  'Order '
+    van: 'Jeroen Rademaker <j.rademaker@bouwmarktbaarn.nl>'  signaal: 'Bouwmarkt Baarn'  referentie: None
+    KLANT  '61681' (naam_extract, conf 0.8) vlag=CONTROLEER
+    SHIP-TO  '3741 GP' 'BAARN' '3741 GP' (van 1 kandidaten)
+    REGEL0  'TFC top Coat Heavy Duty Nonwoven sterk afd' qty=66.0 'STUK'
+        was: '238601' (exact)  ->  nu: '238601' (exact, conf 1.0)  verkoop: 66.0 x STUK
+    REGEL1  'TFC Top-Coat Heavy Duty non-woven sterk af' qty=45.0 'STUK'
+        was: '238531' (exact)  ->  nu: '238531' (exact, conf 1.0)  verkoop: 45.0 x STUK
+    REGEL2  'Euro/statiegeld pallet inclusief EUROPALLE' qty=2.0 'STUK'
+        was: None (manual)  ->  nu: None (manual, conf 0.0)
+    EUROPALLET  geen
+    REVIEW-VELDEN  needs_review_fields=['klant_match', 'orderregels[2].artikelnummer_kwabo_matched']  _meta-flags=['klant_match']
+    OPERATIONS (11):
+        POST  /salesOrders  {"customerNumber": "61681"}
+        PATCH /salesOrders({id})  {"shipToCode": "3741 GP"}
+        PATCH /salesOrders({id})  {"externalDocumentNumber": "ION021530"}
+        PATCH /salesOrders({id})  {"requestedDeliveryDate": "2026-06-05"}
+        PATCH /salesOrders({id})  {"shipmentDate": "2026-06-18"}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "238601"}
+        PATCH /salesOrderLines({id})  {"unitOfMeasureCode": "STUK"}
+        PATCH /salesOrderLines({id})  {"quantity": 66.0}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "238531"}
+        PATCH /salesOrderLines({id})  {"unitOfMeasureCode": "STUK"}
+        PATCH /salesOrderLines({id})  {"quantity": 45.0}
+
+=== #685  'Betreft onze bestelling 822200'
+    van: 'VLCE - Robert Vroemen <Inkoop_vlc@veris.nl>'  signaal: None  referentie: '60203'
+    KLANT  '60203' (email, conf 1.0) vlag=vertrouwd
+    SHIP-TO  '6101 XK' 'ECHT' '6101 XK' (van 1 kandidaten)
+    REGEL0  'Bouwcenter stucloper 50m2 100-130cm bruin-' qty=455.0 'STUK'
+        was: '23839' (fuzzy)  ->  nu: '23545' (exact_klantnr, conf 1.0)
+    REGEL1  'Bouwcenter stucloper 50m2 90-100 cm bruin-' qty=150.0 'STUK'
+        was: '10140' (fuzzy)  ->  nu: '23544' (exact_klantnr, conf 1.0)
+    REGEL2  'Bouwcenter stucloper 35 m2 55-70 cm bruin-' qty=120.0 'STUK'
+        was: '10140' (fuzzy)  ->  nu: '23546' (exact_klantnr, conf 1.0)
+    REGEL3  'Stiho stucloper 50 m2 120/130 cm bruin-wit' qty=245.0 'STUK'
+        was: '10150' (fuzzy)  ->  nu: '23521' (exact_klantnr, conf 1.0)
+    REGEL4  'TFC non-woven afdekvlies 1x25 mt absorbere' qty=45.0 'STUK'
+        was: '20390' (fuzzy)  ->  nu: '234781' (exact_klantnr, conf 1.0)
+    REGEL5  'Bouwcenter afdekvlies 1x25 mt wit non wove' qty=45.0 'STUK'
+        was: '12460' (fuzzy)  ->  nu: '23923' (exact_klantnr, conf 1.0)
+    REGEL6  'Bouwcenter afdekvlies 1x50 mt wit non wove' qty=22.0 'STUK'
+        was: '12460' (fuzzy)  ->  nu: '23924' (exact_klantnr, conf 1.0)
+    REGEL7  'Bouwcenter afdekvlies 0,67x37 mt wit non w' qty=33.0 'STUK'
+        was: '12460' (fuzzy)  ->  nu: '23989' (exact_klantnr, conf 1.0)
+    EUROPALLET  geen
+    REVIEW-VELDEN  needs_review_fields=['mix_uom:1', 'mix_uom:2', 'mix_uom:3', 'mix_uom:4', 'mix_uom:5', 'mix_uom:6', 'mix_uom:7', 'mix_uom:8']  _meta-flags=[]
+    OPERATIONS (20):
+        POST  /salesOrders  {"customerNumber": "60203"}
+        PATCH /salesOrders({id})  {"shipToCode": "6101 XK"}
+        PATCH /salesOrders({id})  {"externalDocumentNumber": "822200"}
+        PATCH /salesOrders({id})  {"shipmentDate": "2026-06-18"}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "23545"}
+        PATCH /salesOrderLines({id})  {"quantity": 455.0}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "23544"}
+        PATCH /salesOrderLines({id})  {"quantity": 150.0}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "23546"}
+        PATCH /salesOrderLines({id})  {"quantity": 120.0}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "23521"}
+        PATCH /salesOrderLines({id})  {"quantity": 245.0}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "234781"}
+        PATCH /salesOrderLines({id})  {"quantity": 45.0}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "23923"}
+        PATCH /salesOrderLines({id})  {"quantity": 45.0}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "23924"}
+        PATCH /salesOrderLines({id})  {"quantity": 22.0}
+        POST  /salesOrders({id})/salesOrderLines  {"lineType": "Item", "itemNumber": "23989"}
+        PATCH /salesOrderLines({id})  {"quantity": 33.0}
+
+=== E6-check: verboden keys (prijs/omschrijving) in operations ===
+  geen enkele operation bevat unitPrice/description — OK

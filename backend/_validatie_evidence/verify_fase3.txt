@@ -1,0 +1,26 @@
+=== #716 Würth — WAS (echte prod-push) ===
+  POST {'lineType': 'Item', 'itemNumber': '238601'}
+  PATCH {'quantity': 66.0}
+  -> NAV-regel werd: 66 x PALLET33 à €693 = €45738  (gewenst: 2 x PALLET33 = €1386)
+  europallet_regel was: None
+
+2026-06-17 22:47:54 [info     ] apply_mixprijzen               email_id=verify-716 klant_mix=False klant_nr=61030 mixprijzen_actief=False
+2026-06-17 22:47:54 [info     ] compute_europallet             email_id=verify-716 klant_nr=61030 n_regels=1 pallet_added=True pallet_artikelnr=19820 pallet_qty=2
+=== NU — Branch A (E1/E2) ===
+  verkoop_uom_gekozen='PALLET33'  verkoop_aantal=2  (besteld: 66.0 STUK)
+  compose:  POST {'lineType': 'Item', 'itemNumber': '238601'}  +  PATCH {'unitOfMeasureCode': 'PALLET33'}  +  PATCH {'quantity': 2}
+  europallet (E4): 2 x 19820
+
+=== Mock-push (trigger-emulatie) ===
+  regelstand na push: 2 x PALLET33
+  geforceerde ROL-PATCH (E3): status=400  error="MockNavValidationError: Unit of Measure Code 'ROL' cannot be found for item '238601'"
+
+2026-06-17 22:47:54 [info     ] apply_mixprijzen               email_id=verify-716 klant_mix=True klant_nr=61030 mixprijzen_actief=True n_actief=1 n_review=0 order_total_pallets=2
+=== Mix-tak (M1-M4) — zelfde regel, klant mét mixvlag ===
+  238601 (families PAL33/35/42, verkoopeenheid kiest 33): mix_uom_gekozen='M2PAL33' mix_aantal=2
+2026-06-17 22:47:54 [info     ] apply_mixprijzen               email_id=verify-23685 klant_mix=True klant_nr=61030 mixprijzen_actief=True n_actief=1 n_review=0 order_total_pallets=1
+  23685  1 pallets (30 stuks) -> M1PAL30
+2026-06-17 22:47:54 [info     ] apply_mixprijzen               email_id=verify-23685 klant_mix=True klant_nr=61030 mixprijzen_actief=True n_actief=1 n_review=0 order_total_pallets=8
+  23685  8 pallets (240 stuks) -> M7PAL30
+2026-06-17 22:47:54 [info     ] apply_mixprijzen               email_id=verify-23685 klant_mix=True klant_nr=61030 mixprijzen_actief=True n_actief=1 n_review=0 order_total_pallets=12
+  23685 12 pallets (360 stuks) -> M10PAL30

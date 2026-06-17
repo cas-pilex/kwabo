@@ -1,0 +1,24 @@
+=== Meting A: match_articles_node (10 regels, latency 200 ms/call) ===
+2026-06-17 22:48:00 [info     ] match_articles                 email_id=verify-f4-node matched=5 total=10
+  [A:conc=1                                    ] wall-clock=  3.16s  nav_calls=15  max_in_flight=1
+2026-06-17 22:48:01 [info     ] match_articles                 email_id=verify-f4-node matched=5 total=10
+  [A:conc=5                                    ] wall-clock=  0.63s  nav_calls=15  max_in_flight=5
+  DETERMINISME OK: uitkomst conc=1 ≡ conc=5 (json-identiek, timestamps gestript)
+
+=== Meting B: post-extract-pipeline (match_customer → … → compose; géén LLM) ===
+2026-06-17 22:48:01 [info     ] klant_checks                   is_4plus=False kredietlimiet=5000.0
+2026-06-17 22:48:01 [info     ] match_customer                 bron=email confidence=1.0 email_id=verify-f4-pipe-c1 klant_nr=10001
+2026-06-17 22:48:01 [info     ] select_ship_to                 chosen=None email_id=verify-f4-pipe-c1 klant_nr=10001 n_candidates=0
+2026-06-17 22:48:04 [info     ] match_articles                 email_id=verify-f4-pipe-c1 matched=5 total=10
+2026-06-17 22:48:04 [info     ] apply_mixprijzen               email_id=verify-f4-pipe-c1 klant_mix=False klant_nr=10001 mixprijzen_actief=False
+2026-06-17 22:48:04 [info     ] compute_europallet             email_id=verify-f4-pipe-c1 klant_nr=10001 n_regels=10 pallet_added=False pallet_artikelnr=None pallet_qty=None
+2026-06-17 22:48:04 [info     ] compose_order                  email_id=verify-f4-pipe-c1 log_id=1 nav_operations=17 regels=10
+  [B:conc=1] wall-clock=  3.29s  nav_calls=15  max_in_flight=1
+2026-06-17 22:48:04 [info     ] klant_checks                   is_4plus=False kredietlimiet=5000.0
+2026-06-17 22:48:04 [info     ] match_customer                 bron=email confidence=1.0 email_id=verify-f4-pipe-c5 klant_nr=10001
+2026-06-17 22:48:04 [info     ] select_ship_to                 chosen=None email_id=verify-f4-pipe-c5 klant_nr=10001 n_candidates=0
+2026-06-17 22:48:05 [info     ] match_articles                 email_id=verify-f4-pipe-c5 matched=5 total=10
+2026-06-17 22:48:05 [info     ] apply_mixprijzen               email_id=verify-f4-pipe-c5 klant_mix=False klant_nr=10001 mixprijzen_actief=False
+2026-06-17 22:48:05 [info     ] compute_europallet             email_id=verify-f4-pipe-c5 klant_nr=10001 n_regels=10 pallet_added=False pallet_artikelnr=None pallet_qty=None
+2026-06-17 22:48:05 [info     ] compose_order                  email_id=verify-f4-pipe-c5 log_id=2 nav_operations=17 regels=10
+  [B:conc=5] wall-clock=  0.71s  nav_calls=15  max_in_flight=5
