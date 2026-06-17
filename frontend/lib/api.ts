@@ -113,6 +113,23 @@ export type EuropalletRegel = {
   positie?: number;
 };
 
+// Functie 4: onderbouwing van de europallet-telling (uit _meta.europallet)
+export type EuropalletBijdrage = {
+  artikelnr: string | null;
+  qty: number | null;
+  eenheid: string;
+  bron: string;
+  pallet_maat: number | null;
+  pallets: number;
+};
+
+export type EuropalletMeta = {
+  regels: EuropalletBijdrage[];
+  totaal_pallets: number;
+  europallet_aantal: number;
+  uitleg: string;
+};
+
 export const AUTH_COOKIE = "kwabo_admin";
 
 // Read the admin token from wherever it lives in the current execution
