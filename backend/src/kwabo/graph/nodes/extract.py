@@ -19,6 +19,7 @@ from kwabo.integrations.email_client import Attachment, RawEmail
 from kwabo.integrations.llm_extractor import extract_from_email
 from kwabo.utils.eenheid_mapping import normalize_eenheid
 from kwabo.utils.logging import log
+from kwabo.utils.verzendwijze import detect_verzendwijze
 
 
 # Duitse "Kalenderwoche" (KW24, KW 24, KW24/2026): catch-all so the LLM
@@ -219,6 +220,22 @@ async def extract_node(state: OrderState) -> OrderState:
             # Drop the path from needs_review if the LLM had flagged it.
             if "gewenste_leverdatum" in needs_review:
                 needs_review = [p for p in needs_review if p != "gewenste_leverdatum"]
+
+    # Functie 5: deterministische afhaal-/ophaal-detectie (NL/DE) over subject,
+    # body, afleverinstructies, opmerkingen en bijlage-tekst. Bij een hit zetten
+    # we de NAV-verzendwijze (Shipment Method Code = EXW); de composer emit dan
+    # een aparte single-field PATCH. Geen needs_review-blokkade (verrijking, geen
+    # ontbrekend verplicht veld) — de reviewer kan in de UI corrigeren.
+    verzendwijze = detect_verzendwijze({**state, **flat})
+    if verzendwijze:
+        flat["verzendwijze"] = verzendwijze
+        meta["verzendwijze"] = {
+            "value": verzendwijze,
+            "source": "post_processor",
+            "source_detail": "afhaal_signaal",
+            "confidence": 0.9,
+            "needs_review": False,
+        }
 
     log.info(
         "extract",

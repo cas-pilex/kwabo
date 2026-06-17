@@ -246,6 +246,22 @@ def compose_navision_operations(state: dict) -> list[NavOperation]:
             }
         )
 
+    # ---- Step 3b: verzendwijze (afhaalorder → Shipment Method Code) --------
+    # Functie 5: een afhaal-/ophaalorder krijgt een expliciete verzendwijze
+    # (Cas: Shipment Method Code = EXW). Single-field PATCH zodat NAV's
+    # OnValidate-trigger vuurt. Alleen wanneer de detectie iets zette — een
+    # gewone verzendorder laat dit veld leeg (geen valse positief).
+    verzendwijze = state.get("verzendwijze")
+    if verzendwijze:
+        ops.append(
+            {
+                "op": "PATCH",
+                "path": "/salesOrders({id})",
+                "body": {"shipmentMethodCode": verzendwijze},
+                "label": f"Verzendwijze ({verzendwijze}, afhaal)",
+            }
+        )
+
     # ---- Step 4: requested delivery date -----------------------------------
     leverdatum = state.get("gewenste_leverdatum")
     if leverdatum:
