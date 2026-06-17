@@ -39,6 +39,10 @@ class SeedOrderBody(BaseModel):
     email_from: Optional[str] = None
     email_subject: Optional[str] = None
     status: str = "review"
+    # Optionele DB-warnings (row.warnings). In mock-mode produceert de pipeline
+    # de bron-doc-skip-warning niet (de mock koppelt het document wél), dus
+    # e2e-tests die de bron-doc-banner checken zetten 'm hier expliciet.
+    warnings: Optional[list[str]] = None
 
 
 @router.post("/seed-order")
@@ -66,6 +70,8 @@ async def seed_order(body: SeedOrderBody) -> dict:
         row.klant_nr = (st.get("klant_match") or {}).get("navision_klantnr")
         row.aantal_regels = len(st.get("orderregels") or [])
         row.alle_artikelen_gematcht = st.get("alle_artikelen_gematcht")
+        if body.warnings is not None:
+            row.warnings = json.dumps(body.warnings)
         s.add(row)
         s.commit()
         return {"id": row.id}
