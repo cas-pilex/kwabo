@@ -13,9 +13,11 @@ from pydantic import BaseModel
 from sqlmodel import Session
 
 from kwabo.db import session as db_session
-from kwabo.db.repository import KlantRepo, OrderLogRepo, ShipToRepo
+from kwabo.db.repository import ArtikelkaartRepo, KlantRepo, OrderLogRepo, ShipToRepo
+from kwabo.graph.nodes.apply_mixprijzen import _branch_a
 from kwabo.graph.nodes.select_ship_to import _decide as _decide_ship_to
 from kwabo.integrations.navision_steps import compose_navision_operations
+from kwabo.utils.eenheid_resolve import resolve_line_uom
 from kwabo.utils.logging import log
 
 router = APIRouter(prefix="/api/orders", tags=["orders-preview"])
@@ -360,6 +362,40 @@ def patch_field(order_id: int, body: PatchFieldBody) -> dict:
                 stale += ["mix_uom_kandidaat", "eenheid_default"]
             for veld in stale:
                 regels[i].pop(veld, None)
+
+    # Functie 3 (DEEL B): na een handmatige ARTIKEL-match de eenheid + het
+    # aantal opnieuw afleiden (Branch A) — de wipe hierboven liet ze anders
+    # leeg, waarna de compose terugviel op de letterlijke base-eenheid/leeg
+    # aantal ("STUK met leeg aantal", Lasaulec). Alleen het artikel-pad: een
+    # losse hoeveelheid/eenheid-correctie houdt de wipe-only (V1, #716). Bij
+    # ontbrekende masterdata een veilige no-op.
+    if m and body.value:
+        i = int(m.group(1))
+        regels = state.get("orderregels") or []
+        if i < len(regels) and isinstance(regels[i], dict):
+            regel = regels[i]
+            with Session(db_session.engine) as s:
+                art_repo = ArtikelkaartRepo(s)
+                kaart = art_repo.get(body.value)
+                if kaart and kaart.basis_eenheid:
+                    eenheden = art_repo.list_eenheden(body.value)
+                    base = kaart.basis_eenheid.strip()
+                    regel.setdefault("eenheid_origineel", regel.get("eenheid"))
+                    regel["eenheid_default"] = base
+                    regel["eenheid"], eenheid_vlag = resolve_line_uom(regel, base, eenheden)
+                    _branch_a(regel, art_repo)
+                    meta = state.setdefault("_meta", {})
+                    regels_meta = meta.setdefault("orderregels", [])
+                    while len(regels_meta) <= i:
+                        regels_meta.append({})
+                    rm = regels_meta[i] if isinstance(regels_meta[i], dict) else {}
+                    rm["eenheid"] = {
+                        "value": regel["eenheid"], "source": "auto",
+                        "source_detail": "Branch A herberekend na handmatige artikel-match",
+                        "confidence": 0.0 if eenheid_vlag else 1.0,
+                        "needs_review": eenheid_vlag,
+                    }
+                    regels_meta[i] = rm
 
     needs = _all_needs_review_paths(state)
     state["needs_review_fields"] = needs
