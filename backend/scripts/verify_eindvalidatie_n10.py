@@ -112,7 +112,8 @@ def seed_masterdata() -> None:
                                mixprijzen=bool(r.get("mixprijzen"))))
         for r in ak:
             s.add(Artikelkaart(kwabo_artikelnr=r["kwabo_artikelnr"], naam=r["naam"] or "",
-                               basis_eenheid=r["basis_eenheid"] or "STUK"))
+                               basis_eenheid=r["basis_eenheid"] or "STUK",
+                               verkoop_eenheid=r.get("verkoop_eenheid")))
         for r in ae:
             s.add(ArtikelEenheid(kwabo_artikelnr=r["kwabo_artikelnr"],
                                  eenheid_code=r["eenheid_code"],

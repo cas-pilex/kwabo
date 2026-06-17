@@ -1,11 +1,18 @@
-"""Verificatie Functie 4 — europallet deterministisch + verklaarbaar (artikel 19820).
+"""DIAGNOSE Functie 4 — europallet op de ECHTE prod-data (artikel 19820).
 
-Verse output op de ECHTE orders + UoM-rijen:
+LET OP: dit is een DIAGNOSE, geen 'groen'-bewijs. De eerdere versie seedde
+fictief verkoop_eenheid=PALLET33 en gaf #832->1 / #833->1. De prod-export bevat
+verkoop_eenheid=STUK voor 238601/238531/229231, en de europallet-telling gebruikt
+artikel_pallet_kennis (per_pallet) als PRIMAIRE bron — die overschaduwt
+verkoop_eenheid. Op de echte data, met de kennis-tabel:
 
-  #832 = 33 STUK 238601 (verkoop PALLET33=33) -> 1 europallet (opgeslagen stale: 2).
-  #833 = 5 STUK 229231 (80) + 15 STUK 238531 (33) -> 0,06+0,45 = 0,51 -> 1 (was: niets).
-  Regressie #707/#716: ongewijzigd (mijn wijziging vuurt alleen als verkoop_eenheid
-  is gevuld; met de fixture-masterdata (verkoop_eenheid leeg) blijven ze None).
+  #832 = 33 STUK 238601  -> per_pallet=24 (kennis) -> 33/24=1,375 -> 2 europallet.
+  #833 = 5 STUK 229231 + 15 STUK 238531 -> 229231 5/24=0,208 (<drempel);
+         238531 geen kennis + verkoop_eenheid=STUK -> 0 bijdrage -> 0 europallet.
+
+Kernprobleem: artikel_pallet_kennis.per_pallet=24 matcht GEEN echte pallet-familie
+(238601: 30/33/35/42; 23691: echte PALLET=20). De juiste pallet-maat per artikel
+is een OPEN EXPERTVRAAG (Cas/Nico) — deze diagnose stelt 'm vast, lost 'm niet op.
 
 Read-only t.o.v. prod: temp-sqlite + NAVISION_MODE=mock + lege ADMIN_PASSWORD.
 
@@ -34,29 +41,43 @@ except (AttributeError, ValueError):  # pragma: no cover
 
 from sqlmodel import Session  # noqa: E402
 
-from kwabo.db.models import Artikelkaart, ArtikelEenheid  # noqa: E402
+from kwabo.db.models import (  # noqa: E402
+    Artikelkaart, ArtikelEenheid, ArtikelPalletKennis,
+)
 from kwabo.db.session import engine, init_db  # noqa: E402
 from kwabo.graph.nodes.apply_mixprijzen import apply_mixprijzen_node  # noqa: E402
 from kwabo.graph.nodes.compute_europallet import compute_europallet_node  # noqa: E402
 from kwabo.graph.nodes.match_articles import match_articles_node  # noqa: E402
-from kwabo.utils.pallet_logic import europallet_breakdown  # noqa: E402
 
 STATES = Path(__file__).resolve().parents[1] / "tests" / "test_data" / "states"
 _AE = json.loads((STATES / "artikel_eenheden.json").read_text("utf-8"))
-
-# Prod-complete verkoop_eenheid (Sales_Unit_of_Measure) per artikel.
-VERKOOP = {"238601": "PALLET33", "238531": "PALLET33", "229231": "PALLET"}
+# verkoop_eenheid + pallet-kennis komen UIT de prod-export (geen hardcode meer),
+# zodat de telling de ECHTE prod-data weerspiegelt (incl. de foute kennis-waarden).
+_AK = {r["kwabo_artikelnr"]: r
+       for r in json.loads((STATES / "artikelkaarten.json").read_text("utf-8"))}
+_PK = json.loads((STATES / "artikel_pallet_kennis.json").read_text("utf-8"))
+ARTIKELEN = ["238601", "238531", "229231"]  # de regels uit #832/#833
 
 
 def _seed() -> None:
     init_db()
     with Session(engine) as s:
-        for nr, verkoop in VERKOOP.items():
-            s.add(Artikelkaart(kwabo_artikelnr=nr, naam=f"art {nr}",
-                               basis_eenheid="STUK", verkoop_eenheid=verkoop))
+        for nr in ARTIKELEN:
+            kaart = _AK.get(nr) or {}
+            s.add(Artikelkaart(kwabo_artikelnr=nr, naam=kaart.get("naam") or f"art {nr}",
+                               basis_eenheid=kaart.get("basis_eenheid") or "STUK",
+                               verkoop_eenheid=kaart.get("verkoop_eenheid")))
         for r in _AE:
-            if r["kwabo_artikelnr"] in VERKOOP:
+            if r["kwabo_artikelnr"] in ARTIKELEN:
                 s.add(ArtikelEenheid(**r))
+        # artikel_pallet_kennis is de PRIMAIRE pallet-bron — meeseeden zodat de
+        # diagnose de echte prod-uitkomst toont (per_pallet=24).
+        for r in _PK:
+            if r["kwabo_artikelnr"] in ARTIKELEN:
+                s.add(ArtikelPalletKennis(
+                    kwabo_artikelnr=r["kwabo_artikelnr"], eenheid=r["eenheid"],
+                    pallet_required=bool(r["pallet_required"]),
+                    per_pallet=int(r["per_pallet"]), confidence=float(r["confidence"])))
         s.commit()
 
 
@@ -92,45 +113,32 @@ def _print(order: str, stored, out: dict) -> int:
     return aantal
 
 
-class _Kaart:
-    def __init__(self, v): self.verkoop_eenheid = v
-
-
-class _NoKennis:
-    def lookup(self, a, e): return None
-
-
-class _FixtureRepo:
-    """uom_repo met de echte UoM-rijen maar verkoop_eenheid LEEG (fixture-stand)."""
-    def list_eenheden(self, nr):
-        rows = [r for r in _AE if r["kwabo_artikelnr"] == nr]
-        return [type("E", (), {"eenheid_code": r["eenheid_code"],
-                               "qty_per_base": r["qty_per_base"],
-                               "is_mix_uom": r.get("is_mix_uom", False)})() for r in rows]
-    def get(self, nr): return _Kaart(None)
-
-
-def _regressie(order: str) -> tuple[int, int]:
-    st = _load(order)
-    stored = (st.get("europallet_regel") or {}).get("hoeveelheid", 0) if st.get("europallet_regel") else 0
-    bd = europallet_breakdown(st, repo=_NoKennis(), uom_repo=_FixtureRepo())
-    print(f"#{order} (regressie, fixture-masterdata): opgeslagen={stored} -> NU={bd['europallet_aantal']}")
-    return stored, bd["europallet_aantal"]
+def _kennis_mismatch() -> None:
+    """Toon waarom de kennis-waarde verdacht is: per_pallet vs echte pallet-families."""
+    pk = {r["kwabo_artikelnr"]: r for r in _PK}
+    print("=== Root cause: artikel_pallet_kennis.per_pallet vs echte pallet-UoM ===")
+    for nr in ARTIKELEN:
+        per = (pk.get(nr) or {}).get("per_pallet")
+        fams = sorted({r["qty_per_base"] for r in _AE
+                       if r["kwabo_artikelnr"] == nr and "PAL" in r["eenheid_code"].upper()
+                       and r["qty_per_base"] > 1})
+        match = "OK" if per in fams else "MISMATCH — geen enkele pallet-familie = %s" % per
+        print(f"   {nr}: kennis per_pallet={per}  echte pallet-maten={fams}  -> {match}")
 
 
 async def main() -> int:
     _seed()
-    print("=== Headline: #832 / #833 (verkoop_eenheid gevuld) ===")
+    print("=== DIAGNOSE: #832 / #833 op de ECHTE prod-data (kennis + verkoop_eenheid) ===")
     a832 = _print("order_832", 2, await _run_pipeline("order_832"))
     a833 = _print("order_833", None, await _run_pipeline("order_833"))
     print()
-    print("=== Regressie: #707 / #716 (mijn wijziging is additief) ===")
-    s707, n707 = _regressie("order_707")
-    s716, n716 = _regressie("order_716")
+    _kennis_mismatch()
     print()
-    ok = a832 == 1 and a833 == 1 and n707 == s707 and n716 == s716
-    print("RESULTAAT:", "ALLES GROEN [OK]" if ok else "ONVERWACHT")
-    return 0 if ok else 1
+    print("BEVINDING: de europallet-telling leunt op artikel_pallet_kennis (per_pallet=24),")
+    print("niet op verkoop_eenheid. per_pallet=24 matcht geen echte pallet-familie -> de")
+    print("uitkomst (#832=%s, #833=%s) is data-gedreven FOUT. De juiste pallet-maat per" % (a832, a833))
+    print("artikel is een OPEN EXPERTVRAAG (Cas/Nico); deze diagnose lost niets op.")
+    return 0  # diagnose: altijd 0 — documenteert de stand, gate't niet op 'groen'
 
 
 if __name__ == "__main__":

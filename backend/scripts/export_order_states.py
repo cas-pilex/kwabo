@@ -145,8 +145,11 @@ def main() -> None:
 
         # 3) Masterdata voor drempel-analyse en naam-fallback-tests
         print("== Masterdata")
+        # verkoop_eenheid (NAV Sales_Unit_of_Measure) is autoritatief voor de
+        # Branch-A-eenheidskeuze én de europallet-pallet-maat (Functie 4). Zonder
+        # dit veld viel de europallet-telling terug op een fallback-pallet-maat.
         ak = conn.execute(text(
-            "SELECT kwabo_artikelnr, naam, basis_eenheid FROM artikelkaarten"
+            "SELECT kwabo_artikelnr, naam, basis_eenheid, verkoop_eenheid FROM artikelkaarten"
         )).fetchall()
         kk = conn.execute(text(
             "SELECT nav_klantnr, naam, email, email_bestelling, mixprijzen "
@@ -168,7 +171,8 @@ def main() -> None:
         )).fetchall()
         if not args.dry_run:
             (STATES_DIR / "artikelkaarten.json").write_text(json.dumps(
-                [{"kwabo_artikelnr": r[0], "naam": r[1], "basis_eenheid": r[2]} for r in ak],
+                [{"kwabo_artikelnr": r[0], "naam": r[1], "basis_eenheid": r[2],
+                  "verkoop_eenheid": r[3]} for r in ak],
                 indent=2, ensure_ascii=False), encoding="utf-8")
             (STATES_DIR / "klantenkaarten.json").write_text(json.dumps(
                 [{"nav_klantnr": r[0], "naam": r[1], "email": r[2], "email_bestelling": r[3],
