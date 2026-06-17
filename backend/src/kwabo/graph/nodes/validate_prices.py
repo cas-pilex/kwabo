@@ -7,9 +7,47 @@ from kwabo.utils import utcnow
 
 from sqlmodel import Session
 
-from kwabo.db.repository import PrijsRepo
+from kwabo.db.repository import ArtikelRepo, KruisverwijzingRepo, PrijsRepo
 from kwabo.db.session import engine
 from kwabo.graph.state import OrderState
+
+
+def artikel_prijs_signaal(regel, klant, prijs_repo, kv_repo, art_repo):
+    """Functie 6 (data-gated) — verdacht artikel op basis van de prijslijst.
+
+    Een gematcht artikel zonder actieve prijs voor de klant is verdacht als een
+    alternatief (kruisverwijzing/klantenkaart/history) voor diezelfde klant-SKU
+    WÉL een actieve prijs heeft. Geeft dan ``{"kwabo", "bron"}`` terug (om te
+    VLAGGEN + tonen — nooit auto-switchen, nooit zelf prijzen). Geen geprijsd
+    alternatief (bv. lege prijsafspraken-tabel) → ``None`` (geen ruis).
+    """
+    matched = regel.get("artikelnummer_kwabo_matched")
+    if not matched:
+        return None
+    hoev = float(regel.get("hoeveelheid") or 0)
+    if prijs_repo.best_match(klant, matched, hoev):
+        return None  # matched heeft zelf een prijs → niets aan de hand
+    sku = regel.get("artikelnummer_klant")
+    if not sku:
+        return None
+    kandidaten: list[tuple[str, str]] = []
+    kv = kv_repo.lookup(klant, sku)
+    if kv:
+        kandidaten.append((kv, "kruisverwijzing"))
+    m = art_repo.mapping(klant, sku)
+    if m and m.kwabo_artikelnr:
+        kandidaten.append((m.kwabo_artikelnr, "klantenkaart"))
+    h = art_repo.best_history(klant, sku)
+    if h and h.kwabo_artikelnr:
+        kandidaten.append((h.kwabo_artikelnr, "history"))
+    seen: set[str] = set()
+    for kwabo, bron in kandidaten:
+        if kwabo == matched or kwabo in seen:
+            continue
+        seen.add(kwabo)
+        if prijs_repo.best_match(klant, kwabo, hoev):
+            return {"kwabo": kwabo, "bron": bron}
+    return None
 
 
 async def validate_prices_node(state: OrderState) -> OrderState:
@@ -23,10 +61,26 @@ async def validate_prices_node(state: OrderState) -> OrderState:
     # connectie-checkout per pipeline-run.
     with Session(engine) as s:
         repo = PrijsRepo(s)
+        kv_repo = KruisverwijzingRepo(s)
+        art_repo = ArtikelRepo(s)
         for r in state.get("orderregels") or []:
             r = dict(r)
             kw = r.get("artikelnummer_kwabo_matched")
             prijs = r.get("prijs_per_eenheid")
+
+            # Functie 6 (data-gated): vlag een gematcht artikel zonder prijs voor
+            # de klant als een alternatief WÉL een prijs heeft. Onafhankelijk van
+            # of de mail een prijs gaf (#816: klant gaf 23853 zónder prijs).
+            if kw and klant:
+                alt = artikel_prijs_signaal(r, klant, repo, kv_repo, art_repo)
+                if alt:
+                    r["artikel_prijs_alternatief"] = alt
+                    warnings.append(
+                        f"ARTIKEL ONZEKER regel {r.get('positie')}: {kw} heeft geen "
+                        f"prijsafspraak voor deze klant; {alt['kwabo']} "
+                        f"(via {alt['bron']}) heeft die wél — controleer het artikel."
+                    )
+
             if not kw or prijs is None or not klant:
                 r["prijs_validated"] = None
                 regels_out.append(r)
@@ -39,9 +93,13 @@ async def validate_prices_node(state: OrderState) -> OrderState:
                 # it against. Informational only — NAV will accept the price
                 # and the reviewer can still see the warning.
                 r["prijs_validated"] = None
+                # De tool stuurt nooit een prijs naar NAV — NAV berekent die
+                # zelf. De mailprijs dient alleen ter controle (Functie 6 DEEL B:
+                # tekst gecorrigeerd; gedrag ongewijzigd).
                 warnings.append(
                     f"Geen prijsafspraak in DB voor regel {r.get('positie')} ({kw}) — "
-                    f"prijs €{prijs} uit de mail wordt 1-op-1 doorgezet."
+                    f"NAV berekent de prijs zelf; de mailprijs (€{prijs}) dient "
+                    f"alleen ter controle."
                 )
                 regels_out.append(r)
                 continue
@@ -147,6 +205,29 @@ async def validate_prices_node(state: OrderState) -> OrderState:
                 "needs_review": validated is False or review_for_missing,
                 "validated": validated,
             }
+            # Functie 6: een prijs-verdacht artikel zet de artikel-match terug in
+            # review (zonder de match-waarde/-bron te overschrijven) zodat de
+            # reviewer het alternatief kan kiezen via de bestaande artikelflow.
+            alt = r.get("artikel_prijs_alternatief")
+            if alt:
+                amm = rm.get("artikelnummer_kwabo_matched")
+                if isinstance(amm, dict):
+                    amm["needs_review"] = True
+                    amm["source_detail"] = (
+                        f"{amm.get('source_detail') or ''} | geen prijsafspraak; "
+                        f"alternatief {alt['kwabo']} ({alt['bron']}) heeft wél prijs"
+                    ).strip(" |")
+                else:
+                    rm["artikelnummer_kwabo_matched"] = {
+                        "value": kw, "source": "price_signal",
+                        "source_detail": (f"geen prijsafspraak; alternatief "
+                                          f"{alt['kwabo']} ({alt['bron']}) heeft wél prijs"),
+                        "confidence": 0.0, "needs_review": True,
+                    }
+                amm_path = f"orderregels[{i}].artikelnummer_kwabo_matched"
+                if amm_path not in needs_paths:
+                    needs_paths.append(amm_path)
+
             regels_meta[i] = rm
             if rm["prijs_per_eenheid"]["needs_review"]:
                 path = f"orderregels[{i}].prijs_per_eenheid"
