@@ -11,6 +11,7 @@ from rapidfuzz import fuzz, process
 from sqlmodel import Session
 
 from kwabo.db.repository import KlantRepo
+from kwabo.db.seed import DEMO_NAV_KLANTNRS
 from kwabo.db.session import engine
 from kwabo.graph.state import OrderState
 from kwabo.integrations.forwarded_parser import detect_forward
@@ -567,6 +568,17 @@ async def match_customer_node(state: OrderState) -> OrderState:
     bron = (match or {}).get("match_bron")
     naam_score = (match or {}).get("naam_score")
     uitleg = (match or {}).get("match_uitleg")
+    # SAFETY-NET demo-/seed-klanten: 10001-10016 dragen de ECHTE order-
+    # mailadressen van klanten en kunnen via K1 (`by_email`) op conf 1.0 — het
+    # énige vlagvrije pad — matchen. Zo'n nummer bestaat NIET in de live NAV-
+    # company, dus de push faalt stil. Een demo-match mag daarom nooit vlagvrij
+    # door: forceer CONTROLEER + waarschuw (vangt ALLE paden K1-K4 af).
+    is_demo_klant = bool(match) and (match or {}).get("navision_klantnr") in DEMO_NAV_KLANTNRS
+    if is_demo_klant:
+        warnings.append(
+            f"⚠ DEMO-/SEED-KLANT {(match or {}).get('navision_klantnr')} gematcht — "
+            "bestaat niet in de live NAV-company; controleer de klant."
+        )
     klant_meta = {
         "value": (match or {}).get("navision_klantnr"),
         "source": (
@@ -589,7 +601,7 @@ async def match_customer_node(state: OrderState) -> OrderState:
         # vlagvrij. Elke naam-/NAV-afgeleide match (< 1.0) krijgt een zachte
         # "controleer klant"-vlag: een foute klant stuurt prijsgroep, ship-to
         # én kredietlimiet de verkeerde kant op — liever even bevestigen.
-        "needs_review": (not match) or confidence < 1.0,
+        "needs_review": (not match) or confidence < 1.0 or is_demo_klant,
     }
     needs_paths = list(state.get("needs_review_fields") or [])
     if klant_meta["needs_review"] and "klant_match" not in needs_paths:

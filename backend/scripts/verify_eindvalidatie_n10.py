@@ -30,6 +30,10 @@ sys.stdout.reconfigure(encoding="utf-8")
 _tmpdb = Path(tempfile.mkdtemp()) / "verify_n10.db"
 os.environ["DATABASE_URL"] = f"sqlite:///{_tmpdb}"
 os.environ["NAVISION_MODE"] = "mock"
+# A5 — prod-correctheid: nooit de demo-klanten (10001-10016) in de DB seeden,
+# zodat K1 (by_email) niet op een demo-nummer kan matchen. Samen met de
+# demo-vrije mock (zie main) presenteert de harness geen demo-artefacten.
+os.environ["SEED_DEMO_DATA"] = "false"
 
 from sqlmodel import SQLModel, Session  # noqa: E402
 
@@ -46,6 +50,16 @@ from kwabo.db.models import (  # noqa: E402
 from kwabo.db.session import engine  # noqa: E402
 from kwabo.graph.graph import get_sub_order_app  # noqa: E402
 from kwabo.integrations.navision_api import nav_client_scope  # noqa: E402
+from kwabo.db.seed import DEMO_NAV_KLANTNRS  # noqa: E402
+
+# A5 — demo-decontaminatie: de MockNavisionClient kent ALLEEN de 16 demo-klanten
+# (10001-10016). K2 (nav.search_customers) tegen die lijst kan dus per definitie
+# geen prod-correcte klant opleveren, alleen demo-artefacten — zo landde #700
+# (BAUHAUS) op 10014. Voor een PROD-CORRECTHEID-meting halen we ze uit de mock:
+# K2 valt stil → de match leunt op de echte klantenkaart-masterdata (K1/K3) of
+# geeft nette None+kandidaten. (De match_customer-safety-net vlagt een 100xx
+# bovendien altijd, mocht er toch eentje opduiken.)
+_DEMO = set(DEMO_NAV_KLANTNRS)
 
 STATES = Path(__file__).resolve().parents[1] / "tests" / "test_data" / "states"
 
@@ -190,7 +204,9 @@ async def main() -> None:
         env = _laad_order(oid)
         st_oud = env["order_state"]
         st = verse_input(env, naam_signaal)
-        async with nav_client_scope():
+        async with nav_client_scope() as nav:
+            nav.customers = [c for c in getattr(nav, "customers", [])
+                             if c.get("number") not in _DEMO]
             uit = await app.ainvoke(st)
 
         km = uit.get("klant_match") or {}

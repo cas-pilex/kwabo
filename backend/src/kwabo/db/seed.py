@@ -7,6 +7,7 @@ from sqlmodel import Session
 
 from kwabo.db.models import Klantenkaart, KlantenkaartArtikel, Prijsafspraak
 from kwabo.db.session import engine, init_db
+from kwabo.utils.logging import log
 
 # Gebaseerd op de 17 voorbeelden uit de PDF en de email-bestanden.
 KLANTEN_SEED = [
@@ -100,6 +101,15 @@ PRIJS_SEED = [
 DEMO_NAV_KLANTNRS = [k[0] for k in KLANTEN_SEED]
 
 
+def _seed_target_is_sqlite(session: Session) -> bool:
+    """True als de doel-DB van deze sessie sqlite is (dev/test). Leest de
+    dialect van de sessie-bind — geen connectie nodig."""
+    try:
+        return session.get_bind().dialect.name == "sqlite"
+    except Exception:  # pragma: no cover - defensief: onbekende bind → niet seeden
+        return False
+
+
 def purge_demo_seed(session: Session) -> dict:
     """Verwijder de demo-seed rijen (klanten 10001-10016 + hun artikelmappings
     en prijsafspraken).
@@ -136,6 +146,17 @@ def purge_demo_seed(session: Session) -> dict:
 
 
 def seed(session: Session) -> None:
+    # PROD-BESCHERMING: de demo-seed zet 16 klanten (10001-10016) met de ECHTE
+    # order-mailadressen van klanten. In een niet-sqlite DB (prod-Postgres) zou
+    # dat match_customer stil vervuilen (K1 matcht op conf 1.0 zonder vlag) en
+    # de push laten falen. Daarom schrijft seed() ALLEEN naar sqlite (dev/test);
+    # tegen elke andere DB is dit een no-op. Borgt: een stray seed()-call kan
+    # prod nooit besmetten, los van de call-site-gate in main.py.
+    if not _seed_target_is_sqlite(session):
+        log.warning("seed_skipped_non_sqlite",
+                    dialect=getattr(session.get_bind().dialect, "name", "?"))
+        return
+
     from sqlmodel import select
 
     for nav, naam, email, email_b, taal in KLANTEN_SEED:
