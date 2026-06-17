@@ -1,0 +1,458 @@
+{
+  "order_id": 595,
+  "email_from": "Jeroen Rademaker <j.rademaker@bouwmarktbaarn.nl>",
+  "email_subject": "Order ",
+  "status": "review",
+  "order_state": {
+    "email_id": "AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAARKIG_AAA=",
+    "email_from": "Jeroen Rademaker <j.rademaker@bouwmarktbaarn.nl>",
+    "email_subject": "Order ",
+    "email_body": "Geachte,\r\n\r\nBijgesloten ontvangt u onze inkooporder ION021530.\r\n\r\nUw orderbevestiging zien wij graag spoedig tegemoet.\r\n\r\nMet vriendelijke groet,\r\n\r\nBouwmarkt Baarn\r\nHermesweg 7\r\n3741 GP Baarn\r\nT 088 8 80 80 80\r\nM info@bouwmarktbaarn.nl\r\n",
+    "email_date": "Wed, 03 Jun 2026 06:22:14 +0000",
+    "bijlagen": [
+      {
+        "naam": "Inkoop - Order_ION021530.pdf",
+        "type": "pdf",
+        "inhoud_tekst": "--- PAGE 1 ---\nPagina 1 / 1\nInkooporder ION021530\nBouwmarkt Baarn · Hermesweg 7 · 3741 GP Baarn\nLeveranciersnr. Datum\nKwabo Techniek B.V.\nLE000338 03 juni 2026\nJulianaweg 210 A\n1131 DL Volendam\nNederland\nTelefoon 0299-361001 Btw-nummer NL858178175B01\nE-mail info@kwabo.nl Naam Jeroen Rademaker\nE-mail j.rademaker@bouwmarktbaarn.nl\nVerzochte 05-06-26\nontvangstdatum\nLaad- /lostijd van 06:30:00\nLaad- /lostijd tot 15:00:00\nVerzendadres Bouwmarkt Baarn, Hermesweg 7, 3741GP Baarn, Utrecht, Nederland\nArtikel Aantal Eenheid\n155779 66 rol\nTFC top Coat Heavy Duty Nonwoven sterk afdekvlies 67 cm 25 m2 zelfklevend 37,5 mtr TFCzelfklevend\nArtikel nr. leverancier: 238601\n122022 45 stuks\nTFC Top-Coat Heavy Duty non-woven sterk afdekvlies wit rol 25 m2 rolbreedte 100 cm zelfklevend\nArtikel nr. leverancier: 238531\nStuks Lengte [mm] Breedte [mm] Dikte [mm]\n45 25.000 1.000 0\n123146 2 stuks\nEuro/statiegeld pallet inclusief EUROPALLET\nArtikel nr. leverancier: 5350\nStuks Lengte [mm] Breedte [mm] Dikte [mm]\n2 0 0 0\nVerzendwijze Afhalen\nBetalingsconditie Incasso\nBouwmarkt Baarn Btw nr. NL858178175B01 Telefoonnr. 0888808080 Banknaam Rabobank\nHermesweg 7 Handelsregisternr. 70181632 IBAN NL71RABO0331293935\n3741 GP Baarn E-mail info@bouwmarktbaarn.nl SWIFT Code RABONL2U\nUtrecht Homepage www.bouwmarkt.nl\nNederland"
+      }
+    ],
+    "source_path": "graph://AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAARKIG_AAA=",
+    "is_order": true,
+    "classificatie_reden": "E-mail bevat inkooporder ION021530 met bijlage met artikelnummer, hoeveelheid en verzendadres",
+    "classificatie_confidence": 1.0,
+    "taal": "NL",
+    "bestelnummer_klant": "ION021530",
+    "orderdatum": "2026-06-03",
+    "gewenste_leverdatum": "2026-06-05",
+    "afleveradres": {
+      "naam": "Bouwmarkt Baarn",
+      "straat": "Hermesweg 7",
+      "postcode": "3741GP",
+      "plaats": "Baarn",
+      "land": "NL"
+    },
+    "afleverinstructies": "AFHAALORDER, Laad-/lostijd van 06:30:00 tot 15:00:00",
+    "orderregels": [
+      {
+        "positie": 1,
+        "artikelnummer_klant": "155779",
+        "artikelnummer_kwabo": "238601",
+        "omschrijving": "TFC top Coat Heavy Duty Nonwoven sterk afdekvlies 67 cm 25 m2 zelfklevend 37,5 mtr TFCzelfklevend",
+        "hoeveelheid": 66.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": null,
+        "ean_code": null,
+        "leverdatum_regel": null,
+        "opmerkingen": null,
+        "artikelnummer_kwabo_matched": "238601",
+        "match_confidence": 1.0,
+        "match_methode": "exact",
+        "eenheid_origineel": "ROL",
+        "eenheid_default": "STUK",
+        "prijs_validated": null
+      },
+      {
+        "positie": 2,
+        "artikelnummer_klant": "122022",
+        "artikelnummer_kwabo": "238531",
+        "omschrijving": "TFC Top-Coat Heavy Duty non-woven sterk afdekvlies wit rol 25 m2 rolbreedte 100 cm zelfklevend",
+        "hoeveelheid": 45.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": null,
+        "ean_code": null,
+        "leverdatum_regel": null,
+        "opmerkingen": "Afmetingen: 25.000mm × 1.000mm × 0mm",
+        "artikelnummer_kwabo_matched": "238531",
+        "match_confidence": 1.0,
+        "match_methode": "exact",
+        "eenheid_origineel": "STUK",
+        "eenheid_default": "STUK",
+        "prijs_validated": null
+      },
+      {
+        "positie": 3,
+        "artikelnummer_klant": "123146",
+        "artikelnummer_kwabo": "5350",
+        "omschrijving": "Euro/statiegeld pallet inclusief EUROPALLET",
+        "hoeveelheid": 2.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": null,
+        "ean_code": null,
+        "leverdatum_regel": null,
+        "opmerkingen": "Statiegeld/borg pallets",
+        "artikelnummer_kwabo_matched": null,
+        "match_confidence": 0.0,
+        "match_methode": "manual",
+        "prijs_validated": null
+      }
+    ],
+    "opmerkingen": "Betalingsconditie: Incasso. Leveranciersnr: LE000338. Contactpersoon: Jeroen Rademaker (j.rademaker@bouwmarktbaarn.nl)",
+    "klant_match": null,
+    "alle_artikelen_gematcht": false,
+    "alle_prijzen_valide": true,
+    "validatie_warnings": [
+      "KLANT NIET GEVONDEN: Jeroen Rademaker <j.rademaker@bouwmarktbaarn.nl>. Handmatige selectie nodig.",
+      "⚠ EENHEID CONTROLEREN (regel 1): klant bestelde 'ROL' maar dit is geen geldige eenheid voor artikel 238601 (gebruikt nu standaard 'STUK')."
+    ],
+    "review_status": "pending",
+    "mixprijzen_actief": false,
+    "europallet_regel": null,
+    "incoming_document_storage_key": "by_email_id/AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1h-94e119e12914f2c3.eml",
+    "stappen_log": [
+      {
+        "stap": "intake",
+        "timestamp": "2026-06-03T06:23:40.975321+00:00",
+        "beslissing": "E-mail opgehaald, 1 bijlagen geëxtraheerd",
+        "details": {
+          "bijlage_namen": [
+            "Inkoop - Order_ION021530.pdf"
+          ]
+        }
+      },
+      {
+        "stap": "classify",
+        "timestamp": "2026-06-03T06:23:43.609449+00:00",
+        "beslissing": "ORDER (conf=1.0)",
+        "details": {
+          "is_order": true,
+          "reden": "E-mail bevat inkooporder ION021530 met bijlage met artikelnummer, hoeveelheid en verzendadres",
+          "confidence": 1.0
+        }
+      },
+      {
+        "stap": "extract",
+        "timestamp": "2026-06-03T06:24:09.738306+00:00",
+        "beslissing": "Geëxtraheerd: 3 regels, taal=NL, 0 velden needs_review",
+        "details": {
+          "bestelnummer": "ION021530",
+          "multi_orders": 1
+        }
+      },
+      {
+        "stap": "match_customer",
+        "timestamp": "2026-06-03T06:24:11.612294+00:00",
+        "beslissing": "Klant NIET gematcht",
+        "details": {
+          "email": "j.rademaker@bouwmarktbaarn.nl"
+        }
+      },
+      {
+        "stap": "match_articles",
+        "timestamp": "2026-06-03T06:24:44.974465+00:00",
+        "beslissing": "2/3 regels gematcht",
+        "details": {
+          "per_methode": {
+            "exact": 2,
+            "kruisverwijzing": 0,
+            "klantenkaart": 0,
+            "history": 0,
+            "fuzzy": 0,
+            "manual": 1
+          }
+        }
+      },
+      {
+        "stap": "validate_prices",
+        "timestamp": "2026-06-03T06:24:45.993766+00:00",
+        "beslissing": "0/3 prijzen ok",
+        "details": {
+          "warnings_new": []
+        }
+      }
+    ],
+    "errors": [],
+    "_meta": {
+      "taal": {
+        "value": "NL",
+        "source": "pdf",
+        "source_detail": "Inkoop - Order_ION021530.pdf p.1",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "bestelnummer_klant": {
+        "value": "ION021530",
+        "source": "pdf",
+        "source_detail": "Inkoop - Order_ION021530.pdf p.1 header",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "orderdatum": {
+        "value": "2026-06-03",
+        "source": "pdf",
+        "source_detail": "Inkoop - Order_ION021530.pdf p.1 header 'Datum 03 juni 2026'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "gewenste_leverdatum": {
+        "value": "2026-06-05",
+        "source": "pdf",
+        "source_detail": "Inkoop - Order_ION021530.pdf p.1 'Verzochte ontvangstdatum 05-06-26'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "afleveradres": {
+        "value": {
+          "naam": "Bouwmarkt Baarn",
+          "straat": "Hermesweg 7",
+          "postcode": "3741GP",
+          "plaats": "Baarn",
+          "land": "NL"
+        },
+        "source": "pdf",
+        "source_detail": "Inkoop - Order_ION021530.pdf p.1 'Verzendadres'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "afleverinstructies": {
+        "value": "AFHAALORDER, Laad-/lostijd van 06:30:00 tot 15:00:00",
+        "source": "pdf",
+        "source_detail": "Inkoop - Order_ION021530.pdf p.1 'Verzendwijze: Afhalen' en tijdvenster",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "opmerkingen": {
+        "value": "Betalingsconditie: Incasso. Leveranciersnr: LE000338. Contactpersoon: Jeroen Rademaker (j.rademaker@bouwmarktbaarn.nl)",
+        "source": "pdf",
+        "source_detail": "Inkoop - Order_ION021530.pdf p.1",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "orderregels": [
+        {
+          "artikelnummer_klant": {
+            "value": "155779",
+            "source": "pdf",
+            "source_detail": "Inkoop - Order_ION021530.pdf p.1 regel 1 kolom 'Artikel'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": "238601",
+            "source": "pdf",
+            "source_detail": "Inkoop - Order_ION021530.pdf p.1 regel 1 'Artikel nr. leverancier: 238601' | cleared by match",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "omschrijving": {
+            "value": "TFC top Coat Heavy Duty Nonwoven sterk afdekvlies 67 cm 25 m2 zelfklevend 37,5 mtr TFCzelfklevend",
+            "source": "pdf",
+            "source_detail": "Inkoop - Order_ION021530.pdf p.1 regel 1",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 66,
+            "source": "pdf",
+            "source_detail": "Inkoop - Order_ION021530.pdf p.1 regel 1 kolom 'Aantal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "ROL",
+            "source": "pdf",
+            "source_detail": "Inkoop - Order_ION021530.pdf p.1 regel 1 kolom 'Eenheid'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": null,
+            "source": "nav_default",
+            "source_detail": "NAV-standaard (geen prijsafspraak)",
+            "confidence": 0.0,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "238601",
+            "source": "exact",
+            "source_detail": "match-methode=exact",
+            "confidence": 1.0,
+            "needs_review": false
+          }
+        },
+        {
+          "artikelnummer_klant": {
+            "value": "122022",
+            "source": "pdf",
+            "source_detail": "Inkoop - Order_ION021530.pdf p.1 regel 2 kolom 'Artikel'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": "238531",
+            "source": "pdf",
+            "source_detail": "Inkoop - Order_ION021530.pdf p.1 regel 2 'Artikel nr. leverancier: 238531' | cleared by match",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "omschrijving": {
+            "value": "TFC Top-Coat Heavy Duty non-woven sterk afdekvlies wit rol 25 m2 rolbreedte 100 cm zelfklevend",
+            "source": "pdf",
+            "source_detail": "Inkoop - Order_ION021530.pdf p.1 regel 2",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 45,
+            "source": "pdf",
+            "source_detail": "Inkoop - Order_ION021530.pdf p.1 regel 2 kolom 'Aantal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "STUK",
+            "source": "pdf",
+            "source_detail": "Inkoop - Order_ION021530.pdf p.1 regel 2 kolom 'Eenheid'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": null,
+            "source": "nav_default",
+            "source_detail": "NAV-standaard (geen prijsafspraak)",
+            "confidence": 0.0,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": "Afmetingen: 25.000mm × 1.000mm × 0mm",
+            "source": "pdf",
+            "source_detail": "Inkoop - Order_ION021530.pdf p.1 regel 2 dimensies tabel",
+            "confidence": 0.95,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "238531",
+            "source": "exact",
+            "source_detail": "match-methode=exact",
+            "confidence": 1.0,
+            "needs_review": false
+          }
+        },
+        {
+          "artikelnummer_klant": {
+            "value": "123146",
+            "source": "pdf",
+            "source_detail": "Inkoop - Order_ION021530.pdf p.1 regel 3 kolom 'Artikel'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": "5350",
+            "source": "pdf",
+            "source_detail": "Inkoop - Order_ION021530.pdf p.1 regel 3 'Artikel nr. leverancier: 5350'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "omschrijving": {
+            "value": "Euro/statiegeld pallet inclusief EUROPALLET",
+            "source": "pdf",
+            "source_detail": "Inkoop - Order_ION021530.pdf p.1 regel 3",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 2,
+            "source": "pdf",
+            "source_detail": "Inkoop - Order_ION021530.pdf p.1 regel 3 kolom 'Aantal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "STUK",
+            "source": "pdf",
+            "source_detail": "Inkoop - Order_ION021530.pdf p.1 regel 3 kolom 'Eenheid'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": null,
+            "source": "nav_default",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": "Statiegeld/borg pallets",
+            "source": "pdf",
+            "source_detail": "Inkoop - Order_ION021530.pdf p.1 regel 3",
+            "confidence": 0.95,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": null,
+            "source": "manual",
+            "source_detail": "match-methode=manual",
+            "confidence": 0.0,
+            "needs_review": true
+          }
+        }
+      ],
+      "klant_match": {
+        "value": null,
+        "source": "missing",
+        "source_detail": null,
+        "confidence": 0.0,
+        "needs_review": true
+      }
+    },
+    "needs_review_fields": [
+      "klant_match",
+      "orderregels[2].artikelnummer_kwabo_matched",
+      "orderregels[0].eenheid"
+    ],
+    "needs_review_count": 3,
+    "extra_orders_raw": [],
+    "nav_operations": []
+  }
+}

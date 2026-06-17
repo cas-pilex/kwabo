@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   api,
   type EuropalletRegel,
+  type EuropalletMeta,
   type FieldMeta,
   type Item,
   type KlantKandidaat,
@@ -24,6 +25,10 @@ import { MixprijzenBadge } from "./components/MixprijzenBadge";
 import { NavOperationsPreview } from "./components/NavOperationsPreview";
 import { KlantPicker } from "./components/KlantPicker";
 import { ShipToPicker } from "./components/ShipToPicker";
+import {
+  SourceDocLinkBanner,
+  isSourceDocWarning,
+} from "./components/SourceDocLinkBanner";
 
 type Props = { order: OrderDetail; items: Item[] };
 
@@ -56,7 +61,7 @@ type Address = {
 };
 
 type State = {
-  klant_match?: { navision_klantnr?: string; klantnaam?: string; match_bron?: string; match_confidence?: number; is_4plus?: boolean; kredietlimiet?: number | null; betalingsconditie?: string | null };
+  klant_match?: { navision_klantnr?: string; klantnaam?: string; plaats?: string | null; match_bron?: string; match_uitleg?: string; match_confidence?: number; is_4plus?: boolean; kredietlimiet?: number | null; betalingsconditie?: string | null };
   bestelnummer_klant?: string | null;
   orderdatum?: string | null;
   gewenste_leverdatum?: string | null;
@@ -75,6 +80,8 @@ type State = {
     afleverinstructies?: FieldMeta;
     opmerkingen?: FieldMeta;
     orderregels?: Array<Record<string, FieldMeta>>;
+    europallet?: EuropalletMeta;
+    verzendwijze?: FieldMeta;
   };
   needs_review_fields?: string[];
   klant_kandidaten?: KlantKandidaat[];
@@ -82,6 +89,7 @@ type State = {
   ship_to_gekozen?: string | null;
   mixprijzen_actief?: boolean;
   order_mix_total_pallets?: number | null;
+  verzendwijze?: string | null;
   europallet_regel?: EuropalletRegel | null;
   incoming_document_path?: string | null;
   navision_status?: string | null;
@@ -197,26 +205,38 @@ export function OrderReview({ order, items }: Props) {
         />
       )}
 
+      {/* FUNCTIE 7: dedicated, onmisbare banner voor de bron-doc-skip met een
+          knop naar het bron-document-paneel. */}
+      <SourceDocLinkBanner
+        warnings={order.warnings}
+        targetId="incoming-document-panel"
+      />
+
       {/* Fase 5 (D): row.warnings was alleen zichtbaar als teller op het
-          dashboard — de reviewer op deze pagina zag b.v. de bron-doc-skip
-          ("Bron-document is NIET ... gekoppeld") nooit. */}
-      {order.warnings.length > 0 && (
-        <div
-          data-testid="order-warnings-banner"
-          className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-        >
-          <div className="font-semibold">
-            ⚠ {order.warnings.length === 1
-              ? "1 waarschuwing"
-              : `${order.warnings.length} waarschuwingen`}
+          dashboard — de reviewer op deze pagina zag de overige warnings nooit.
+          De bron-doc-warning krijgt de dedicated banner hierboven; de rest
+          blijft in deze generieke lijst (geen dubbeling). */}
+      {(() => {
+        const overige = order.warnings.filter((w) => !isSourceDocWarning(w));
+        if (overige.length === 0) return null;
+        return (
+          <div
+            data-testid="order-warnings-banner"
+            className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          >
+            <div className="font-semibold">
+              ⚠ {overige.length === 1
+                ? "1 waarschuwing"
+                : `${overige.length} waarschuwingen`}
+            </div>
+            <ul className="mt-1 list-disc space-y-0.5 pl-5">
+              {overige.map((w, i) => (
+                <li key={i}>{w}</li>
+              ))}
+            </ul>
           </div>
-          <ul className="mt-1 list-disc space-y-0.5 pl-5">
-            {order.warnings.map((w, i) => (
-              <li key={i}>{w}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+        );
+      })()}
 
       {!isNotOrder && (
         <ExtractSummary
@@ -240,7 +260,7 @@ export function OrderReview({ order, items }: Props) {
             bijlagen={initialState.bijlagen || []}
           />
 
-          <div className="mt-3">
+          <div id="incoming-document-panel" className="mt-3">
             <IncomingDocumentPanel
               orderId={order.id}
               incomingPath={initialState.incoming_document_path ?? null}
@@ -264,6 +284,27 @@ export function OrderReview({ order, items }: Props) {
               needsReviewFields={missing}
               onChanged={refresh}
             />
+            {/* Functie 5: afhaalorder → verzendwijze (Shipment Method Code).
+                Alleen tonen als de detectie iets zette; reviewer kan wissen
+                (leeg) of corrigeren via dezelfde patch-flow. */}
+            {initialState.verzendwijze && (
+              <div
+                data-testid="verzendwijze"
+                className="mt-2 rounded-md border border-amber-300 bg-amber-50/60 p-2"
+              >
+                <div className="mb-1 inline-flex rounded bg-amber-200/70 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900 ring-1 ring-amber-300">
+                  Afhaalorder
+                </div>
+                <FieldInput
+                  label="Verzendwijze (Shipment Method Code)"
+                  path="verzendwijze"
+                  value={initialState.verzendwijze ?? ""}
+                  meta={meta.verzendwijze}
+                  onChange={(v) => patch("verzendwijze", v)}
+                  monospace
+                />
+              </div>
+            )}
           </div>
 
           {/* Klant */}
@@ -281,6 +322,9 @@ export function OrderReview({ order, items }: Props) {
             {initialState.klant_match?.klantnaam && (
               <div className="mb-1.5 text-sm font-semibold text-[var(--kwabo-navy)]" data-testid="klant-naam">
                 {initialState.klant_match.klantnaam}
+                {initialState.klant_match.plaats && (
+                  <span className="font-normal text-[var(--kwabo-muted)]"> · {initialState.klant_match.plaats}</span>
+                )}
               </div>
             )}
             <FieldInput
@@ -301,12 +345,15 @@ export function OrderReview({ order, items }: Props) {
                 type="button"
                 data-testid="klant-bevestig"
                 onClick={() => patch("klant_match", initialState.klant_match!.navision_klantnr)}
+                title="CONTROLEER verschijnt bij elke match die geen directe e-mailmatch op de klantenkaart is (naam, NAV-zoektocht of domein-alias). Een directe e-mailmatch is zeker en draagt geen vlag."
                 className="mt-1.5 inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100"
               >
                 ✓ Bevestig deze klant
-                {initialState.klant_match?.match_bron && (
+                {(initialState.klant_match?.match_uitleg || initialState.klant_match?.match_bron) && (
                   <span className="font-normal text-amber-700">
-                    (gematcht via {initialState.klant_match.match_bron})
+                    ({initialState.klant_match?.match_uitleg
+                      ? initialState.klant_match.match_uitleg
+                      : `gematcht via ${initialState.klant_match!.match_bron}`})
                   </span>
                 )}
               </button>
@@ -420,6 +467,7 @@ export function OrderReview({ order, items }: Props) {
             <EuropalletEditor
               orderId={order.id}
               regel={initialState.europallet_regel ?? null}
+              meta={meta.europallet ?? null}
               onChanged={refresh}
             />
           </div>

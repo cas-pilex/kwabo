@@ -62,6 +62,19 @@ _ADDITIVE_MIGRATIONS: list[tuple[str, str, dict[str, str]]] = [
         "verkoop_eenheid",
         {"sqlite": "VARCHAR", "postgresql": "VARCHAR"},
     ),
+    # Functie 1 (klant-matching): vestigingsadres op de klantenkaart — kiest de
+    # juiste franchise-vestiging op het leveradres en toont de plaats in de UI.
+    # Nullable; de customers-sync vult ze (PLX_Customer City/Post_Code).
+    (
+        "klantenkaarten",
+        "plaats",
+        {"sqlite": "VARCHAR", "postgresql": "VARCHAR"},
+    ),
+    (
+        "klantenkaarten",
+        "postcode",
+        {"sqlite": "VARCHAR", "postgresql": "VARCHAR"},
+    ),
 ]
 
 

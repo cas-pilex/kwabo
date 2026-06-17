@@ -12,8 +12,9 @@ type Props = {
 };
 
 function describe(k: KlantKandidaat): string {
+  const plaats = k.plaats ? ` · ${k.plaats}` : "";
   const score = k.score != null ? ` · ${Math.round(k.score)}%` : "";
-  return `${k.klantnaam || k.navision_klantnr} (${k.navision_klantnr})${score}`;
+  return `${k.klantnaam || k.navision_klantnr}${plaats} (${k.navision_klantnr})${score}`;
 }
 
 /**

@@ -101,6 +101,7 @@ export type ShipToKandidaat = {
 export type KlantKandidaat = {
   navision_klantnr: string;
   klantnaam: string;
+  plaats?: string | null;
   score: number | null;
   bron: string;
 };
@@ -110,6 +111,23 @@ export type EuropalletRegel = {
   hoeveelheid: number;
   eenheid: string;
   positie?: number;
+};
+
+// Functie 4: onderbouwing van de europallet-telling (uit _meta.europallet)
+export type EuropalletBijdrage = {
+  artikelnr: string | null;
+  qty: number | null;
+  eenheid: string;
+  bron: string;
+  pallet_maat: number | null;
+  pallets: number;
+};
+
+export type EuropalletMeta = {
+  regels: EuropalletBijdrage[];
+  totaal_pallets: number;
+  europallet_aantal: number;
+  uitleg: string;
 };
 
 export const AUTH_COOKIE = "kwabo_admin";

@@ -1,0 +1,277 @@
+{
+  "order_id": 628,
+  "email_from": "Ron Berlang <rb@omtzigt-bouwmaterialen.nl>",
+  "email_subject": "Inkooporder 00177810",
+  "status": "review",
+  "order_state": {
+    "email_id": "AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAARKIHfAAA=",
+    "email_from": "Ron Berlang <rb@omtzigt-bouwmaterialen.nl>",
+    "email_subject": "Inkooporder 00177810",
+    "email_body": "\r\n\r\nGeachte heer/mevrouw,\r\n\r\nHierbij ontvangt u de digitale inkoop order (00177810) van\r\nOmtzigt Bouwmaterialen B.V.\r\n\r\nLET OP: INKOOPORDER KAN UIT MEERDERE PAGINA'S BESTAAN.\r\n\r\nBent u niet de juiste persoon die deze inkooporder heeft ontvangen?\r\n\r\nDan verzoeken wij u de juiste gegevens naar ons toe te zenden door deze mail te beantwoorden onder vermelding van ons inkooporder 00177810\r\n\r\n\r\n\r\nMet vriendelijke groet,\r\n\r\nOmtzigt Bouwmaterialen B.V.\r\n\r\n[cid:aa971cf9648e464bbd0b4f5a9413df22.jpg]\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n.\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n",
+    "email_date": "Thu, 04 Jun 2026 12:34:04 +0000",
+    "bijlagen": [
+      {
+        "naam": "Inkooporder 00177810.pdf",
+        "type": "pdf",
+        "inhoud_tekst": "--- PAGE 1 ---\nOrderbevestiging kunt u mailen naar orderbevestiging@omtzigt-bouwmaterialen.nl\nPagina Nr:1 van 1\nCode Omschrijving Art. nr. Aantal Eenheid Prijs per Prijs per\ninkoop eenheid\nrelatie | Aantal eenheid Prijs | Regelbedrag\nPostadres\nDe Maessloot 5a\nINKOOPORDER 00177810 2231 PX Rijnsburg\nRijnsburg\nBesteld bij:\nDe Maessloot 5a\nKwabo Techniek B.V. (24950)\n2231 PX Rijnsburg\nPostbus 266\nTel: 071-5410246\n1130 AG VOLENDAM\nTel.: 071-4012551\nTel: 0299-361001\nMagazijn: Besteller: Nieuwegein\nRon Berlang Ravenswade 72\nMagazijn Nieuwegein\n3439LD Nieuwegein\n26183 Vestiging: Nieuwegein\nTel: 030-2886972\nAfleveradres: Gewenste Leverdatum:\ninfo@omtzigt-bouwmaterialen.nl\n10-06-2026\nRavenswade 72, 3439LD Nieuwegein www.omtzigt-bouwmaterialen.nl\nLostijden van 09.00 uur tot 15.00 uur.\nBestel datum: Referentie:\n04-06-2026 Roy van Wijnbergen\nOrderbevestiging kunt u mailen naar orderbevestiging@omtzigt-bouwmaterialen.nl\nPagina Nr:1 van 1\nCode Omschrijving Art. nr. Aantal Eenheid Prijs per Prijs per Aantal eenheid Prijs Regelbedrag\ninkoop eenheid\nrelatie\n9258701 Gipslijsten volgens specificatie 1 Stuks 1\nT Cirkel KW-589 56 cm buitenwerks"
+      }
+    ],
+    "source_path": "graph://AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAARKIHfAAA=",
+    "is_order": true,
+    "classificatie_reden": "E-mail bevat inkooporder 00177810 van Omtzigt Bouwmaterialen met PDF-bijlage met artikelen en ordergegevens",
+    "classificatie_confidence": 0.98,
+    "taal": "NL",
+    "bestelnummer_klant": "00177810",
+    "orderdatum": "2026-06-04",
+    "gewenste_leverdatum": "2026-06-10",
+    "afleveradres": {
+      "naam": "Magazijn Nieuwegein",
+      "straat": "Ravenswade 72",
+      "postcode": "3439LD",
+      "plaats": "Nieuwegein",
+      "land": "NL"
+    },
+    "afleverinstructies": "Lostijden van 09.00 uur tot 15.00 uur",
+    "orderregels": [
+      {
+        "positie": 1,
+        "artikelnummer_klant": "9258701",
+        "artikelnummer_kwabo": null,
+        "omschrijving": "Gipslijsten volgens specificatie T Cirkel KW-589 56 cm buitenwerks",
+        "hoeveelheid": 1.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": null,
+        "ean_code": null,
+        "leverdatum_regel": null,
+        "opmerkingen": null,
+        "artikelnummer_kwabo_matched": "10130",
+        "match_methode": "fuzzy",
+        "match_confidence": 0.84,
+        "eenheid_origineel": "STUK",
+        "eenheid_default": "STUK",
+        "prijs_validated": null
+      }
+    ],
+    "opmerkingen": "Besteller: Ron Berlang. Referentie: Roy van Wijnbergen. Vestiging: Nieuwegein. Magazijn: 26183",
+    "klant_match": null,
+    "alle_artikelen_gematcht": true,
+    "alle_prijzen_valide": true,
+    "validatie_warnings": [
+      "KLANT NIET GEVONDEN: Ron Berlang <rb@omtzigt-bouwmaterialen.nl>. Handmatige selectie nodig."
+    ],
+    "review_status": "pending",
+    "mixprijzen_actief": false,
+    "europallet_regel": null,
+    "incoming_document_storage_key": "by_email_id/AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1h-c8d95c3320955ae5.eml",
+    "stappen_log": [
+      {
+        "stap": "intake",
+        "timestamp": "2026-06-04T12:39:11.045361+00:00",
+        "beslissing": "E-mail opgehaald, 1 bijlagen geëxtraheerd",
+        "details": {
+          "bijlage_namen": [
+            "Inkooporder 00177810.pdf"
+          ]
+        }
+      },
+      {
+        "stap": "classify",
+        "timestamp": "2026-06-04T12:39:14.258035+00:00",
+        "beslissing": "ORDER (conf=0.98)",
+        "details": {
+          "is_order": true,
+          "reden": "E-mail bevat inkooporder 00177810 van Omtzigt Bouwmaterialen met PDF-bijlage met artikelen en ordergegevens",
+          "confidence": 0.98
+        }
+      },
+      {
+        "stap": "extract",
+        "timestamp": "2026-06-04T12:39:29.361716+00:00",
+        "beslissing": "Geëxtraheerd: 1 regels, taal=NL, 1 velden needs_review",
+        "details": {
+          "bestelnummer": "00177810",
+          "multi_orders": 1
+        }
+      },
+      {
+        "stap": "match_customer",
+        "timestamp": "2026-06-04T12:39:31.079126+00:00",
+        "beslissing": "Klant NIET gematcht",
+        "details": {
+          "email": "rb@omtzigt-bouwmaterialen.nl"
+        }
+      },
+      {
+        "stap": "match_articles",
+        "timestamp": "2026-06-04T12:39:46.191489+00:00",
+        "beslissing": "1/1 regels gematcht",
+        "details": {
+          "per_methode": {
+            "exact": 0,
+            "kruisverwijzing": 0,
+            "klantenkaart": 0,
+            "history": 0,
+            "fuzzy": 1,
+            "manual": 0
+          }
+        }
+      },
+      {
+        "stap": "validate_prices",
+        "timestamp": "2026-06-04T12:39:46.915442+00:00",
+        "beslissing": "0/1 prijzen ok",
+        "details": {
+          "warnings_new": []
+        }
+      }
+    ],
+    "errors": [],
+    "_meta": {
+      "taal": {
+        "value": "NL",
+        "source": "pdf",
+        "source_detail": "Inkooporder 00177810.pdf p.1",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "bestelnummer_klant": {
+        "value": "00177810",
+        "source": "pdf",
+        "source_detail": "Inkooporder 00177810.pdf p.1 header",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "orderdatum": {
+        "value": "2026-06-04",
+        "source": "pdf",
+        "source_detail": "Inkooporder 00177810.pdf p.1 'Bestel datum'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "gewenste_leverdatum": {
+        "value": "2026-06-10",
+        "source": "pdf",
+        "source_detail": "Inkooporder 00177810.pdf p.1 'Gewenste Leverdatum'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "afleveradres": {
+        "value": {
+          "naam": "Magazijn Nieuwegein",
+          "straat": "Ravenswade 72",
+          "postcode": "3439LD",
+          "plaats": "Nieuwegein",
+          "land": "NL"
+        },
+        "source": "pdf",
+        "source_detail": "Inkooporder 00177810.pdf p.1 'Afleveradres'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "afleverinstructies": {
+        "value": "Lostijden van 09.00 uur tot 15.00 uur",
+        "source": "pdf",
+        "source_detail": "Inkooporder 00177810.pdf p.1 'Afleveradres' sectie",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "opmerkingen": {
+        "value": "Besteller: Ron Berlang. Referentie: Roy van Wijnbergen. Vestiging: Nieuwegein. Magazijn: 26183",
+        "source": "pdf",
+        "source_detail": "Inkooporder 00177810.pdf p.1 diverse velden",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "orderregels": [
+        {
+          "artikelnummer_klant": {
+            "value": "9258701",
+            "source": "pdf",
+            "source_detail": "Inkooporder 00177810.pdf p.1 orderregel 1 kolom 'Code'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": true
+          },
+          "omschrijving": {
+            "value": "Gipslijsten volgens specificatie T Cirkel KW-589 56 cm buitenwerks",
+            "source": "pdf",
+            "source_detail": "Inkooporder 00177810.pdf p.1 orderregel 1 kolom 'Omschrijving'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 1,
+            "source": "pdf",
+            "source_detail": "Inkooporder 00177810.pdf p.1 orderregel 1 kolom 'Aantal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "STUK",
+            "source": "pdf",
+            "source_detail": "Inkooporder 00177810.pdf p.1 orderregel 1 kolom 'Eenheid'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": null,
+            "source": "nav_default",
+            "source_detail": "NAV-standaard (geen prijsafspraak)",
+            "confidence": 0.0,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "10130",
+            "source": "fuzzy",
+            "source_detail": "match-methode=fuzzy",
+            "confidence": 0.84,
+            "needs_review": true
+          }
+        }
+      ],
+      "klant_match": {
+        "value": null,
+        "source": "missing",
+        "source_detail": null,
+        "confidence": 0.0,
+        "needs_review": true
+      }
+    },
+    "needs_review_fields": [
+      "orderregels[0].artikelnummer_kwabo",
+      "klant_match",
+      "orderregels[0].artikelnummer_kwabo_matched"
+    ],
+    "needs_review_count": 3,
+    "extra_orders_raw": [],
+    "nav_operations": []
+  }
+}

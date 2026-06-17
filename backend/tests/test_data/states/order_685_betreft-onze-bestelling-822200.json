@@ -1,0 +1,1180 @@
+{
+  "order_id": 685,
+  "email_from": "VLCE - Robert Vroemen <Inkoop_vlc@veris.nl>",
+  "email_subject": "Betreft onze bestelling 822200",
+  "status": "review",
+  "order_state": {
+    "email_id": "AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAAVIEQnAAA=",
+    "email_from": "VLCE - Robert Vroemen <Inkoop_vlc@veris.nl>",
+    "email_subject": "Betreft onze bestelling 822200",
+    "email_body": "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0 Transitional//EN\">\r\n<HTML><HEAD>\r\n<META content=\"text/html; charset=unicode\" http-equiv=Content-Type>\r\n<META name=GENERATOR content=\"MSHTML 11.00.10570.1001\"></HEAD>\r\n<BODY>\r\n<P><FONT face=Arial></FONT></P>\r\n<P><FONT size=2 face=\"Courier New\">Beste Leverancier,</FONT></P>\r\n<P><FONT size=2 face=\"Courier New\">Bijgesloten een&nbsp;bestelling voor het \r\nleveren van goederen.</FONT></P>\r\n<P><FONT size=2 face=\"Courier New\">Met vriendelijke \r\ngroet,</FONT></P></BODY></HTML>\r\n",
+    "email_date": "Mon, 08 Jun 2026 11:42:57 +0200",
+    "bijlagen": [
+      {
+        "naam": "822200.pdf",
+        "type": "pdf",
+        "inhoud_tekst": "--- PAGE 1 ---\nAantal | Ehd | Omschrijving | Artikelnr | Hoev. | Ehd\nO P D R A C H T\nZevij Necomij / Total Floorcovering\nJulianaweg 210A\n1131 DL Volendam\nOpdrachtnummer : 822200\nDatum : 08/06/26\nOnze referentie :\nUw referentie :\nBlad 1\nCommissie :\nDe goederen worden afgehaald, s.v.p. bericht wanneer dit mogelijk is. Tel. 0475 419393.\nAdres van bestemming:\nVeris Bouwmaterialengroep\nVoltaweg 14\n6101 XK Echt\nAantal Ehd Omschrijving Artikelnr Hoev. Ehd\n455,00 rol Bouwcenter stucloper 50m2 100-130cm 23545\nbruin-wit 2-zijdig gecoat\n150,00 rol Bouwcenter stucloper 50m2 90-100 cm 23544\nbruin-wit 2-zijdig gecoat\n120,00 rol Bouwcenter stucloper 35 m2 55-70 cm 23546\nbruin-wit 2-zijdig gecoat\n245,00 rol Stiho stucloper 50 m2 120/130 cm 23521\nbruin-wit 2-zijdig gecoat\n45,00 rol TFC non-woven afdekvlies 1x25 mt 234781\nabsorberende toplaag antislip folie\n45,00 rol Bouwcenter afdekvlies 1x25 mt 23923\nwit non woven zelfklevend\n22,00 rol Bouwcenter afdekvlies 1x50 mt 23924\nwit non woven zelfklevend\n33,00 rol Bouwcenter afdekvlies 0,67x37 mt 23989\nwit non woven zelfklevend\nWilt u bij levering ons ordernummer op uw afleveringsbon/vrachtbrief vermelden. Wij vertrouwen erop dat u onze\nopdracht naar tevredenheid zult verwerken. Lostijden Veris Logistiek Centrum Echt 06:00 tot 14:00 uur.Let op:\nmaa 27 april, don 14 mei en vrij 15 mei is Echt gesloten!"
+      }
+    ],
+    "source_path": "graph://AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAAVIEQnAAA=",
+    "is_order": true,
+    "classificatie_reden": "E-mail bevat bestelling 822200 met bijlage PDF waarin artikelen met hoeveelheden staan vermeld",
+    "classificatie_confidence": 0.95,
+    "taal": "NL",
+    "bestelnummer_klant": "822200",
+    "orderdatum": "2026-06-08",
+    "gewenste_leverdatum": null,
+    "afleveradres": {
+      "naam": "Veris Bouwmaterialengroep",
+      "straat": "Voltaweg 14",
+      "postcode": "6101 XK",
+      "plaats": "Echt",
+      "land": "NL"
+    },
+    "afleverinstructies": "AFHAALORDER - De goederen worden afgehaald, s.v.p. bericht wanneer dit mogelijk is. Tel. 0475 419393. Lostijden Veris Logistiek Centrum Echt 06:00 tot 14:00 uur. Let op: maa 27 april, don 14 mei en vrij 15 mei is Echt gesloten!",
+    "orderregels": [
+      {
+        "positie": 1,
+        "artikelnummer_klant": "23545",
+        "artikelnummer_kwabo": null,
+        "omschrijving": "Bouwcenter stucloper 50m2 100-130cm bruin-wit 2-zijdig gecoat",
+        "hoeveelheid": 455.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": null,
+        "ean_code": null,
+        "leverdatum_regel": null,
+        "opmerkingen": null,
+        "artikelnummer_kwabo_matched": "23839",
+        "match_methode": "fuzzy",
+        "match_confidence": 0.84,
+        "eenheid_origineel": "ROL",
+        "eenheid_default": "STUK",
+        "prijs_validated": null
+      },
+      {
+        "positie": 2,
+        "artikelnummer_klant": "23544",
+        "artikelnummer_kwabo": null,
+        "omschrijving": "Bouwcenter stucloper 50m2 90-100 cm bruin-wit 2-zijdig gecoat",
+        "hoeveelheid": 150.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": null,
+        "ean_code": null,
+        "leverdatum_regel": null,
+        "opmerkingen": null,
+        "artikelnummer_kwabo_matched": "10140",
+        "match_methode": "fuzzy",
+        "match_confidence": 0.84,
+        "eenheid_origineel": "ROL",
+        "eenheid_default": "STUK",
+        "prijs_validated": null
+      },
+      {
+        "positie": 3,
+        "artikelnummer_klant": "23546",
+        "artikelnummer_kwabo": null,
+        "omschrijving": "Bouwcenter stucloper 35 m2 55-70 cm bruin-wit 2-zijdig gecoat",
+        "hoeveelheid": 120.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": null,
+        "ean_code": null,
+        "leverdatum_regel": null,
+        "opmerkingen": null,
+        "artikelnummer_kwabo_matched": "10140",
+        "match_methode": "fuzzy",
+        "match_confidence": 0.84,
+        "eenheid_origineel": "ROL",
+        "eenheid_default": "STUK",
+        "prijs_validated": null
+      },
+      {
+        "positie": 4,
+        "artikelnummer_klant": "23521",
+        "artikelnummer_kwabo": null,
+        "omschrijving": "Stiho stucloper 50 m2 120/130 cm bruin-wit 2-zijdig gecoat",
+        "hoeveelheid": 245.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": null,
+        "ean_code": null,
+        "leverdatum_regel": null,
+        "opmerkingen": null,
+        "artikelnummer_kwabo_matched": "10150",
+        "match_methode": "fuzzy",
+        "match_confidence": 0.84,
+        "eenheid_origineel": "ROL",
+        "eenheid_default": "STUK",
+        "prijs_validated": null
+      },
+      {
+        "positie": 5,
+        "artikelnummer_klant": "234781",
+        "artikelnummer_kwabo": null,
+        "omschrijving": "TFC non-woven afdekvlies 1x25 mt absorberende toplaag antislip folie",
+        "hoeveelheid": 45.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": null,
+        "ean_code": null,
+        "leverdatum_regel": null,
+        "opmerkingen": null,
+        "artikelnummer_kwabo_matched": "20390",
+        "match_methode": "fuzzy",
+        "match_confidence": 0.84,
+        "eenheid_origineel": "ROL",
+        "eenheid_default": "STUK",
+        "prijs_validated": null
+      },
+      {
+        "positie": 6,
+        "artikelnummer_klant": "23923",
+        "artikelnummer_kwabo": null,
+        "omschrijving": "Bouwcenter afdekvlies 1x25 mt wit non woven zelfklevend",
+        "hoeveelheid": 45.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": null,
+        "ean_code": null,
+        "leverdatum_regel": null,
+        "opmerkingen": null,
+        "artikelnummer_kwabo_matched": "12460",
+        "match_methode": "fuzzy",
+        "match_confidence": 0.84,
+        "eenheid_origineel": "ROL",
+        "eenheid_default": "STUK",
+        "prijs_validated": null
+      },
+      {
+        "positie": 7,
+        "artikelnummer_klant": "23924",
+        "artikelnummer_kwabo": null,
+        "omschrijving": "Bouwcenter afdekvlies 1x50 mt wit non woven zelfklevend",
+        "hoeveelheid": 22.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": null,
+        "ean_code": null,
+        "leverdatum_regel": null,
+        "opmerkingen": null,
+        "artikelnummer_kwabo_matched": "12460",
+        "match_methode": "fuzzy",
+        "match_confidence": 0.84,
+        "eenheid_origineel": "ROL",
+        "eenheid_default": "STUK",
+        "prijs_validated": null
+      },
+      {
+        "positie": 8,
+        "artikelnummer_klant": "23989",
+        "artikelnummer_kwabo": null,
+        "omschrijving": "Bouwcenter afdekvlies 0,67x37 mt wit non woven zelfklevend",
+        "hoeveelheid": 33.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": null,
+        "ean_code": null,
+        "leverdatum_regel": null,
+        "opmerkingen": null,
+        "artikelnummer_kwabo_matched": "12460",
+        "match_methode": "fuzzy",
+        "match_confidence": 0.84,
+        "eenheid_origineel": "ROL",
+        "eenheid_default": "STUK",
+        "prijs_validated": null
+      }
+    ],
+    "opmerkingen": "Wilt u bij levering ons ordernummer op uw afleveringsbon/vrachtbrief vermelden.",
+    "klant_match": {
+      "navision_klantnr": "60203",
+      "klantnaam": "Veris Bouwmaterialengroep B.V.",
+      "match_confidence": 1.0,
+      "match_bron": "email",
+      "is_4plus": false,
+      "kredietlimiet": 50000.0,
+      "betalingsconditie": "21DAG2%",
+      "kredietlimiet_status": "ok"
+    },
+    "alle_artikelen_gematcht": true,
+    "alle_prijzen_valide": true,
+    "validatie_warnings": [
+      "⚠ KLANT IS GEEN 4+ LID — controleer aankoopvoorwaarden",
+      "⚠ EENHEID CONTROLEREN (regel 1): klant bestelde 'ROL' maar dit is geen geldige eenheid voor artikel 23839 (gebruikt nu standaard 'STUK').",
+      "⚠ EENHEID CONTROLEREN (regel 2): klant bestelde 'ROL' maar dit is geen geldige eenheid voor artikel 10140 (gebruikt nu standaard 'STUK').",
+      "⚠ EENHEID CONTROLEREN (regel 3): klant bestelde 'ROL' maar dit is geen geldige eenheid voor artikel 10140 (gebruikt nu standaard 'STUK').",
+      "⚠ EENHEID CONTROLEREN (regel 4): klant bestelde 'ROL' maar dit is geen geldige eenheid voor artikel 10150 (gebruikt nu standaard 'STUK').",
+      "⚠ EENHEID CONTROLEREN (regel 5): klant bestelde 'ROL' maar dit is geen geldige eenheid voor artikel 20390 (gebruikt nu standaard 'STUK').",
+      "⚠ EENHEID CONTROLEREN (regel 6): klant bestelde 'ROL' maar dit is geen geldige eenheid voor artikel 12460 (gebruikt nu standaard 'STUK').",
+      "⚠ EENHEID CONTROLEREN (regel 7): klant bestelde 'ROL' maar dit is geen geldige eenheid voor artikel 12460 (gebruikt nu standaard 'STUK').",
+      "⚠ EENHEID CONTROLEREN (regel 8): klant bestelde 'ROL' maar dit is geen geldige eenheid voor artikel 12460 (gebruikt nu standaard 'STUK')."
+    ],
+    "review_status": "pending",
+    "ship_to_kandidaten": [
+      {
+        "klant_nr": "60203",
+        "ship_to_code": "6101 XK",
+        "naam": "Veris Bouwmaterialengroep B.V.",
+        "straat": "Voltaweg 14",
+        "postcode": "6101 XK",
+        "plaats": "ECHT",
+        "land": "NL",
+        "is_default": false
+      }
+    ],
+    "ship_to_gekozen": "6101 XK",
+    "mixprijzen_actief": false,
+    "order_mix_total_pallets": null,
+    "europallet_regel": {
+      "positie": 9,
+      "artikelnummer_kwabo": "19820",
+      "artikelnummer_kwabo_matched": "19820",
+      "omschrijving": "Europallet",
+      "hoeveelheid": 16,
+      "eenheid": "STUK",
+      "match_methode": "europallet_compute",
+      "confidence": 0.7
+    },
+    "incoming_document_storage_key": "by_email_id/AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1h-e6ef6d084b81d28e.eml",
+    "stappen_log": [
+      {
+        "stap": "intake",
+        "timestamp": "2026-06-08T09:48:27.333139+00:00",
+        "beslissing": "E-mail opgehaald, 1 bijlagen geëxtraheerd",
+        "details": {
+          "bijlage_namen": [
+            "822200.pdf"
+          ]
+        }
+      },
+      {
+        "stap": "classify",
+        "timestamp": "2026-06-08T09:48:29.293617+00:00",
+        "beslissing": "ORDER (conf=0.95)",
+        "details": {
+          "is_order": true,
+          "reden": "E-mail bevat bestelling 822200 met bijlage PDF waarin artikelen met hoeveelheden staan vermeld",
+          "confidence": 0.95
+        }
+      },
+      {
+        "stap": "extract",
+        "timestamp": "2026-06-08T09:49:15.934207+00:00",
+        "beslissing": "Geëxtraheerd: 8 regels, taal=NL, 8 velden needs_review",
+        "details": {
+          "bestelnummer": "822200",
+          "multi_orders": 1
+        }
+      },
+      {
+        "stap": "match_customer",
+        "timestamp": "2026-06-08T09:49:16.516832+00:00",
+        "beslissing": "Klant gematcht: 60203 (email)",
+        "details": {
+          "navision_klantnr": "60203",
+          "klantnaam": "Veris Bouwmaterialengroep B.V.",
+          "match_confidence": 1.0,
+          "match_bron": "email",
+          "is_4plus": false,
+          "kredietlimiet": 50000.0,
+          "betalingsconditie": "21DAG2%",
+          "kredietlimiet_status": "ok"
+        }
+      },
+      {
+        "stap": "match_articles",
+        "timestamp": "2026-06-08T09:51:06.292987+00:00",
+        "beslissing": "8/8 regels gematcht",
+        "details": {
+          "per_methode": {
+            "exact": 0,
+            "kruisverwijzing": 0,
+            "klantenkaart": 0,
+            "history": 0,
+            "fuzzy": 8,
+            "manual": 0
+          }
+        }
+      },
+      {
+        "stap": "validate_prices",
+        "timestamp": "2026-06-08T09:51:10.811841+00:00",
+        "beslissing": "0/8 prijzen ok",
+        "details": {
+          "warnings_new": []
+        }
+      }
+    ],
+    "errors": [],
+    "_meta": {
+      "taal": {
+        "value": "NL",
+        "source": "pdf",
+        "source_detail": "822200.pdf p.1 header",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "bestelnummer_klant": {
+        "value": "822200",
+        "source": "pdf",
+        "source_detail": "822200.pdf p.1 header 'Opdrachtnummer'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "orderdatum": {
+        "value": "2026-06-08",
+        "source": "pdf",
+        "source_detail": "822200.pdf p.1 header 'Datum: 08/06/26'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "gewenste_leverdatum": {
+        "value": null,
+        "source": "missing",
+        "source_detail": null,
+        "confidence": 0.0,
+        "needs_review": false
+      },
+      "afleveradres": {
+        "value": {
+          "naam": "Veris Bouwmaterialengroep",
+          "straat": "Voltaweg 14",
+          "postcode": "6101 XK",
+          "plaats": "Echt",
+          "land": "NL"
+        },
+        "source": "pdf",
+        "source_detail": "822200.pdf p.1 'Adres van bestemming'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "afleverinstructies": {
+        "value": "AFHAALORDER - De goederen worden afgehaald, s.v.p. bericht wanneer dit mogelijk is. Tel. 0475 419393. Lostijden Veris Logistiek Centrum Echt 06:00 tot 14:00 uur. Let op: maa 27 april, don 14 mei en vrij 15 mei is Echt gesloten!",
+        "source": "pdf",
+        "source_detail": "822200.pdf p.1 body text",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "opmerkingen": {
+        "value": "Wilt u bij levering ons ordernummer op uw afleveringsbon/vrachtbrief vermelden.",
+        "source": "pdf",
+        "source_detail": "822200.pdf p.1 body text",
+        "confidence": 0.9,
+        "needs_review": false
+      },
+      "orderregels": [
+        {
+          "artikelnummer_klant": {
+            "value": "23545",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 1 col 'Artikelnr'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": true
+          },
+          "omschrijving": {
+            "value": "Bouwcenter stucloper 50m2 100-130cm bruin-wit 2-zijdig gecoat",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 1 col 'Omschrijving'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 455,
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 1 col 'Aantal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "ROL",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 1 col 'Ehd'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": null,
+            "source": "nav_default",
+            "source_detail": "NAV-standaard (geen prijsafspraak)",
+            "confidence": 0.0,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "23839",
+            "source": "fuzzy",
+            "source_detail": "match-methode=fuzzy",
+            "confidence": 0.84,
+            "needs_review": true
+          }
+        },
+        {
+          "artikelnummer_klant": {
+            "value": "23544",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 2 col 'Artikelnr'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": true
+          },
+          "omschrijving": {
+            "value": "Bouwcenter stucloper 50m2 90-100 cm bruin-wit 2-zijdig gecoat",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 2 col 'Omschrijving'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 150,
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 2 col 'Aantal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "ROL",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 2 col 'Ehd'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": null,
+            "source": "nav_default",
+            "source_detail": "NAV-standaard (geen prijsafspraak)",
+            "confidence": 0.0,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "10140",
+            "source": "fuzzy",
+            "source_detail": "match-methode=fuzzy",
+            "confidence": 0.84,
+            "needs_review": true
+          }
+        },
+        {
+          "artikelnummer_klant": {
+            "value": "23546",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 3 col 'Artikelnr'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": true
+          },
+          "omschrijving": {
+            "value": "Bouwcenter stucloper 35 m2 55-70 cm bruin-wit 2-zijdig gecoat",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 3 col 'Omschrijving'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 120,
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 3 col 'Aantal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "ROL",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 3 col 'Ehd'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": null,
+            "source": "nav_default",
+            "source_detail": "NAV-standaard (geen prijsafspraak)",
+            "confidence": 0.0,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "10140",
+            "source": "fuzzy",
+            "source_detail": "match-methode=fuzzy",
+            "confidence": 0.84,
+            "needs_review": true
+          }
+        },
+        {
+          "artikelnummer_klant": {
+            "value": "23521",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 4 col 'Artikelnr'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": true
+          },
+          "omschrijving": {
+            "value": "Stiho stucloper 50 m2 120/130 cm bruin-wit 2-zijdig gecoat",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 4 col 'Omschrijving'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 245,
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 4 col 'Aantal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "ROL",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 4 col 'Ehd'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": null,
+            "source": "nav_default",
+            "source_detail": "NAV-standaard (geen prijsafspraak)",
+            "confidence": 0.0,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "10150",
+            "source": "fuzzy",
+            "source_detail": "match-methode=fuzzy",
+            "confidence": 0.84,
+            "needs_review": true
+          }
+        },
+        {
+          "artikelnummer_klant": {
+            "value": "234781",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 5 col 'Artikelnr'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": true
+          },
+          "omschrijving": {
+            "value": "TFC non-woven afdekvlies 1x25 mt absorberende toplaag antislip folie",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 5 col 'Omschrijving'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 45,
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 5 col 'Aantal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "ROL",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 5 col 'Ehd'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": null,
+            "source": "nav_default",
+            "source_detail": "NAV-standaard (geen prijsafspraak)",
+            "confidence": 0.0,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "20390",
+            "source": "fuzzy",
+            "source_detail": "match-methode=fuzzy",
+            "confidence": 0.84,
+            "needs_review": true
+          }
+        },
+        {
+          "artikelnummer_klant": {
+            "value": "23923",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 6 col 'Artikelnr'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": true
+          },
+          "omschrijving": {
+            "value": "Bouwcenter afdekvlies 1x25 mt wit non woven zelfklevend",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 6 col 'Omschrijving'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 45,
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 6 col 'Aantal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "ROL",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 6 col 'Ehd'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": null,
+            "source": "nav_default",
+            "source_detail": "NAV-standaard (geen prijsafspraak)",
+            "confidence": 0.0,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "12460",
+            "source": "fuzzy",
+            "source_detail": "match-methode=fuzzy",
+            "confidence": 0.84,
+            "needs_review": true
+          }
+        },
+        {
+          "artikelnummer_klant": {
+            "value": "23924",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 7 col 'Artikelnr'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": true
+          },
+          "omschrijving": {
+            "value": "Bouwcenter afdekvlies 1x50 mt wit non woven zelfklevend",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 7 col 'Omschrijving'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 22,
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 7 col 'Aantal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "ROL",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 7 col 'Ehd'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": null,
+            "source": "nav_default",
+            "source_detail": "NAV-standaard (geen prijsafspraak)",
+            "confidence": 0.0,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "12460",
+            "source": "fuzzy",
+            "source_detail": "match-methode=fuzzy",
+            "confidence": 0.84,
+            "needs_review": true
+          }
+        },
+        {
+          "artikelnummer_klant": {
+            "value": "23989",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 8 col 'Artikelnr'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": true
+          },
+          "omschrijving": {
+            "value": "Bouwcenter afdekvlies 0,67x37 mt wit non woven zelfklevend",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 8 col 'Omschrijving'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 33,
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 8 col 'Aantal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "ROL",
+            "source": "pdf",
+            "source_detail": "822200.pdf p.1 row 8 col 'Ehd'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": null,
+            "source": "nav_default",
+            "source_detail": "NAV-standaard (geen prijsafspraak)",
+            "confidence": 0.0,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "12460",
+            "source": "fuzzy",
+            "source_detail": "match-methode=fuzzy",
+            "confidence": 0.84,
+            "needs_review": true
+          }
+        }
+      ],
+      "klant_match": {
+        "value": "60203",
+        "source": "klantenkaart",
+        "source_detail": "email",
+        "confidence": 1.0,
+        "needs_review": false
+      }
+    },
+    "needs_review_fields": [
+      "orderregels[0].artikelnummer_kwabo",
+      "orderregels[1].artikelnummer_kwabo",
+      "orderregels[2].artikelnummer_kwabo",
+      "orderregels[3].artikelnummer_kwabo",
+      "orderregels[4].artikelnummer_kwabo",
+      "orderregels[5].artikelnummer_kwabo",
+      "orderregels[6].artikelnummer_kwabo",
+      "orderregels[7].artikelnummer_kwabo",
+      "orderregels[0].artikelnummer_kwabo_matched",
+      "orderregels[1].artikelnummer_kwabo_matched",
+      "orderregels[2].artikelnummer_kwabo_matched",
+      "orderregels[3].artikelnummer_kwabo_matched",
+      "orderregels[4].artikelnummer_kwabo_matched",
+      "orderregels[5].artikelnummer_kwabo_matched",
+      "orderregels[6].artikelnummer_kwabo_matched",
+      "orderregels[7].artikelnummer_kwabo_matched",
+      "orderregels[0].eenheid",
+      "orderregels[1].eenheid",
+      "orderregels[2].eenheid",
+      "orderregels[3].eenheid",
+      "orderregels[4].eenheid",
+      "orderregels[5].eenheid",
+      "orderregels[6].eenheid",
+      "orderregels[7].eenheid"
+    ],
+    "needs_review_count": 24,
+    "extra_orders_raw": [],
+    "nav_operations": [
+      {
+        "op": "POST",
+        "path": "/salesOrders",
+        "body": {
+          "customerNumber": "60203"
+        },
+        "label": "Klant kiezen (Sell-to Customer No. 60203)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrders({id})",
+        "body": {
+          "shipToCode": "6101 XK"
+        },
+        "label": "Verzendadres kiezen (Ship-to Code 6101 XK)",
+        "expects": {
+          "shipToAddress": "auto"
+        },
+        "optional": true
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrders({id})",
+        "body": {
+          "externalDocumentNumber": "822200"
+        },
+        "label": "PO-nummer klant (822200)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrders({id})",
+        "body": {
+          "shipmentDate": "2026-06-09"
+        },
+        "label": "Verzenddatum (2026-06-09)"
+      },
+      {
+        "op": "POST",
+        "path": "/salesOrders({id})/salesOrderLines",
+        "body": {
+          "lineType": "Item",
+          "itemNumber": "23839"
+        },
+        "label": "Regel 1: regel toevoegen (23839)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrderLines({id})",
+        "body": {
+          "quantity": 455.0
+        },
+        "label": "Regel 1: aantal invullen (455.0)"
+      },
+      {
+        "op": "POST",
+        "path": "/salesOrders({id})/salesOrderLines",
+        "body": {
+          "lineType": "Item",
+          "itemNumber": "10140"
+        },
+        "label": "Regel 2: regel toevoegen (10140)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrderLines({id})",
+        "body": {
+          "quantity": 150.0
+        },
+        "label": "Regel 2: aantal invullen (150.0)"
+      },
+      {
+        "op": "POST",
+        "path": "/salesOrders({id})/salesOrderLines",
+        "body": {
+          "lineType": "Item",
+          "itemNumber": "10140"
+        },
+        "label": "Regel 3: regel toevoegen (10140)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrderLines({id})",
+        "body": {
+          "quantity": 120.0
+        },
+        "label": "Regel 3: aantal invullen (120.0)"
+      },
+      {
+        "op": "POST",
+        "path": "/salesOrders({id})/salesOrderLines",
+        "body": {
+          "lineType": "Item",
+          "itemNumber": "10150"
+        },
+        "label": "Regel 4: regel toevoegen (10150)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrderLines({id})",
+        "body": {
+          "quantity": 245.0
+        },
+        "label": "Regel 4: aantal invullen (245.0)"
+      },
+      {
+        "op": "POST",
+        "path": "/salesOrders({id})/salesOrderLines",
+        "body": {
+          "lineType": "Item",
+          "itemNumber": "20390"
+        },
+        "label": "Regel 5: regel toevoegen (20390)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrderLines({id})",
+        "body": {
+          "quantity": 45.0
+        },
+        "label": "Regel 5: aantal invullen (45.0)"
+      },
+      {
+        "op": "POST",
+        "path": "/salesOrders({id})/salesOrderLines",
+        "body": {
+          "lineType": "Item",
+          "itemNumber": "12460"
+        },
+        "label": "Regel 6: regel toevoegen (12460)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrderLines({id})",
+        "body": {
+          "quantity": 45.0
+        },
+        "label": "Regel 6: aantal invullen (45.0)"
+      },
+      {
+        "op": "POST",
+        "path": "/salesOrders({id})/salesOrderLines",
+        "body": {
+          "lineType": "Item",
+          "itemNumber": "12460"
+        },
+        "label": "Regel 7: regel toevoegen (12460)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrderLines({id})",
+        "body": {
+          "quantity": 22.0
+        },
+        "label": "Regel 7: aantal invullen (22.0)"
+      },
+      {
+        "op": "POST",
+        "path": "/salesOrders({id})/salesOrderLines",
+        "body": {
+          "lineType": "Item",
+          "itemNumber": "12460"
+        },
+        "label": "Regel 8: regel toevoegen (12460)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrderLines({id})",
+        "body": {
+          "quantity": 33.0
+        },
+        "label": "Regel 8: aantal invullen (33.0)"
+      },
+      {
+        "op": "POST",
+        "path": "/salesOrders({id})/salesOrderLines",
+        "body": {
+          "lineType": "Item",
+          "itemNumber": "19820"
+        },
+        "label": "Europallet: regel toevoegen (19820)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrderLines({id})",
+        "body": {
+          "unitOfMeasureCode": "STUK"
+        },
+        "label": "Europallet: eenheid kiezen (STUK)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrderLines({id})",
+        "body": {
+          "quantity": 16
+        },
+        "label": "Europallet: aantal invullen (16)"
+      }
+    ]
+  }
+}

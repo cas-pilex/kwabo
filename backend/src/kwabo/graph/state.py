@@ -90,6 +90,9 @@ class OrderState(TypedDict, total=False):
     afleverinstructies: Optional[str]
     orderregels: list[OrderRegel]
     opmerkingen: Optional[str]
+    # Functie 5: NAV Shipment Method Code bij een afhaal-/ophaalorder (EXW),
+    # gedetecteerd in extract; None bij een gewone verzendorder.
+    verzendwijze: Optional[str]
 
     # Matching
     klant_match: Optional[KlantMatch]

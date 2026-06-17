@@ -1,0 +1,375 @@
+{
+  "order_id": 678,
+  "email_from": "No Reply Carel Lurvink <noreply@carellurvink.nl>",
+  "email_subject": "Inkooporder IO2603392",
+  "status": "review",
+  "order_state": {
+    "email_id": "AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAAVIEQgAAA=",
+    "email_from": "No Reply Carel Lurvink <noreply@carellurvink.nl>",
+    "email_subject": "Inkooporder IO2603392",
+    "email_body": "Beste leverancier,\r\n\r\nBijgaand sturen wij onze inkooporder. Deze treft u aan in de bijlage als PDF of als XML.\r\n\r\nVoor vragen kunt u contact opnemen met:\r\nT +31 53 852 70 96\r\nE inkoop@carellurvink.nl<mailto:inkoop@carellurvink.nl>\r\n\r\nWij verzoeken u binnen 12 uur een orderbevestiging te sturen naar:\r\nE O2@carellurvink.nl<mailto:O2@carellurvink.nl>\r\n\r\nBij voorkeur ontvangen wij uw factuur digitaal op onderstaand mailadres:\r\nE inkoopfaktuur@carellurvink.nl<mailto:inkoopfaktuur@carellurvink.nl>\r\n(let op: hierop kunnen alleen PDF formulieren gestuurd worden, tekstbestanden worden niet gelezen).\r\n\r\nMet vriendelijke groet,\r\n\r\n[Logo Carel Lurvink]<https://www.carellurvink.nl>\r\n\r\nCarel Lurvink Logistics BV\r\nT +31 53 852 70 96\r\ninkoop@carellurvink.nl<mailto:inkoop@carellurvink.nl>\r\nwww.carellurvink.nl<https://www.carellurvink.nl>\r\n\r\n[https://www.carellurvink.nl/Portals/0/blauw_singlebar_2019.jpg]\r\n\r\n\r\n",
+    "email_date": "Mon, 08 Jun 2026 07:22:22 +0000",
+    "bijlagen": [
+      {
+        "naam": "Inkooporder.PDF",
+        "type": "pdf",
+        "inhoud_tekst": "--- PAGE 1 ---\nWWW.CARELLURVINK.NL\nCLL B.V. +31 (0) 53 852 70 96 KVK (COC) 67631266\nIJzersteden 11 inkoop@carellurvink.nl BTW (VAT) NL857100671B01\n7547 TB Enschede IBAN NL15ABNA0538346604\nNederland BIC ABNANL2A\nIedereen verdient een schone & veilige werkomgeving\nOrder\nKwabo Techniek BV Pagina 1\nNico Sier\nJulianaweg 210 A Carel Lurvink Logistics B.V.\n1131 DL Volendam IJzersteden 11\nThe Netherlands 7547 TB Enschede\nNederland\nTelefoonnr. +31 (53)-852 70 96\nHomepage www.carellurvink.nl\nE-mail inkoop@carellurvink.nl\nOns rekeningnummer Btw-nummer NL857100671B01\nOrdernummer IO2603392 Bank ABNAMRO\nDocumentdatum 8 juni 2026 Rekeningnr. NL15ABNA05383466\nBetalingsvoorwaarden 30 dgn netto, 2% van goederenbedrag binnen 8 da\nInclusief btw Nee\nDirecte Verwachte\nArt. nr. Omschrijving Aantal Eenheid kostprijs Korting % Bedrag Vervaldatum\n229081 Zelfklevend ademvlies wit 5,00 ROL (1) 48,65 243,25 15-6-2026\n1mtrx25mtr\n238531-CaluPaint CaluPaint zelfklevend 45,00 ROL (1) 22,494 1.012,23 15-6-2026\nafdekvlies 1x25m 160gr met\nantislip aan bovenzijde\nTotaal EUR excl. btw 1.255,48\n21% btw 263,65\nTotaal EUR incl. btw 1.519,13\nSpecificatie btw-bedrag\nBasisbedrag van Bedrag\nBtw-identificatie BTW % Regelbedrag factuurkorting factuurkorting Basisbedrag btw Btw-bedrag\n21 21 1 255,48 1 255,48 0,00 1 255,48 263,65\nTotaal 1.255,48 1.255,48 0,00 1.255,48 263,65\nAfleveradres\nCarel Lurvink Logistics B.V.\nIJzersteden 11\nBevestig deze bestelling aanorderbevestiging@carellurvink.nl! Wij verwachten uw onmiddellijke reactie wanneer de\nlevertijd niet acceptabel is. Correcties in prijs, levertijd en andere leveringsvoorwaarden kunnen alleen worden\ngeaccepteerd na goedkeuring van onze inkoopafdeling.\nWWW.CARELLURVINK.NL\nCLL B.V. +31 (0) 53 852 70 96 KVK (COC) 67631266\nIJzersteden 11 inkoop@carellurvink.nl BTW (VAT) NL857100671B01\n7547 TB Enschede IBAN NL15ABNA0538346604\nNederland BIC ABNANL2A"
+      }
+    ],
+    "source_path": "graph://AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAAVIEQgAAA=",
+    "is_order": true,
+    "classificatie_reden": "E-mail bevat inkooporder IO2603392 met PDF-bijlage van klant Carel Lurvink gericht aan Kwabo Techniek BV",
+    "classificatie_confidence": 0.98,
+    "taal": "NL",
+    "bestelnummer_klant": "IO2603392",
+    "orderdatum": "2026-06-08",
+    "gewenste_leverdatum": "2026-06-15",
+    "afleveradres": {
+      "naam": "Carel Lurvink Logistics B.V.",
+      "straat": "IJzersteden 11",
+      "postcode": "7547 TB",
+      "plaats": "Enschede",
+      "land": "NL"
+    },
+    "afleverinstructies": "Bevestig deze bestelling aan orderbevestiging@carellurvink.nl! Wij verwachten uw onmiddellijke reactie wanneer de levertijd niet acceptabel is.",
+    "orderregels": [
+      {
+        "positie": 1,
+        "artikelnummer_klant": "229081",
+        "artikelnummer_kwabo": null,
+        "omschrijving": "Zelfklevend ademvlies wit 1mtrx25mtr",
+        "hoeveelheid": 5.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": 48.65,
+        "ean_code": null,
+        "leverdatum_regel": "2026-06-15",
+        "opmerkingen": null,
+        "artikelnummer_kwabo_matched": "21355",
+        "match_methode": "fuzzy",
+        "match_confidence": 0.84,
+        "eenheid_origineel": "ROL",
+        "eenheid_default": "STUK",
+        "prijs_validated": null
+      },
+      {
+        "positie": 2,
+        "artikelnummer_klant": "238531-CaluPaint",
+        "artikelnummer_kwabo": null,
+        "omschrijving": "CaluPaint zelfklevend afdekvlies 1x25m 160gr met antislip aan bovenzijde",
+        "hoeveelheid": 45.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": 22.494,
+        "ean_code": null,
+        "leverdatum_regel": "2026-06-15",
+        "opmerkingen": null,
+        "artikelnummer_kwabo_matched": "10710",
+        "match_methode": "fuzzy",
+        "match_confidence": 0.84,
+        "eenheid_origineel": "ROL",
+        "eenheid_default": "STUK",
+        "prijs_validated": null
+      }
+    ],
+    "opmerkingen": "Betalingsvoorwaarden: 30 dgn netto, 2% van goederenbedrag binnen 8 da. Orderbevestiging verwacht binnen 12 uur naar O2@carellurvink.nl",
+    "klant_match": null,
+    "alle_artikelen_gematcht": true,
+    "alle_prijzen_valide": true,
+    "validatie_warnings": [
+      "KLANT NIET GEVONDEN: No Reply Carel Lurvink <noreply@carellurvink.nl>. Handmatige selectie nodig.",
+      "⚠ EENHEID CONTROLEREN (regel 1): klant bestelde 'ROL' maar dit is geen geldige eenheid voor artikel 21355 (gebruikt nu standaard 'STUK').",
+      "⚠ EENHEID CONTROLEREN (regel 2): klant bestelde 'ROL' maar dit is geen geldige eenheid voor artikel 10710 (gebruikt nu standaard 'STUK')."
+    ],
+    "review_status": "pending",
+    "mixprijzen_actief": false,
+    "order_mix_total_pallets": null,
+    "europallet_regel": null,
+    "incoming_document_storage_key": "by_email_id/AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1h-71ba1cf7acb5306a.eml",
+    "stappen_log": [
+      {
+        "stap": "intake",
+        "timestamp": "2026-06-08T07:24:07.824166+00:00",
+        "beslissing": "E-mail opgehaald, 1 bijlagen geëxtraheerd",
+        "details": {
+          "bijlage_namen": [
+            "Inkooporder.PDF"
+          ]
+        }
+      },
+      {
+        "stap": "classify",
+        "timestamp": "2026-06-08T07:24:10.645521+00:00",
+        "beslissing": "ORDER (conf=0.98)",
+        "details": {
+          "is_order": true,
+          "reden": "E-mail bevat inkooporder IO2603392 met PDF-bijlage van klant Carel Lurvink gericht aan Kwabo Techniek BV",
+          "confidence": 0.98
+        }
+      },
+      {
+        "stap": "extract",
+        "timestamp": "2026-06-08T07:24:31.662031+00:00",
+        "beslissing": "Geëxtraheerd: 2 regels, taal=NL, 2 velden needs_review",
+        "details": {
+          "bestelnummer": "IO2603392",
+          "multi_orders": 1
+        }
+      },
+      {
+        "stap": "match_customer",
+        "timestamp": "2026-06-08T07:24:33.531958+00:00",
+        "beslissing": "Klant NIET gematcht",
+        "details": {
+          "email": "noreply@carellurvink.nl"
+        }
+      },
+      {
+        "stap": "match_articles",
+        "timestamp": "2026-06-08T07:25:01.760470+00:00",
+        "beslissing": "2/2 regels gematcht",
+        "details": {
+          "per_methode": {
+            "exact": 0,
+            "kruisverwijzing": 0,
+            "klantenkaart": 0,
+            "history": 0,
+            "fuzzy": 2,
+            "manual": 0
+          }
+        }
+      },
+      {
+        "stap": "validate_prices",
+        "timestamp": "2026-06-08T07:25:02.781250+00:00",
+        "beslissing": "0/2 prijzen ok",
+        "details": {
+          "warnings_new": []
+        }
+      }
+    ],
+    "errors": [],
+    "_meta": {
+      "taal": {
+        "value": "NL",
+        "source": "pdf",
+        "source_detail": "Inkooporder.PDF p.1 document text",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "bestelnummer_klant": {
+        "value": "IO2603392",
+        "source": "pdf",
+        "source_detail": "Inkooporder.PDF p.1 header 'Ordernummer'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "orderdatum": {
+        "value": "2026-06-08",
+        "source": "pdf",
+        "source_detail": "Inkooporder.PDF p.1 'Documentdatum 8 juni 2026'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "gewenste_leverdatum": {
+        "value": "2026-06-15",
+        "source": "pdf",
+        "source_detail": "Inkooporder.PDF p.1 table column 'Verwachte Vervaldatum'",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "afleveradres": {
+        "value": {
+          "naam": "Carel Lurvink Logistics B.V.",
+          "straat": "IJzersteden 11",
+          "postcode": "7547 TB",
+          "plaats": "Enschede",
+          "land": "NL"
+        },
+        "source": "pdf",
+        "source_detail": "Inkooporder.PDF p.1 section 'Afleveradres'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "afleverinstructies": {
+        "value": "Bevestig deze bestelling aan orderbevestiging@carellurvink.nl! Wij verwachten uw onmiddellijke reactie wanneer de levertijd niet acceptabel is.",
+        "source": "pdf",
+        "source_detail": "Inkooporder.PDF p.1 footer instructies",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "opmerkingen": {
+        "value": "Betalingsvoorwaarden: 30 dgn netto, 2% van goederenbedrag binnen 8 da. Orderbevestiging verwacht binnen 12 uur naar O2@carellurvink.nl",
+        "source": "pdf",
+        "source_detail": "Inkooporder.PDF p.1 betalingsvoorwaarden + email body",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "orderregels": [
+        {
+          "artikelnummer_klant": {
+            "value": "229081",
+            "source": "pdf",
+            "source_detail": "Inkooporder.PDF p.1 table row 1 column 'Art. nr.'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": true
+          },
+          "omschrijving": {
+            "value": "Zelfklevend ademvlies wit 1mtrx25mtr",
+            "source": "pdf",
+            "source_detail": "Inkooporder.PDF p.1 table row 1 column 'Omschrijving'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 5,
+            "source": "pdf",
+            "source_detail": "Inkooporder.PDF p.1 table row 1 column 'Aantal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "ROL",
+            "source": "pdf",
+            "source_detail": "Inkooporder.PDF p.1 table row 1 column 'Eenheid'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": 48.65,
+            "source": "pdf",
+            "source_detail": "Inkooporder.PDF p.1 table row 1 column 'Directe kostprijs'",
+            "confidence": 0.99,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": "2026-06-15",
+            "source": "pdf",
+            "source_detail": "Inkooporder.PDF p.1 table row 1 column 'Verwachte Vervaldatum'",
+            "confidence": 0.95,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "21355",
+            "source": "fuzzy",
+            "source_detail": "match-methode=fuzzy",
+            "confidence": 0.84,
+            "needs_review": true
+          }
+        },
+        {
+          "artikelnummer_klant": {
+            "value": "238531-CaluPaint",
+            "source": "pdf",
+            "source_detail": "Inkooporder.PDF p.1 table row 2 column 'Art. nr.'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": true
+          },
+          "omschrijving": {
+            "value": "CaluPaint zelfklevend afdekvlies 1x25m 160gr met antislip aan bovenzijde",
+            "source": "pdf",
+            "source_detail": "Inkooporder.PDF p.1 table row 2 column 'Omschrijving'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 45,
+            "source": "pdf",
+            "source_detail": "Inkooporder.PDF p.1 table row 2 column 'Aantal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "ROL",
+            "source": "pdf",
+            "source_detail": "Inkooporder.PDF p.1 table row 2 column 'Eenheid'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": 22.494,
+            "source": "pdf",
+            "source_detail": "Inkooporder.PDF p.1 table row 2 column 'Directe kostprijs'",
+            "confidence": 0.99,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": "2026-06-15",
+            "source": "pdf",
+            "source_detail": "Inkooporder.PDF p.1 table row 2 column 'Verwachte Vervaldatum'",
+            "confidence": 0.95,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "10710",
+            "source": "fuzzy",
+            "source_detail": "match-methode=fuzzy",
+            "confidence": 0.84,
+            "needs_review": true
+          }
+        }
+      ],
+      "klant_match": {
+        "value": null,
+        "source": "missing",
+        "source_detail": null,
+        "confidence": 0.0,
+        "needs_review": true
+      }
+    },
+    "needs_review_fields": [
+      "orderregels[0].artikelnummer_kwabo",
+      "orderregels[1].artikelnummer_kwabo",
+      "klant_match",
+      "orderregels[0].artikelnummer_kwabo_matched",
+      "orderregels[1].artikelnummer_kwabo_matched",
+      "orderregels[0].eenheid",
+      "orderregels[1].eenheid"
+    ],
+    "needs_review_count": 7,
+    "extra_orders_raw": [],
+    "nav_operations": []
+  }
+}

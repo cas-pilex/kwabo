@@ -75,6 +75,8 @@ _DEFAULT_FIELD_MAP = {
     "externalDocumentNumber": "External_Document_No",
     "requestedDeliveryDate": "Requested_Delivery_Date",
     "shipmentDate": "Shipment_Date",
+    # Functie 5: afhaalorder → verzendwijze (Shipment Method Code = EXW).
+    "shipmentMethodCode": "Shipment_Method_Code",
     "incomingDocumentNumber": "Incoming_Document_Entry_No",
     # Line fields
     "lineType": "Type",
@@ -175,6 +177,7 @@ class Nav2018ODataClient:
         retry_attempts: int | None = None,
         retry_base_delay: float | None = None,
         retry_max_delay: float | None = None,
+        incoming_document_enabled: bool | None = None,
     ) -> None:
         from kwabo.config import settings
 
@@ -194,6 +197,15 @@ class Nav2018ODataClient:
         self.page_ship_to = page_ship_to or settings.nav_page_ship_to
         self.page_item_uom = page_item_uom or settings.nav_page_item_uom
         self.field_map = field_map or _DEFAULT_FIELD_MAP
+
+        # FUNCTIE 7: gate for the incoming-document ops. Default (off) keeps the
+        # historic skip-with-warning behaviour; flip on once PLX_IncomingDocument
+        # is published and the transport translation is wired.
+        self.incoming_document_enabled = (
+            settings.nav2018_incoming_document_enabled
+            if incoming_document_enabled is None
+            else incoming_document_enabled
+        )
 
         self._client = http_client or httpx.AsyncClient(
             verify=self.verify_ssl,
@@ -627,12 +639,17 @@ class Nav2018ODataClient:
                 for v in body.values()
             ) or "{incoming_document_id}" in raw_path
             body_links_incoming = "incomingDocumentNumber" in body
-            if (
+            is_incoming_doc_op = (
                 "/incomingDocuments" in raw_path
                 or raw_path.startswith("/incomingDocuments")
                 or references_incoming_id
                 or body_links_incoming
-            ):
+            )
+            # FUNCTIE 7: only skip while the feature is disabled. When enabled,
+            # the op falls through to the normal translate+execute path (which,
+            # until the PLX_IncomingDocument transport rules are wired, fails
+            # LOUDLY via _translate_path — never a silent skip).
+            if is_incoming_doc_op and not self.incoming_document_enabled:
                 log.warning(
                     "nav2018_incoming_doc_skipped",
                     op=method,

@@ -76,6 +76,21 @@ def _qty_per_base(eenheden: list, code: str) -> float:
     return 1.0
 
 
+def _pallet_size(eenheden: list, verkoop_eenheid: str | None) -> Optional[float]:
+    """Authoritative base-units-per-physical-pallet for an article (Functie 4).
+
+    The article's verkoop_eenheid (NAV Sales_Unit_of_Measure) disambiguates
+    articles with MULTIPLE pallet families (238601: PALLET30/33/35/42) — the
+    same signal apply_mixprijzen uses to pick the family. When it's a real
+    pallet unit (>1 base) we use it; otherwise we fall back to the unambiguous
+    single/exact PAL row (``_pallet_base_units``)."""
+    if verkoop_eenheid:
+        per = _qty_per_base(eenheden, verkoop_eenheid)
+        if per > 1:
+            return per
+    return _pallet_base_units(eenheden)
+
+
 def compute_europallet(state: dict, *, repo, uom_repo=None) -> Optional[dict]:
     """Compute the europallet (artikelnr 19820) regel based on the order's lines.
 
@@ -99,95 +114,118 @@ def compute_europallet(state: dict, *, repo, uom_repo=None) -> Optional[dict]:
     ``total < 0.5`` -> ``None``; otherwise a regel with
     ``hoeveelheid=ceil(total)``, ``eenheid="STUK"``.
     """
+    return europallet_breakdown(state, repo=repo, uom_repo=uom_repo)["regel"]
+
+
+def _line_pallets(regel: dict, *, repo, uom_repo) -> tuple[float, str, Optional[float]]:
+    """Pallet-bijdrage van één regel + de gebruikte tak (bron) en pallet-maat.
+
+    Geeft ``(pallets, bron, pallet_maat)``; ``pallets == 0.0`` bij geen bijdrage.
+    De tak-volgorde is gelijk aan voorheen — alleen de UoM-conversie kent nu de
+    autoritatieve verkoopeenheid-maat (Functie 4)."""
+    kwabo_nr = regel.get("artikelnummer_kwabo_matched")
+    if not kwabo_nr or kwabo_nr == PALLET_ARTIKELNR:
+        return 0.0, "geen", None
+
+    # A mix line was resolved to a whole number of pallets by apply_mixprijzen.
+    mix_aantal = regel.get("mix_aantal")
+    if regel.get("mix_uom_gekozen") and mix_aantal:
+        try:
+            return float(mix_aantal), "mix", None
+        except (TypeError, ValueError):
+            return 0.0, "geen", None
+
+    # Branch A (E1/E2) koos een verkoopeenheid (PAL-prefix) + omgerekend aantal.
+    verkoop_uom = (regel.get("verkoop_uom_gekozen") or "").strip().upper()
+    verkoop_aantal = regel.get("verkoop_aantal")
+    if verkoop_uom.startswith("PAL") and verkoop_aantal:
+        try:
+            return float(verkoop_aantal), "verkoop_pal", None
+        except (TypeError, ValueError):
+            return 0.0, "geen", None
+
+    eenheid = (regel.get("eenheid_origineel") or regel.get("eenheid") or "").upper()
+    try:
+        qty = float(regel.get("hoeveelheid") or 0)
+    except (TypeError, ValueError):
+        qty = 0.0
+    if qty <= 0:
+        return 0.0, "geen", None
+
+    kennis = repo.lookup(kwabo_nr, eenheid)
+    if kennis is not None:
+        if kennis.pallet_required and kennis.per_pallet:
+            return qty / max(kennis.per_pallet, 1), "kennis", float(kennis.per_pallet)
+        return 0.0, "geen", None
+
+    # A PAL-unit line is already expressed in pallets — count 1:1.
+    if (eenheid in PALLET_EENHEDEN or eenheid.startswith("PAL")) and qty >= PALLET_MIN_QTY:
+        return qty, "pal_1op1", None
+
+    eenheden = uom_repo.list_eenheden(kwabo_nr) if uom_repo is not None else []
+    verkoop_eenheid = None
+    get = getattr(uom_repo, "get", None)
+    if callable(get):
+        kaart = get(kwabo_nr)
+        verkoop_eenheid = getattr(kaart, "verkoop_eenheid", None) if kaart else None
+    pal_base = _pallet_size(eenheden, verkoop_eenheid)
+    if pal_base:
+        per_unit_base = _qty_per_base(eenheden, eenheid)
+        bron = "uom_verkoopeenheid" if verkoop_eenheid and _qty_per_base(
+            eenheden, verkoop_eenheid) > 1 else "uom_familie"
+        return (qty * per_unit_base) / pal_base, bron, pal_base
+    if eenheid in HEURISTIC_EENHEDEN and qty >= HEURISTIC_MIN_QTY:
+        return qty / HEURISTIC_PER_PALLET, "doos_heuristiek", HEURISTIC_PER_PALLET
+    return 0.0, "geen", None
+
+
+def europallet_breakdown(state: dict, *, repo, uom_repo=None) -> dict:
+    """Deterministische europallet-telling MET onderbouwing (Functie 4).
+
+    Geeft ``{"regels": [...], "totaal_pallets": float, "europallet_aantal": int,
+    "regel": dict|None}``. ``regels`` bevat per bijdragende orderregel
+    ``{artikelnr, qty, eenheid, bron, pallet_maat, pallets}`` zodat de reviewer
+    kan zien waarop de N europallets gebaseerd zijn."""
     regels = state.get("orderregels") or []
     total = 0.0
-
+    detail: list[dict] = []
     for regel in regels:
-        kwabo_nr = regel.get("artikelnummer_kwabo_matched")
-        if not kwabo_nr or kwabo_nr == PALLET_ARTIKELNR:
-            # Skip unmatched regels and the europallet line itself — never
-            # double-count if the input already carries one.
+        pallets, bron, pallet_maat = _line_pallets(regel, repo=repo, uom_repo=uom_repo)
+        if pallets <= 0:
             continue
+        total += pallets
+        detail.append({
+            "artikelnr": regel.get("artikelnummer_kwabo_matched"),
+            "qty": regel.get("hoeveelheid"),
+            "eenheid": (regel.get("eenheid_origineel") or regel.get("eenheid") or "").upper(),
+            "bron": bron,
+            "pallet_maat": pallet_maat,
+            "pallets": round(pallets, 3),
+        })
 
-        # A mix line was resolved to a whole number of pallets by
-        # apply_mixprijzen (mix_aantal, in the M{n}PAL{r} unit). Count those
-        # pallets directly — the line's raw rolls/stuks no longer apply.
-        mix_aantal = regel.get("mix_aantal")
-        if regel.get("mix_uom_gekozen") and mix_aantal:
-            try:
-                total += float(mix_aantal)
-            except (TypeError, ValueError):
-                pass
-            continue
-
-        # Branch A (E1/E2) koos een verkoopeenheid + omgerekend aantal. Is die
-        # eenheid een pallet (PAL-prefix, zelfde signaal als hieronder), tel
-        # het aantal dan direct — de UoM-route eronder zou bij artikelen met
-        # meerdere pallet-varianten (238601: PALLET30/33/35/42) ambigu zijn
-        # en níéts tellen (faalgeval #716: geen europallet-regel).
-        verkoop_uom = (regel.get("verkoop_uom_gekozen") or "").strip().upper()
-        verkoop_aantal = regel.get("verkoop_aantal")
-        if verkoop_uom.startswith("PAL") and verkoop_aantal:
-            try:
-                total += float(verkoop_aantal)
-            except (TypeError, ValueError):
-                pass
-            continue
-
-        # match_articles preserves the customer's ORIGINALLY ordered unit in
-        # `eenheid_origineel` (where PAL/STUK/ROL shows up), falling back to
-        # the NAV-facing `eenheid` for older state.
-        eenheid = (
-            regel.get("eenheid_origineel") or regel.get("eenheid") or ""
-        ).upper()
+    aantal = int(ceil(total)) if total >= PALLET_THRESHOLD else 0
+    regel_dict = None
+    if aantal > 0:
         try:
-            qty = float(regel.get("hoeveelheid") or 0)
-        except (TypeError, ValueError):
-            qty = 0.0
-        if qty <= 0:
-            continue
-
-        kennis = repo.lookup(kwabo_nr, eenheid)
-        if kennis is not None:
-            if kennis.pallet_required and kennis.per_pallet:
-                total += qty / max(kennis.per_pallet, 1)
-            continue
-
-        # A PAL-unit line is already expressed in pallets — count 1:1.
-        if (eenheid in PALLET_EENHEDEN or eenheid.startswith("PAL")) and qty >= PALLET_MIN_QTY:
-            total += qty
-            continue
-
-        eenheden = uom_repo.list_eenheden(kwabo_nr) if uom_repo is not None else []
-        pal_base = _pallet_base_units(eenheden)
-        if pal_base:
-            # Convert the ordered unit to base units, then to pallets.
-            per_unit_base = _qty_per_base(eenheden, eenheid)
-            total += (qty * per_unit_base) / pal_base
-        elif eenheid in HEURISTIC_EENHEDEN and qty >= HEURISTIC_MIN_QTY:
-            total += qty / HEURISTIC_PER_PALLET
-
-    if total < PALLET_THRESHOLD:
-        return None
-
-    # Read the article-number from settings so it can be rotated per-env
-    # without a code change. Tests import PALLET_ARTIKELNR module-level
-    # and get the default; production reads settings.europallet_artikelnr.
-    try:
-        from kwabo.config import settings
-        configured_nr = settings.europallet_artikelnr or PALLET_ARTIKELNR
-    except Exception:  # noqa: BLE001
-        configured_nr = PALLET_ARTIKELNR
-
+            from kwabo.config import settings
+            configured_nr = settings.europallet_artikelnr or PALLET_ARTIKELNR
+        except Exception:  # noqa: BLE001
+            configured_nr = PALLET_ARTIKELNR
+        regel_dict = {
+            "positie": _next_positie(regels),
+            "artikelnummer_kwabo": configured_nr,
+            "artikelnummer_kwabo_matched": configured_nr,
+            "omschrijving": PALLET_OMSCHRIJVING,
+            "hoeveelheid": aantal,
+            "eenheid": "STUK",
+            "match_methode": "europallet_compute",
+            "confidence": DEFAULT_CONFIDENCE,
+        }
     return {
-        "positie": _next_positie(regels),
-        "artikelnummer_kwabo": configured_nr,
-        "artikelnummer_kwabo_matched": configured_nr,
-        "omschrijving": PALLET_OMSCHRIJVING,
-        "hoeveelheid": int(ceil(total)),
-        "eenheid": "STUK",
-        "match_methode": "europallet_compute",
-        "confidence": DEFAULT_CONFIDENCE,
+        "regels": detail,
+        "totaal_pallets": round(total, 3),
+        "europallet_aantal": aantal,
+        "regel": regel_dict,
     }
 
 

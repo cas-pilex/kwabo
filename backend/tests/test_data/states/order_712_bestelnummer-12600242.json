@@ -1,0 +1,380 @@
+{
+  "order_id": 712,
+  "email_from": "Jonny van Putten <j.vanputten@stucshowroom.nl>",
+  "email_subject": "Bestelnummer 12600242",
+  "status": "review",
+  "order_state": {
+    "email_id": "AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAAVY9pAAAA=",
+    "email_from": "Jonny van Putten <j.vanputten@stucshowroom.nl>",
+    "email_subject": "Bestelnummer 12600242",
+    "email_body": "      Geachte heer, mevrouw,    Graag verwijzen wij u naar de bijlage van dit e-mail bericht, hierin treft u de inkooporder met nummer  12600242    van  09-06-2026  aan. Mocht de order niet franco geleverd kunnen worden dan vernemen wij dit graag zodat we de order kunnen aanpassen.       Het \r\nPDF-bestand in de bijlage kunt u openen met Adobe Reader. Wij hopen u hiermee van dienst te zijn geweest.         Met vriendelijke groeten,    Afdeling inkoop    ______________________    Stucshowroom B.V.   Rooseveltstraat 40 | 2321 BM Leiden   Tel: +31 (0)71 - 5 12 75 80   www.stucshowroom.nl | \r\nverkoop@stucshowroom.nl       Bijlage: 1      ",
+    "email_date": "Tue, 09 Jun 2026 11:09:27 +0200",
+    "bijlagen": [
+      {
+        "naam": "po12600242.pdf",
+        "type": "pdf",
+        "inhoud_tekst": "--- PAGE 1 ---\nKwabo Techniek B.V. Afleveradres\nT.a.v. afdeling verkoop Verkoop\nJulianaweg 210 a Rooseveltstraat 40\n1131 DL VOLENDAM 2321 BM Leiden\nZuid-Holland\nNederland\nverkoop@stucshowroom.nl\n(071) 5 12 75 80\nPagina 1/1\nBESTELLING\n-\nOmschrijving Bestelnummer Uw referentie Orderdatum\ntoevoegen aan lopende order 12600242 09-06-2026\nRegel Artikel Omschrijving Aantal Eenheid Aantal per\neenheid\n1 23384 MULTI-CUTTER TFC | elektrische schaar 10,00 Stuk 1 x\nTotaal 1 0 eenheden\nBij vragen over deze order graag contact opnemen met verkoop@stucshowroom.nl of bellen"
+      }
+    ],
+    "source_path": "graph://AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAAVY9pAAAA=",
+    "is_order": true,
+    "classificatie_reden": "E-mail bevat inkooporder 12600242 met bijlage po12600242.pdf waarin artikel 23384 met hoeveelheid 10 stuks besteld wordt",
+    "classificatie_confidence": 0.98,
+    "taal": "NL",
+    "bestelnummer_klant": "12600242",
+    "orderdatum": "2026-06-09",
+    "gewenste_leverdatum": null,
+    "afleveradres": {
+      "naam": "Verkoop",
+      "straat": "Rooseveltstraat 40",
+      "postcode": "2321 BM",
+      "plaats": "Leiden",
+      "land": "NL"
+    },
+    "afleverinstructies": "T.a.v. afdeling verkoop",
+    "orderregels": [
+      {
+        "positie": 1,
+        "artikelnummer_klant": "23384",
+        "artikelnummer_kwabo": null,
+        "omschrijving": "MULTI-CUTTER TFC | elektrische schaar",
+        "hoeveelheid": 10.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": null,
+        "ean_code": null,
+        "leverdatum_regel": null,
+        "opmerkingen": null,
+        "artikelnummer_kwabo_matched": "23374",
+        "match_methode": "fuzzy",
+        "match_confidence": 0.84,
+        "eenheid_origineel": "STUK",
+        "eenheid_default": "STUK",
+        "prijs_validated": null
+      }
+    ],
+    "opmerkingen": "toevoegen aan lopende order; franco levering gewenst (indien niet mogelijk aanpassen)",
+    "klant_match": {
+      "navision_klantnr": "60228",
+      "klantnaam": "Stucshowroom B.V.",
+      "match_confidence": 1.0,
+      "match_bron": "email",
+      "is_4plus": false,
+      "kredietlimiet": 15000.0,
+      "betalingsconditie": "30DAG2,5%",
+      "kredietlimiet_status": "ok"
+    },
+    "alle_artikelen_gematcht": true,
+    "alle_prijzen_valide": true,
+    "validatie_warnings": [
+      "⚠ KLANT IS GEEN 4+ LID — controleer aankoopvoorwaarden"
+    ],
+    "review_status": "pending",
+    "ship_to_kandidaten": [
+      {
+        "klant_nr": "60228",
+        "ship_to_code": "2321 BM",
+        "naam": "Stucshowroom B.V.",
+        "straat": "Rooseveltstraat 40",
+        "postcode": "2321 BM",
+        "plaats": "LEIDEN",
+        "land": "NL",
+        "is_default": false
+      },
+      {
+        "klant_nr": "60228",
+        "ship_to_code": "3072 LL",
+        "naam": "Paans",
+        "straat": "Tolhuislaan 1",
+        "postcode": "3072 LL",
+        "plaats": "ROTTERDAM",
+        "land": "NL",
+        "is_default": false
+      },
+      {
+        "klant_nr": "60228",
+        "ship_to_code": "3956 NS",
+        "naam": "Kasteel Broekhoven",
+        "straat": "Broekhuizerlaan",
+        "postcode": "3956 NS",
+        "plaats": "LEERSUM",
+        "land": "NL",
+        "is_default": false
+      }
+    ],
+    "ship_to_gekozen": "2321 BM",
+    "mixprijzen_actief": false,
+    "order_mix_total_pallets": null,
+    "europallet_regel": null,
+    "incoming_document_storage_key": "by_email_id/AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1h-95f08a34f622d5cc.eml",
+    "stappen_log": [
+      {
+        "stap": "intake",
+        "timestamp": "2026-06-09T09:12:55.031863+00:00",
+        "beslissing": "E-mail opgehaald, 1 bijlagen geëxtraheerd",
+        "details": {
+          "bijlage_namen": [
+            "po12600242.pdf"
+          ]
+        }
+      },
+      {
+        "stap": "classify",
+        "timestamp": "2026-06-09T09:12:57.781966+00:00",
+        "beslissing": "ORDER (conf=0.98)",
+        "details": {
+          "is_order": true,
+          "reden": "E-mail bevat inkooporder 12600242 met bijlage po12600242.pdf waarin artikel 23384 met hoeveelheid 10 stuks besteld wordt",
+          "confidence": 0.98
+        }
+      },
+      {
+        "stap": "extract",
+        "timestamp": "2026-06-09T09:13:19.352619+00:00",
+        "beslissing": "Geëxtraheerd: 1 regels, taal=NL, 1 velden needs_review",
+        "details": {
+          "bestelnummer": "12600242",
+          "multi_orders": 1
+        }
+      },
+      {
+        "stap": "match_customer",
+        "timestamp": "2026-06-09T09:13:20.230917+00:00",
+        "beslissing": "Klant gematcht: 60228 (email)",
+        "details": {
+          "navision_klantnr": "60228",
+          "klantnaam": "Stucshowroom B.V.",
+          "match_confidence": 1.0,
+          "match_bron": "email",
+          "is_4plus": false,
+          "kredietlimiet": 15000.0,
+          "betalingsconditie": "30DAG2,5%",
+          "kredietlimiet_status": "ok"
+        }
+      },
+      {
+        "stap": "match_articles",
+        "timestamp": "2026-06-09T09:13:36.669781+00:00",
+        "beslissing": "1/1 regels gematcht",
+        "details": {
+          "per_methode": {
+            "exact": 0,
+            "kruisverwijzing": 0,
+            "klantenkaart": 0,
+            "history": 0,
+            "fuzzy": 1,
+            "manual": 0
+          }
+        }
+      },
+      {
+        "stap": "validate_prices",
+        "timestamp": "2026-06-09T09:13:37.980212+00:00",
+        "beslissing": "0/1 prijzen ok",
+        "details": {
+          "warnings_new": []
+        }
+      }
+    ],
+    "errors": [],
+    "_meta": {
+      "taal": {
+        "value": "NL",
+        "source": "pdf",
+        "source_detail": "po12600242.pdf p.1",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "bestelnummer_klant": {
+        "value": "12600242",
+        "source": "pdf",
+        "source_detail": "po12600242.pdf p.1 header table",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "orderdatum": {
+        "value": "2026-06-09",
+        "source": "pdf",
+        "source_detail": "po12600242.pdf p.1 header table 'Orderdatum'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "gewenste_leverdatum": {
+        "value": null,
+        "source": "missing",
+        "source_detail": null,
+        "confidence": 0.0,
+        "needs_review": false
+      },
+      "afleveradres": {
+        "value": {
+          "naam": "Verkoop",
+          "straat": "Rooseveltstraat 40",
+          "postcode": "2321 BM",
+          "plaats": "Leiden",
+          "land": "NL"
+        },
+        "source": "pdf",
+        "source_detail": "po12600242.pdf p.1 'Afleveradres' section",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "afleverinstructies": {
+        "value": "T.a.v. afdeling verkoop",
+        "source": "pdf",
+        "source_detail": "po12600242.pdf p.1 afleveradres",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "opmerkingen": {
+        "value": "toevoegen aan lopende order; franco levering gewenst (indien niet mogelijk aanpassen)",
+        "source": "pdf",
+        "source_detail": "po12600242.pdf p.1 'Omschrijving' en email_body",
+        "confidence": 0.9,
+        "needs_review": false
+      },
+      "orderregels": [
+        {
+          "artikelnummer_klant": {
+            "value": "23384",
+            "source": "pdf",
+            "source_detail": "po12600242.pdf p.1 table row 1 col 'Artikel'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": true
+          },
+          "omschrijving": {
+            "value": "MULTI-CUTTER TFC | elektrische schaar",
+            "source": "pdf",
+            "source_detail": "po12600242.pdf p.1 table row 1 col 'Omschrijving'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 10,
+            "source": "pdf",
+            "source_detail": "po12600242.pdf p.1 table row 1 col 'Aantal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "STUK",
+            "source": "pdf",
+            "source_detail": "po12600242.pdf p.1 table row 1 col 'Eenheid'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": null,
+            "source": "nav_default",
+            "source_detail": "NAV-standaard (geen prijsafspraak)",
+            "confidence": 0.0,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "23374",
+            "source": "fuzzy",
+            "source_detail": "match-methode=fuzzy",
+            "confidence": 0.84,
+            "needs_review": true
+          }
+        }
+      ],
+      "klant_match": {
+        "value": "60228",
+        "source": "klantenkaart",
+        "source_detail": "email",
+        "confidence": 1.0,
+        "needs_review": false
+      }
+    },
+    "needs_review_fields": [
+      "orderregels[0].artikelnummer_kwabo",
+      "orderregels[0].artikelnummer_kwabo_matched"
+    ],
+    "needs_review_count": 2,
+    "extra_orders_raw": [],
+    "nav_operations": [
+      {
+        "op": "POST",
+        "path": "/salesOrders",
+        "body": {
+          "customerNumber": "60228"
+        },
+        "label": "Klant kiezen (Sell-to Customer No. 60228)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrders({id})",
+        "body": {
+          "shipToCode": "2321 BM"
+        },
+        "label": "Verzendadres kiezen (Ship-to Code 2321 BM)",
+        "expects": {
+          "shipToAddress": "auto"
+        },
+        "optional": true
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrders({id})",
+        "body": {
+          "externalDocumentNumber": "12600242"
+        },
+        "label": "PO-nummer klant (12600242)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrders({id})",
+        "body": {
+          "shipmentDate": "2026-06-10"
+        },
+        "label": "Verzenddatum (2026-06-10)"
+      },
+      {
+        "op": "POST",
+        "path": "/salesOrders({id})/salesOrderLines",
+        "body": {
+          "lineType": "Item",
+          "itemNumber": "23374"
+        },
+        "label": "Regel 1: regel toevoegen (23374)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrderLines({id})",
+        "body": {
+          "quantity": 10.0
+        },
+        "label": "Regel 1: aantal invullen (10.0)"
+      }
+    ]
+  }
+}

@@ -18,6 +18,12 @@ class Klantenkaart(SQLModel, table=True):
     email: Optional[str] = Field(default=None, index=True)
     email_bestelling: Optional[str] = Field(default=None, index=True)
     telefoon: Optional[str] = None
+    # Vestigingsadres uit PLX_Customer — nodig om bij franchise-klanten
+    # (één kaart per vestiging, bv. PontMeyer Heerenveen vs Zwaag) de juiste
+    # vestiging op het leveradres te kiezen, én om de plaats in de UI te tonen
+    # zodat de reviewer de match kan controleren zonder NAV te openen.
+    plaats: Optional[str] = None
+    postcode: Optional[str] = None
     taal: str = "NL"
     standaard_afleveradres: Optional[str] = None  # JSON
     speciale_instructies: Optional[str] = None

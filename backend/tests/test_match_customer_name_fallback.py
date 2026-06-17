@@ -185,13 +185,16 @@ async def test_portaal_domein_skipt_domein_substring_stap(session, app_engine, e
 async def test_regressie_k1_email_wint_van_naam(session, app_engine, echte_klantenkaarten):
     """Regressieguard: een bekende e-mail (K1) blijft winnen — de naam-fallback
     draait alleen als de e-mailcascade niets oplevert."""
-    st = _state("purchaseorders@ferney.nl", "Inkooporder",
+    # Bewust een ECHTE klant (Würth 61030), geen demo-nummer: demo-/seed-klanten
+    # krijgen nu altijd een CONTROLEER-vlag (zie test_demo_klant_nooit_stil), dus
+    # alleen een echte e-mailmatch toont de 'conf 1.0 = vlagvrij'-eigenschap.
+    st = _state("Richard.verhagen@wurth.nl", "Inkooporder",
                 klantnaam="Witzand Bouwmaterialen B.V.")  # tegenstrijdig signaal
     out = await match_customer_node(st)
     m = out["klant_match"]
     assert m is not None
     assert m["match_bron"] in ("email", "forward_email")
-    assert m["navision_klantnr"] == "10001"  # demo-seed Ferney
+    assert m["navision_klantnr"] == "61030"  # echte klant Würth
     # 3b: een directe e-mailmatch (conf 1.0) blijft vertrouwd — géén vlag.
     assert out["_meta"]["klant_match"]["needs_review"] is False
     assert "klant_match" not in out["needs_review_fields"]

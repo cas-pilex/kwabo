@@ -2,18 +2,41 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { api, type EuropalletRegel } from "@/lib/api";
+import { api, type EuropalletMeta, type EuropalletRegel } from "@/lib/api";
 
 type Props = {
   orderId: number;
   regel: EuropalletRegel | null | undefined;
+  meta?: EuropalletMeta | null;
   onChanged?: () => void;
 };
+
+function Onderbouwing({ meta }: { meta?: EuropalletMeta | null }) {
+  if (!meta || !meta.uitleg) return null;
+  return (
+    <div
+      data-testid="europallet-onderbouwing"
+      className="mt-2 rounded border border-amber-200 bg-amber-50/60 px-2 py-1.5 text-[11px] text-amber-900"
+    >
+      <div className="font-medium">{meta.uitleg}</div>
+      {meta.regels?.length > 0 && (
+        <ul className="mt-1 space-y-0.5 text-[10px] text-amber-800">
+          {meta.regels.map((r, i) => (
+            <li key={i}>
+              {r.artikelnr}: {r.qty} {r.eenheid}
+              {r.pallet_maat ? ` ÷ ${r.pallet_maat}/pallet` : ""} = {r.pallets} pallet
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 const ARTIKELNR = "19820";
 const EENHEID = "STUK";
 
-export function EuropalletEditor({ orderId, regel, onChanged }: Props) {
+export function EuropalletEditor({ orderId, regel, meta, onChanged }: Props) {
   const [busy, setBusy] = useState(false);
   const [local, setLocal] = useState<EuropalletRegel | null>(regel ?? null);
   const [qtyDraft, setQtyDraft] = useState<string>(
@@ -61,6 +84,7 @@ export function EuropalletEditor({ orderId, regel, onChanged }: Props) {
         >
           + Voeg europallet toe
         </button>
+        <Onderbouwing meta={meta} />
       </div>
     );
   }
@@ -127,6 +151,7 @@ export function EuropalletEditor({ orderId, regel, onChanged }: Props) {
           />
         </label>
       </div>
+      <Onderbouwing meta={meta} />
     </div>
   );
 }

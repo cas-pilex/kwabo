@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from collections import defaultdict
 from datetime import datetime
 
 from kwabo.utils import utcnow
@@ -10,6 +11,7 @@ from rapidfuzz import fuzz, process
 from sqlmodel import Session
 
 from kwabo.db.repository import KlantRepo
+from kwabo.db.seed import DEMO_NAV_KLANTNRS
 from kwabo.db.session import engine
 from kwabo.graph.state import OrderState
 from kwabo.integrations.forwarded_parser import detect_forward
@@ -58,53 +60,211 @@ def _normaliseer_klantnaam(naam: str) -> str:
     return re.sub(r"\s+", " ", n).strip()
 
 
-def _match_by_name(naam_signaal: str) -> tuple[dict | None, list[dict]]:
+def _naam_stem(naam_norm: str, plaats: str | None) -> str:
+    """De entiteits-stam: de genormaliseerde naam minus de plaats-tokens.
+    'pontmeyer zwaag' (plaats Zwaag) en 'pontmeyer heerenveen' (plaats
+    Heerenveen) krijgen zo dezelfde stam 'pontmeyer' → herkenbaar als
+    vestigingen van dezelfde entiteit. Zonder plaats valt het terug op de
+    volledige naam (elke kaart een eigen entiteit)."""
+    if not plaats:
+        return naam_norm
+    ptoks = set(_normaliseer_klantnaam(plaats).split())
+    rest = [t for t in naam_norm.split() if t not in ptoks]
+    return " ".join(rest).strip() or naam_norm
+
+
+def _kaart_as_cand(kaart) -> dict:
+    """Klantenkaart → de candidate-dict-vorm die _score_customer leest."""
+    return {"Post_Code": kaart.postcode or "", "City": kaart.plaats or ""}
+
+
+def _kandidaat_dict(kaart, score: float | None) -> dict:
+    return {
+        "navision_klantnr": kaart.nav_klantnr,
+        "klantnaam": kaart.naam,
+        "plaats": kaart.plaats,
+        "score": round(score, 1) if score is not None else None,
+        "bron": "naam_extract",
+    }
+
+
+def _naam_match_dict(
+    kaart, confidence: float, *, bron: str = "naam_extract",
+    naam_score: float | None = None, uitleg: str | None = None,
+) -> dict:
+    m = {
+        "navision_klantnr": kaart.nav_klantnr,
+        "klantnaam": kaart.naam,
+        "plaats": kaart.plaats,
+        "match_confidence": confidence,
+        "match_bron": bron,
+        "is_4plus": kaart.is_4plus,
+        "kredietlimiet": kaart.kredietlimiet,
+        "betalingsconditie": kaart.betalingsconditie,
+    }
+    if naam_score is not None:
+        # De beslis-score op de 0-100-schaal — zichtbaar in de provenance.
+        m["naam_score"] = round(naam_score, 1)
+    if uitleg:
+        m["match_uitleg"] = uitleg
+    return m
+
+
+def _leveradres_descriptor(afleveradres: dict) -> str:
+    plaats = (afleveradres.get("plaats") or "").strip()
+    postcode = (afleveradres.get("postcode") or "").strip()
+    return " ".join(p for p in (plaats, postcode) if p) or "leveradres"
+
+
+def _leveradres_signal(afleveradres: dict) -> str:
+    """Alleen het LEVERADRES als tekstsignaal (naam/plaats/straat) — bewust NIET
+    de hele order-tekst. De vestiging-correctie overschrijft een confidente
+    match, dus de stad mag alléén meetellen als ze in het leveradres staat, niet
+    als ze toevallig elders in de mail/bijlage voorkomt (footer, vorige thread)."""
+    parts = [str(afleveradres.get(k) or "") for k in ("naam", "plaats", "straat")]
+    return " ".join(parts).lower()
+
+
+def _match_by_name(
+    naam_signaal: str, afleveradres: dict | None = None, signal: str = "",
+) -> tuple[dict | None, list[dict]]:
     """K3: fuzzy-match het naam-signaal tegen klantenkaarten.naam.
 
-    Returns ``(match, kandidaten)`` — bij een unieke duidelijke winnaar een
-    match (conf 0.8); bij meerdere plausibele kaarten alleen kandidaten.
-    token_set_ratio is bewust subset-vriendelijk: "Witzand" moet "Witzand
-    Bouwmaterialen B.V." vinden — de gap-eis voorkomt dat generieke tokens
-    ("Holland") of franchises ("Jongeneel": 1 kaart per vestiging) autopicken.
+    Returns ``(match, kandidaten)``. token_set_ratio is bewust subset-vriendelijk
+    ("Witzand" vindt "Witzand Bouwmaterialen B.V.") — de gap-eis voorkomt dat
+    generieke tokens ("Holland") autopicken.
+
+    Franchise-disambiguatie (DEEL A): klanten met één kaart per vestiging
+    (PontMeyer Heerenveen vs Zwaag) delen een naam-stam. Bij ≥2 vestigingen
+    kiezen we op het LEVERADRES (postcode/plaats), niet blind de hoogste
+    naam-score — anders gaat de order naar de verkeerde vestiging (#834). Lukt
+    dat niet eenduidig → geen autopick, kandidaten + CONTROLEER.
     """
     norm = _normaliseer_klantnaam(naam_signaal)
     if len(norm) < 3:
         return None, []
     with Session(engine) as s:
-        kaarten = KlantRepo(s).all()
-    namen = {k.nav_klantnr: _normaliseer_klantnaam(k.naam) for k in kaarten if k.naam}
-    if not namen:
+        kaarten = [k for k in KlantRepo(s).all() if k.naam]
+    if not kaarten:
         return None, []
+    afleveradres = afleveradres or {}
     per_kaart = {k.nav_klantnr: k for k in kaarten}
-    top = process.extract(norm, namen, scorer=fuzz.token_set_ratio, limit=6)
-    kandidaten = [
-        {
-            "navision_klantnr": nr,
-            "klantnaam": per_kaart[nr].naam,
-            "score": round(score, 1),
-            "bron": "naam_extract",
-        }
-        for _, score, nr in top
-        if score >= NAAM_SHOW
-    ]
-    if top and top[0][1] >= NAAM_ACCEPT and (
-        len(top) == 1 or top[0][1] - top[1][1] >= NAAM_GAP
-    ):
-        kaart = per_kaart[top[0][2]]
-        return {
-            "navision_klantnr": kaart.nav_klantnr,
-            "klantnaam": kaart.naam,
-            "match_confidence": 0.8,
-            # De beslis-score op de 0-100-schaal (token_set_ratio) — zichtbaar
-            # in de provenance zodat naam-matches op dezelfde lat als de
-            # artikel-drempel beoordeeld kunnen worden.
-            "naam_score": round(top[0][1], 1),
-            "match_bron": "naam_extract",
-            "is_4plus": kaart.is_4plus,
-            "kredietlimiet": kaart.kredietlimiet,
-            "betalingsconditie": kaart.betalingsconditie,
-        }, kandidaten
+    naam_by_nr = {k.nav_klantnr: _normaliseer_klantnaam(k.naam) for k in kaarten}
+    stem_by_nr = {nr: _naam_stem(naam_by_nr[nr], per_kaart[nr].plaats) for nr in naam_by_nr}
+
+    # Kandidatenlijst (picker): fuzzy tegen de VOLLEDIGE namen.
+    top_full = process.extract(norm, naam_by_nr, scorer=fuzz.token_set_ratio, limit=6)
+    full_score = {nr: score for _, score, nr in top_full}
+    kandidaten = [_kandidaat_dict(per_kaart[nr], score)
+                  for _, score, nr in top_full if score >= NAAM_SHOW]
+
+    # Entiteits-score per stam: matcht als het besteller-signaal ófwel de stam
+    # ('PontMeyer') ófwel een volledige vestigingsnaam ('PontMeyer Heerenveen')
+    # sterk dekt — zo herkennen we de entiteit ongeacht of de besteller de
+    # vestiging noemt.
+    nrs_by_stem: dict[str, list[str]] = defaultdict(list)
+    for nr, stem in stem_by_nr.items():
+        nrs_by_stem[stem].append(nr)
+    entity_score = {
+        stem: max(fuzz.token_set_ratio(norm, stem),
+                  max(full_score.get(nr, 0) for nr in nrs))
+        for stem, nrs in nrs_by_stem.items()
+    }
+    ranked = sorted(entity_score.items(), key=lambda x: x[1], reverse=True)
+    best_stem, best_score = ranked[0]
+    if best_score < NAAM_ACCEPT:
+        return None, kandidaten
+
+    siblings = nrs_by_stem[best_stem]
+    if len(siblings) >= 2:
+        scored = sorted(
+            ((nr, _score_customer(_kaart_as_cand(per_kaart[nr]), signal, afleveradres))
+             for nr in siblings),
+            key=lambda x: x[1], reverse=True,
+        )
+        best_nr, best_addr = scored[0]
+        if best_addr > 0 and scored[1][1] < best_addr:
+            kaart = per_kaart[best_nr]
+            uitleg = (
+                f"naam '{naam_signaal.strip()}' — {len(siblings)} vestigingen, "
+                f"gekozen op leveradres {_leveradres_descriptor(afleveradres)}"
+            )
+            return _naam_match_dict(kaart, 0.85, uitleg=uitleg), kandidaten
+        # Geen eenduidige leveradres-winnaar → toon de vestigingen.
+        vestigingen = [_kandidaat_dict(per_kaart[nr], full_score.get(nr)) for nr in siblings]
+        return None, vestigingen
+
+    # Enkele entiteit: bestaand autopick-gedrag — uniek met gap >= NAAM_GAP.
+    second = ranked[1][1] if len(ranked) > 1 else 0
+    if len(ranked) == 1 or best_score - second >= NAAM_GAP:
+        nr = max(siblings, key=lambda n: full_score.get(n, 0))
+        return _naam_match_dict(per_kaart[nr], 0.8, naam_score=best_score), kandidaten
     return None, kandidaten
+
+
+def _correct_vestiging_op_leveradres(
+    match: dict, state: dict
+) -> tuple[dict | None, list[dict]]:
+    """Vestiging-correctie ná de match-cascade — geldt voor ELKE match, ook een
+    confidente e-mailmatch (conf 1.0).
+
+    Een agent-/groepsmail (bv. supplychain@tabsholland.nl) staat soms op precies
+    één vestiging, waardoor K1 confident de VERKEERDE vestiging kiest (#834:
+    Heerenveen i.p.v. de leveradres-vestiging Zwaag). Als de gekozen klant tot
+    een multi-vestiging-entiteit hoort en het leveradres eenduidig een ANDERE
+    zuster-vestiging aanwijst, herkiezen we daarheen (conf 0.85 + uitleg). Niet
+    eenduidig → kandidaten + CONTROLEER. Bevestigt het leveradres de huidige
+    vestiging (of is er geen leveradres-signaal) → match onaangeroerd.
+
+    Returns ``(corrected_match, kandidaten)``; geeft hetzelfde match-object
+    terug als er niets wijzigt (caller test op identiteit).
+    """
+    nr = (match or {}).get("navision_klantnr")
+    if not nr:
+        return match, []
+    afleveradres = state.get("afleveradres") or {}
+    if not (afleveradres.get("postcode") or afleveradres.get("plaats")):
+        return match, []  # geen leveradres-signaal → niets te corrigeren
+    with Session(engine) as s:
+        kaarten = [k for k in KlantRepo(s).all() if k.naam]
+    per_kaart = {k.nav_klantnr: k for k in kaarten}
+    matched = per_kaart.get(nr)
+    if matched is None:
+        return match, []
+    stem = _naam_stem(_normaliseer_klantnaam(matched.naam), matched.plaats)
+    siblings = [
+        k for k in kaarten
+        if _naam_stem(_normaliseer_klantnaam(k.naam), k.plaats) == stem
+    ]
+    if len(siblings) < 2:
+        return match, []  # geen franchise → niets te corrigeren
+
+    # Bewust het LEVERADRES-signaal, niet de hele order-tekst: een confidente
+    # match overschrijven mag alleen als het LEVERADRES een andere vestiging
+    # aanwijst — niet als die stad toevallig elders in de mail staat.
+    signal = _leveradres_signal(afleveradres)
+    scored = sorted(
+        ((k, _score_customer(_kaart_as_cand(k), signal, afleveradres)) for k in siblings),
+        key=lambda x: x[1], reverse=True,
+    )
+    top, top_score = scored[0]
+    second_score = scored[1][1]
+    matched_score = next((sc for k, sc in scored if k.nav_klantnr == nr), 0)
+    # Leveradres bevestigt de huidige vestiging of wijst niets beters aan → laat staan.
+    if top_score <= 0 or top.nav_klantnr == nr or top_score <= matched_score:
+        return match, []
+
+    desc = _leveradres_descriptor(afleveradres)
+    if top_score > second_score:
+        uitleg = (
+            f"leveradres {desc} wijst vestiging '{top.naam}' aan "
+            f"(was '{matched.naam}' op {match.get('match_bron')})"
+        )
+        return _naam_match_dict(top, 0.85, bron="vestiging_leveradres", uitleg=uitleg), []
+    # Leveradres wijst van de huidige vestiging af, maar niet eenduidig naar één
+    # zuster → niet gokken: kandidaten + CONTROLEER.
+    vest = [_kandidaat_dict(k, None) for k, sc in scored if sc > 0]
+    return None, vest
 
 
 def _extract_domain_name(addr: str) -> str:
@@ -214,6 +374,7 @@ async def match_customer_node(state: OrderState) -> OrderState:
             match = {
                 "navision_klantnr": klant.nav_klantnr,
                 "klantnaam": klant.naam,
+                "plaats": klant.plaats,
                 "match_confidence": 1.0,
                 "match_bron": "forward_email" if forward_note else "email",
                 "is_4plus": klant.is_4plus,
@@ -234,6 +395,7 @@ async def match_customer_node(state: OrderState) -> OrderState:
             match = {
                 "navision_klantnr": chosen["number"],
                 "klantnaam": chosen["displayName"],
+                "plaats": _candidate_address(chosen)[1] or None,
                 "match_confidence": 0.95 if matched_on == "single" else 0.9,
                 "match_bron": "navision_email",
             }
@@ -257,6 +419,7 @@ async def match_customer_node(state: OrderState) -> OrderState:
             match = {
                 "navision_klantnr": k.nav_klantnr,
                 "klantnaam": k.naam,
+                "plaats": k.plaats,
                 "match_confidence": 0.9,
                 "match_bron": "domein_alias",
                 "is_4plus": k.is_4plus,
@@ -268,6 +431,7 @@ async def match_customer_node(state: OrderState) -> OrderState:
                 {
                     "navision_klantnr": k.nav_klantnr,
                     "klantnaam": k.naam,
+                    "plaats": k.plaats,
                     "score": None,
                     "bron": "domein_alias",
                 }
@@ -284,7 +448,9 @@ async def match_customer_node(state: OrderState) -> OrderState:
         or (fwd.original_from_name or "").strip()
     )
     if not match and ambiguous_candidates is None and not klant_kandidaten and naam_signaal:
-        match, klant_kandidaten = _match_by_name(naam_signaal)
+        match, klant_kandidaten = _match_by_name(
+            naam_signaal, state.get("afleveradres") or {}, _order_signal_text(state)
+        )
         kandidaten_term = naam_signaal
 
     if not match and ambiguous_candidates is None and not klant_kandidaten:
@@ -302,6 +468,7 @@ async def match_customer_node(state: OrderState) -> OrderState:
                 match = {
                     "navision_klantnr": chosen["number"],
                     "klantnaam": chosen["displayName"],
+                    "plaats": _candidate_address(chosen)[1] or None,
                     # Disambiguated by address → trust it (0.85); a lone name
                     # hit stays the cautious 0.7 as before.
                     "match_confidence": 0.7 if matched_on == "single" else 0.85,
@@ -310,6 +477,17 @@ async def match_customer_node(state: OrderState) -> OrderState:
             elif ambiguous:
                 ambiguous_candidates = res
                 ambiguous_term = domain
+
+    # DEEL A (uitbreiding): vestiging-correctie op leveradres — geldt voor ELKE
+    # match (ook e-mail conf 1.0). Idempotent voor de K3-naam-match die al op het
+    # leveradres koos. #834: agent-mail op de verkeerde vestiging → leveradres leidt.
+    if match:
+        corrected, vest_kandidaten = _correct_vestiging_op_leveradres(match, state)
+        if corrected is not match:
+            match = corrected
+            if not match:
+                klant_kandidaten = vest_kandidaten
+                kandidaten_term = "leveradres-vestiging"
 
     warnings = list(state.get("validatie_warnings") or [])
     if forward_note:
@@ -331,6 +509,7 @@ async def match_customer_node(state: OrderState) -> OrderState:
                 {
                     "navision_klantnr": c.get("number"),
                     "klantnaam": c.get("displayName"),
+                    "plaats": _candidate_address(c)[1] or None,
                     "score": None,
                     "bron": "navision",
                 }
@@ -388,22 +567,41 @@ async def match_customer_node(state: OrderState) -> OrderState:
     confidence = (match or {}).get("match_confidence", 0.0)
     bron = (match or {}).get("match_bron")
     naam_score = (match or {}).get("naam_score")
+    uitleg = (match or {}).get("match_uitleg")
+    # SAFETY-NET demo-/seed-klanten: 10001-10016 dragen de ECHTE order-
+    # mailadressen van klanten en kunnen via K1 (`by_email`) op conf 1.0 — het
+    # énige vlagvrije pad — matchen. Zo'n nummer bestaat NIET in de live NAV-
+    # company, dus de push faalt stil. Een demo-match mag daarom nooit vlagvrij
+    # door: forceer CONTROLEER + waarschuw (vangt ALLE paden K1-K4 af).
+    is_demo_klant = bool(match) and (match or {}).get("navision_klantnr") in DEMO_NAV_KLANTNRS
+    if is_demo_klant:
+        warnings.append(
+            f"⚠ DEMO-/SEED-KLANT {(match or {}).get('navision_klantnr')} gematcht — "
+            "bestaat niet in de live NAV-company; controleer de klant."
+        )
     klant_meta = {
         "value": (match or {}).get("navision_klantnr"),
         "source": (
-            "klantenkaart" if bron in ("email", "forward_email", "naam_extract", "domein_alias")
+            "klantenkaart" if bron in (
+                "email", "forward_email", "naam_extract", "domein_alias",
+                "vestiging_leveradres",
+            )
             else "navision" if bron and bron.startswith("navision_")
             else "missing"
         ),
+        # Toon de menselijke uitleg (vestiging-keuze) als die er is, anders de
+        # bron (+ naam-score) — zo legt de provenance-tooltip uit waaróp gematcht is.
         "source_detail": (
-            f"{bron} (score {naam_score:.0f}/100)" if naam_score is not None else bron
+            uitleg if uitleg
+            else f"{bron} (score {naam_score:.0f}/100)" if naam_score is not None
+            else bron
         ),
         "confidence": float(confidence),
         # 3b: alleen een directe e-mailmatch op de klantenkaart (conf 1.0) is
         # vlagvrij. Elke naam-/NAV-afgeleide match (< 1.0) krijgt een zachte
         # "controleer klant"-vlag: een foute klant stuurt prijsgroep, ship-to
         # én kredietlimiet de verkeerde kant op — liever even bevestigen.
-        "needs_review": (not match) or confidence < 1.0,
+        "needs_review": (not match) or confidence < 1.0 or is_demo_klant,
     }
     needs_paths = list(state.get("needs_review_fields") or [])
     if klant_meta["needs_review"] and "klant_match" not in needs_paths:

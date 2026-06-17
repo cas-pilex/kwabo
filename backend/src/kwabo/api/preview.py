@@ -13,8 +13,11 @@ from pydantic import BaseModel
 from sqlmodel import Session
 
 from kwabo.db import session as db_session
-from kwabo.db.repository import KlantRepo, OrderLogRepo
+from kwabo.db.repository import ArtikelkaartRepo, KlantRepo, OrderLogRepo, ShipToRepo
+from kwabo.graph.nodes.apply_mixprijzen import _branch_a
+from kwabo.graph.nodes.select_ship_to import _decide as _decide_ship_to
 from kwabo.integrations.navision_steps import compose_navision_operations
+from kwabo.utils.eenheid_resolve import resolve_line_uom
 from kwabo.utils.logging import log
 
 router = APIRouter(prefix="/api/orders", tags=["orders-preview"])
@@ -141,6 +144,44 @@ def _save(order_id: int, state: dict, **extra_fields: Any) -> None:
         s.commit()
 
 
+def _reresolve_ship_to(state: dict, klant_nr: str) -> dict:
+    """Herbepaal het verzendadres voor een NIEUWE klant (Functie 2).
+
+    Na een handmatige klant-wijziging hoort de oude ship-to (van de oude klant)
+    niet meer te gelden. We laden de ship-to-mirror van de nieuwe klant opnieuw
+    en scoren die op het leveradres via dezelfde logica als de ingest-node
+    (`select_ship_to._decide`): 0 → NAV-default, 1 → autopick, ≥2 → score op
+    leveradres / ambigu → review.
+
+    De keuze van de oude klant wordt eerst gewist. De review-uitkomst wordt
+    naar `_meta["ship_to_gekozen"]` gespiegeld zodat de meta-gebaseerde
+    needs_review-herberekening in patch_field (en het needs-review-endpoint)
+    de verse vlag overneemt — de handmatige ship-to-pick schrijft óók `_meta`.
+    """
+    with Session(db_session.engine) as s:
+        candidates = ShipToRepo(s).list_for_klant(klant_nr)
+
+    base = dict(state)
+    base.pop("ship_to_gekozen", None)
+    base["needs_review_fields"] = [
+        f for f in (base.get("needs_review_fields") or []) if f != "ship_to_gekozen"
+    ]
+
+    new_state = _decide_ship_to(base, candidates)
+
+    ambiguous = "ship_to_gekozen" in (new_state.get("needs_review_fields") or [])
+    meta = dict(new_state.get("_meta") or {})
+    meta["ship_to_gekozen"] = {
+        "value": new_state.get("ship_to_gekozen"),
+        "source": "auto",
+        "source_detail": "opnieuw bepaald na klant-wijziging",
+        "confidence": 0.0 if ambiguous else 1.0,
+        "needs_review": ambiguous,
+    }
+    new_state["_meta"] = meta
+    return new_state
+
+
 # ---------- endpoints ----------
 
 
@@ -244,6 +285,14 @@ def patch_field(order_id: int, body: PatchFieldBody) -> dict:
             "confidence": 1.0, "needs_review": not kn,
         }
         state["_meta"] = meta
+        # Functie 2: een gewijzigd klantnr trekt het verzendadres mee. De oude
+        # ship-to hoort bij de oude klant — herbepaal hem voor de nieuwe klant
+        # (kandidaten herladen + scoren op het leveradres). Alleen bij een
+        # ECHTE wijziging: een her-bevestiging van dezelfde klant (de "Bevestig
+        # deze klant"-knop patcht hetzelfde nummer) mag een al gekozen ship-to
+        # niet wissen.
+        if kn and kn != prev.get("navision_klantnr"):
+            state = _reresolve_ship_to(state, kn)
     else:
         _set(state, body.path, body.value)
         # Update _meta path
@@ -313,6 +362,40 @@ def patch_field(order_id: int, body: PatchFieldBody) -> dict:
                 stale += ["mix_uom_kandidaat", "eenheid_default"]
             for veld in stale:
                 regels[i].pop(veld, None)
+
+    # Functie 3 (DEEL B): na een handmatige ARTIKEL-match de eenheid + het
+    # aantal opnieuw afleiden (Branch A) — de wipe hierboven liet ze anders
+    # leeg, waarna de compose terugviel op de letterlijke base-eenheid/leeg
+    # aantal ("STUK met leeg aantal", Lasaulec). Alleen het artikel-pad: een
+    # losse hoeveelheid/eenheid-correctie houdt de wipe-only (V1, #716). Bij
+    # ontbrekende masterdata een veilige no-op.
+    if m and body.value:
+        i = int(m.group(1))
+        regels = state.get("orderregels") or []
+        if i < len(regels) and isinstance(regels[i], dict):
+            regel = regels[i]
+            with Session(db_session.engine) as s:
+                art_repo = ArtikelkaartRepo(s)
+                kaart = art_repo.get(body.value)
+                if kaart and kaart.basis_eenheid:
+                    eenheden = art_repo.list_eenheden(body.value)
+                    base = kaart.basis_eenheid.strip()
+                    regel.setdefault("eenheid_origineel", regel.get("eenheid"))
+                    regel["eenheid_default"] = base
+                    regel["eenheid"], eenheid_vlag = resolve_line_uom(regel, base, eenheden)
+                    _branch_a(regel, art_repo)
+                    meta = state.setdefault("_meta", {})
+                    regels_meta = meta.setdefault("orderregels", [])
+                    while len(regels_meta) <= i:
+                        regels_meta.append({})
+                    rm = regels_meta[i] if isinstance(regels_meta[i], dict) else {}
+                    rm["eenheid"] = {
+                        "value": regel["eenheid"], "source": "auto",
+                        "source_detail": "Branch A herberekend na handmatige artikel-match",
+                        "confidence": 0.0 if eenheid_vlag else 1.0,
+                        "needs_review": eenheid_vlag,
+                    }
+                    regels_meta[i] = rm
 
     needs = _all_needs_review_paths(state)
     state["needs_review_fields"] = needs

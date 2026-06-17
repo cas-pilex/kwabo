@@ -1,0 +1,146 @@
+[
+  {
+    "kwabo_artikelnr": "10010",
+    "eenheid": "METER",
+    "pallet_required": true,
+    "per_pallet": 24,
+    "confidence": 0.6,
+    "laatst_bevestigd_op": "2026-05-26 20:34:30.741039",
+    "bevestigd_door": "e2e-A2"
+  },
+  {
+    "kwabo_artikelnr": "238601",
+    "eenheid": "STUK",
+    "pallet_required": true,
+    "per_pallet": 24,
+    "confidence": 0.6,
+    "laatst_bevestigd_op": "2026-06-15 19:04:04.595671",
+    "bevestigd_door": "dashboard"
+  },
+  {
+    "kwabo_artikelnr": "23730",
+    "eenheid": "STUK",
+    "pallet_required": true,
+    "per_pallet": 24,
+    "confidence": 0.6,
+    "laatst_bevestigd_op": "2026-06-16 13:36:41.356820",
+    "bevestigd_door": "dashboard"
+  },
+  {
+    "kwabo_artikelnr": "23733",
+    "eenheid": "STUK",
+    "pallet_required": true,
+    "per_pallet": 24,
+    "confidence": 0.6,
+    "laatst_bevestigd_op": "2026-06-16 13:36:41.356820",
+    "bevestigd_door": "dashboard"
+  },
+  {
+    "kwabo_artikelnr": "15620",
+    "eenheid": "PAL",
+    "pallet_required": false,
+    "per_pallet": 24,
+    "confidence": 0.6,
+    "laatst_bevestigd_op": "2026-06-16 13:47:53.543866",
+    "bevestigd_door": "dashboard"
+  },
+  {
+    "kwabo_artikelnr": "23691",
+    "eenheid": "STUK",
+    "pallet_required": true,
+    "per_pallet": 24,
+    "confidence": 0.6,
+    "laatst_bevestigd_op": "2026-06-16 14:00:19.865312",
+    "bevestigd_door": "dashboard"
+  },
+  {
+    "kwabo_artikelnr": "23520",
+    "eenheid": "STUK",
+    "pallet_required": true,
+    "per_pallet": 24,
+    "confidence": 0.6,
+    "laatst_bevestigd_op": "2026-06-16 14:07:30.694991",
+    "bevestigd_door": "dashboard"
+  },
+  {
+    "kwabo_artikelnr": "229231",
+    "eenheid": "STUK",
+    "pallet_required": true,
+    "per_pallet": 24,
+    "confidence": 0.6,
+    "laatst_bevestigd_op": "2026-06-16 14:07:30.694991",
+    "bevestigd_door": "dashboard"
+  },
+  {
+    "kwabo_artikelnr": "184501",
+    "eenheid": "STUK",
+    "pallet_required": true,
+    "per_pallet": 24,
+    "confidence": 0.6,
+    "laatst_bevestigd_op": "2026-06-16 14:07:30.694991",
+    "bevestigd_door": "dashboard"
+  },
+  {
+    "kwabo_artikelnr": "23516",
+    "eenheid": "STUK",
+    "pallet_required": true,
+    "per_pallet": 24,
+    "confidence": 0.6,
+    "laatst_bevestigd_op": "2026-06-16 14:07:30.694991",
+    "bevestigd_door": "dashboard"
+  },
+  {
+    "kwabo_artikelnr": "23515",
+    "eenheid": "STUK",
+    "pallet_required": true,
+    "per_pallet": 24,
+    "confidence": 0.6,
+    "laatst_bevestigd_op": "2026-06-16 14:07:30.694991",
+    "bevestigd_door": "dashboard"
+  },
+  {
+    "kwabo_artikelnr": "23517",
+    "eenheid": "STUK",
+    "pallet_required": true,
+    "per_pallet": 24,
+    "confidence": 0.6,
+    "laatst_bevestigd_op": "2026-06-16 14:07:30.694991",
+    "bevestigd_door": "dashboard"
+  },
+  {
+    "kwabo_artikelnr": "23511",
+    "eenheid": "STUK",
+    "pallet_required": true,
+    "per_pallet": 24,
+    "confidence": 0.6,
+    "laatst_bevestigd_op": "2026-06-16 14:07:30.694991",
+    "bevestigd_door": "dashboard"
+  },
+  {
+    "kwabo_artikelnr": "23513",
+    "eenheid": "STUK",
+    "pallet_required": true,
+    "per_pallet": 24,
+    "confidence": 0.6,
+    "laatst_bevestigd_op": "2026-06-16 14:07:30.694991",
+    "bevestigd_door": "dashboard"
+  },
+  {
+    "kwabo_artikelnr": "23853",
+    "eenheid": "STUK",
+    "pallet_required": true,
+    "per_pallet": 24,
+    "confidence": 0.6,
+    "laatst_bevestigd_op": "2026-06-16 14:07:30.694991",
+    "bevestigd_door": "dashboard"
+  },
+  {
+    "kwabo_artikelnr": "23518",
+    "eenheid": "STUK",
+    "pallet_required": true,
+    "per_pallet": 24,
+    "confidence": 0.6,
+    "laatst_bevestigd_op": "2026-06-16 14:07:30.694991",
+    "bevestigd_door": "dashboard"
+  }
+]

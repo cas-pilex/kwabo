@@ -113,6 +113,11 @@ def _customer_to_klantenkaart(row: dict, existing: Optional[Klantenkaart]) -> Kl
     email = _str_or_none(row.get("E_Mail"))
     telefoon = _str_or_none(row.get("Phone_No") or row.get("Phone_No_"))
     taal = _str_or_none(row.get("Language_Code")) or "NL"
+    # Vestigingsadres — kiest de juiste franchise-vestiging op het leveradres
+    # (PontMeyer Heerenveen vs Zwaag) en toont de plaats in de UI. Tolerant van
+    # NAV-veldnaamvarianten, net als de ship-to-mapping.
+    plaats = _str_or_none(row.get("City") or row.get("Plaats"))
+    postcode = _str_or_none(row.get("Post_Code") or row.get("PostCode"))
     krediet = _float_or_none(row.get("Credit_Limit_LCY"))
     betaling = _str_or_none(row.get("Payment_Terms_Code"))
     # Customer mix-price flag. Live NAV audit (Kopie 2026) confirmed PLX_Customer
@@ -136,6 +141,8 @@ def _customer_to_klantenkaart(row: dict, existing: Optional[Klantenkaart]) -> Kl
         if telefoon:
             existing.telefoon = telefoon
         existing.taal = taal
+        existing.plaats = plaats
+        existing.postcode = postcode
         existing.kredietlimiet = krediet
         existing.betalingsconditie = betaling
         existing.mixprijzen = mix
@@ -147,6 +154,8 @@ def _customer_to_klantenkaart(row: dict, existing: Optional[Klantenkaart]) -> Kl
         email=email,
         telefoon=telefoon,
         taal=taal,
+        plaats=plaats,
+        postcode=postcode,
         kredietlimiet=krediet,
         betalingsconditie=betaling,
         mixprijzen=mix,

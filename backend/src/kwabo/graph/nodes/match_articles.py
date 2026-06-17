@@ -14,6 +14,7 @@ from kwabo.db.repository import ArtikelkaartRepo, ArtikelRepo, KruisverwijzingRe
 from kwabo.db.session import engine
 from kwabo.graph.state import OrderRegel, OrderState
 from kwabo.integrations.navision_api import NavisionClient, get_navision_client
+from kwabo.utils.eenheid_resolve import resolve_line_uom
 from kwabo.utils.logging import log
 
 
@@ -233,29 +234,19 @@ async def match_articles_node(state: OrderState) -> OrderState:
             if not kaart or not kaart.basis_eenheid:
                 continue
             base = kaart.basis_eenheid.strip()
-            base_upper = base.upper()
             r.setdefault("eenheid_origineel", r.get("eenheid"))
             r["eenheid_default"] = base
 
             ordered = (r.get("eenheid") or "").strip()
-            ordered_upper = ordered.upper()
 
-            # Map of accepted unit codes (upper -> canonical NAV casing). The
-            # base unit is always valid for the item in NAV, even if the
-            # item-UOM table hasn't been synced yet.
-            code_by_upper = {
-                c.strip().upper(): c.strip()
-                for c in art_repo.valid_uom_codes(artnr)
-            }
-            code_by_upper.setdefault(base_upper, base)
-
-            if not ordered or ordered_upper == base_upper:
-                r["eenheid"] = base
-            elif ordered_upper in code_by_upper:
-                r["eenheid"] = code_by_upper[ordered_upper]
-            else:
-                # Unknown/unvalidatable unit -> safe base + human review.
-                r["eenheid"] = base
+            # Resolve the ordered unit against the item-UOM mirror. A pallet-
+            # family unit ("PAL") brugt naar de artikel-eigen pallet-code
+            # ("PALLET"); een echt ongeldige eenheid valt veilig terug op base
+            # + review (Functie 3 — gedeelde helper, ook gebruikt door de
+            # handmatige correctie in api/preview.py).
+            eenheden = art_repo.list_eenheden(artnr)
+            r["eenheid"], eenheid_vlag = resolve_line_uom(r, base, eenheden)
+            if eenheid_vlag:
                 eenheid_review_idx.append(idx)
                 eenheid_warnings.append(
                     f"⚠ EENHEID CONTROLEREN (regel {idx + 1}): klant bestelde "

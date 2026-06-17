@@ -102,6 +102,13 @@ class Settings(BaseSettings):
     nav_page_ship_to: str = "PLX_ShipToAddress"
     nav_page_item_uom: str = "PLX_ItemUnitOfMeasure"
     nav_verify_ssl: bool = True
+    # FUNCTIE 7: koppelt het bron-document als inkomend document aan de
+    # NAV-order. NAV 2018 publiceert PLX_IncomingDocument (nog) niet via OData,
+    # dus de nav2018-client slaat die ops standaard over (header+regels blijven
+    # geldig; de reviewer krijgt een waarschuwing). Zet deze env-flag op true
+    # zodra de partner de page publiceert EN de transport-vertaling gewired is —
+    # dan worden de incoming-doc-ops uitgevoerd i.p.v. overgeslagen.
+    nav2018_incoming_document_enabled: bool = False
     # Fase 4 (B2): retry/backoff voor idempotente NAV-GETs (429/5xx/transport).
     # Nooit toegepast op POST/PATCH — die zijn niet idempotent (dubbele orders).
     nav_get_retry_attempts: int = 3
