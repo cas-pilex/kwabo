@@ -84,6 +84,33 @@ async def test_gedeelde_mailbox_kiest_op_leveradres(bind):
 
 
 @pytest.mark.asyncio
+async def test_gedeelde_mailbox_breekt_umbrella_tie_op_volledige_naam(bind):
+    """Twee kaarten op exact hetzelfde leverpunt (50094 'Jongeneel Woerden
+    BA659' = vestiging vs 61482 'Koninklijke Jongeneel' = overkoepelend, beide
+    ship-to 3449 JE Pijpenmakersweg 2). Het afleveradres noemt de vestiging
+    voluit → gegradeerde naam-match kiest 50094, géén gok-gelijkspel."""
+    bind.add(Klantenkaart(nav_klantnr="50094", naam="Jongeneel Woerden BA659",
+                          email="confirmation@tabsholland.nl;woerden@jongeneel.nl"))
+    bind.add(Klantenkaart(nav_klantnr="61482", naam="Koninklijke Jongeneel",
+                          email="confirmation@tabsholland.nl"))
+    bind.add(Klantenkaart(nav_klantnr="60981", naam="PontMeyer",
+                          email="confirmation@tabsholland.nl"))
+    bind.add(KlantenkaartShipTo(klant_nr="50094", ship_to_code="3449 JE",
+             naam="Jongeneel Woerden BA659", straat="Pijpenmakersweg 2",
+             postcode="3449 JE", plaats="WOERDEN", land="NL", is_default=False))
+    bind.add(KlantenkaartShipTo(klant_nr="61482", ship_to_code="3449 JE",
+             naam="JNL Woerden", straat="Pijpenmakersweg 2",
+             postcode="3449 JE", plaats="WOERDEN", land="NL", is_default=False))
+    bind.commit()
+    state = _state(afleveradres={"naam": "Jongeneel Woerden BA659",
+                                 "straat": "Pijpenmakersweg 2",
+                                 "postcode": "3449 JE", "plaats": "WOERDEN", "land": "NL"})
+    out = await match_customer_node(state)
+    assert out["klant_match"] is not None
+    assert out["klant_match"]["navision_klantnr"] == "50094"
+
+
+@pytest.mark.asyncio
 async def test_gedeelde_mailbox_leveradres_heerenveen_kiest_61793(bind):
     """Controle: hetzelfde gedeelde-mailbox-pad kiest 61793 als het leveradres
     Heerenveen is — disambiguatie volgt het leveradres, niet de kaart."""

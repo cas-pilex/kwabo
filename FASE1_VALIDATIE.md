@@ -11,8 +11,12 @@ op hun opgeslagen extractie tegen verse read-only prod-masterdata (wegwerp-sqlit
 ## Segment A — TABS-groep (gedeelde mailbox), 52 orders
 - **Confident-foute 61793-matches: 34 → 0.** Alle TABS-orders die voorheen blind naar PontMeyer
   Heerenveen gingen, doen dat niet meer.
-- 38 worden nu op het **leveradres** naar de juiste vestiging gerouteerd (ship-to-disambiguatie),
-  14 gaan naar **kandidaten + CONTROLEER** (geen gok bij gelijkspel/ontbrekend leveradres).
+- **49 worden op het leveradres naar de juiste vestiging gerouteerd**, 3 gaan naar
+  **kandidaten + CONTROLEER** (geen gok bij echt gelijkspel/ontbrekend leveradres).
+- Tiebreaker (verfijning): een EXACTE naam-match (zelfde token-set) krijgt +1 zodat een
+  vestigingskaart wint van de overkoepelende entiteit (50094 'Jongeneel Woerden BA659' vs 61482
+  'Koninklijke Jongeneel') — zónder een beslissende straat-match te overstemmen (geverifieerd: geen
+  ship-to-regressie op #281/#874).
 
 ## Segment B — regressiecheck: 70 orders met opgeslagen `match_bron=email`
 - 67 ongewijzigd (conf 1.0 e-mailmatch onaangeroerd — dat pad is niet aangeraakt).

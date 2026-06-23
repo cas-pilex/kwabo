@@ -62,6 +62,14 @@ def _score_ship_to(record: KlantenkaartShipTo, afleveradres: dict) -> int:
     addr_naam_tokens = _tokens(afleveradres.get("naam"))
     if rec_naam_tokens and addr_naam_tokens and (rec_naam_tokens & addr_naam_tokens):
         score += 2
+        # Conservatieve tiebreaker: een EXACTE naam-match (zelfde token-set)
+        # krijgt +1 extra. Breekt een gelijkspel tussen een vestigingskaart en
+        # de overkoepelende entiteit (50094 'Jongeneel Woerden BA659' ==
+        # afleveradres vs 61482 'Koninklijke Jongeneel') zonder een
+        # beslissende straat-match te overstemmen (#281: de exacte
+        # Waldorpstraat-523-match blijft leidend).
+        if rec_naam_tokens == addr_naam_tokens:
+            score += 1
 
     rec_straat = (getattr(record, "straat", None) or "").lower()
     addr_straat = (afleveradres.get("straat") or "").lower()

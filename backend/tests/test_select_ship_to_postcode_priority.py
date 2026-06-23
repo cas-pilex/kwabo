@@ -50,6 +50,27 @@ async def test_exacte_leverpostcode_wint_van_factuurstad_in_tekst(session):
 
 
 @pytest.mark.asyncio
+async def test_duitse_postcode_met_landprefix_matcht(session):
+    """DE-ship-to's staan soms met landprefix ('D 99837') terwijl het
+    afleveradres '99837' is — die horen exact te matchen (storch-ciret #400)."""
+    session.add(KlantenkaartShipTo(klant_nr="61536", ship_to_code="36208", naam="STORCH",
+                straat="x", postcode="36208", plaats="Wildeck", land="DE", is_default=True))
+    session.add(KlantenkaartShipTo(klant_nr="61536", ship_to_code="99837",
+                naam="Storch-Ciret Logistics GmbH", straat="Wildecker Str. 2",
+                postcode="D 99837", plaats="Berka/Werra", land="DE", is_default=False))
+    session.commit()
+    state = {
+        "email_id": "storch400",
+        "klant_match": {"navision_klantnr": "61536"},
+        "afleveradres": {"naam": "Storch-Ciret Logistics GmbH", "straat": "Wildecker Str. 2",
+                         "postcode": "99837", "plaats": "Berka/Werra"},
+        "needs_review_fields": [],
+    }
+    out = await select_ship_to_node(state, repo=ShipToRepo(session))
+    assert out["ship_to_gekozen"] == "99837"
+
+
+@pytest.mark.asyncio
 async def test_meerdere_kandidaten_zelfde_postcode_valt_terug_op_scoring(session):
     """Twee kandidaten met exact dezelfde postcode → geen unieke postcode-winnaar;
     de bestaande scoring/heuristiek beslist (geen regressie)."""
