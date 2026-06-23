@@ -153,6 +153,42 @@ def _verkoop_keuze(
     return kandidaten[0] if len(kandidaten) == 1 else None
 
 
+def _plain_pallet_equiv(
+    mix_code: str, eenheden: list, base: str
+) -> Optional[tuple[str, float]]:
+    """De PLAIN (niet-mix) pallet-eenheid die dezelfde fysieke pallet-maat heeft
+    als een mix-staffelcode (zelfde ``qty_per_base``). NAV-kaarten dragen soms
+    een mix-code als Sales_Unit_of_Measure (datafout, bv. 23522 -> M1PAL30);
+    de juiste verkoopeenheid is dan de canonieke ``PALLET``-UoM van het artikel.
+
+    Voorkeur: een eenheid waarvan de code met ``PALLET`` begint (de canonieke
+    pallet-UoM, bv. ``PALLET`` of ``PALLET70``); is die er niet en is er precies
+    één plain niet-base eenheid met de juiste maat, dan die. Anders None (ambigu).
+    Geeft ``(code, qty_per_base)`` of None.
+    """
+    mix_qty = next(
+        (float(e.qty_per_base or 0) for e in eenheden
+         if (e.eenheid_code or "").strip().upper() == mix_code.upper()),
+        0.0,
+    )
+    if mix_qty <= 1:
+        return None
+    plains = [
+        (e.eenheid_code.strip(), float(e.qty_per_base))
+        for e in eenheden
+        if e.eenheid_code and not parse_mix_code(e.eenheid_code) and not e.is_mix_uom
+        and float(e.qty_per_base or 0) == mix_qty
+        and e.eenheid_code.strip().upper() != (base or "").upper()
+    ]
+    pallet = [p for p in plains if p[0].upper().startswith("PALLET")]
+    if len(pallet) == 1:
+        return pallet[0]
+    if pallet:
+        exact = [p for p in pallet if p[0].upper() == "PALLET"]
+        return exact[0] if len(exact) == 1 else None
+    return plains[0] if len(plains) == 1 else None
+
+
 def _branch_a(regel: dict, art_repo: ArtikelkaartRepo) -> Optional[str]:
     """E1/E2: een niet-mix-regel krijgt ALTIJD een expliciete eenheid + het
     omgerekende aantal in `verkoop_uom_gekozen`/`verkoop_aantal`.
@@ -197,12 +233,24 @@ def _branch_a(regel: dict, art_repo: ArtikelkaartRepo) -> Optional[str]:
     # (PALLET, PALLET33) is GEEN mix-code en blijft de normale Branch-A-keuze.
     code = ((kaart.verkoop_eenheid or "")).strip()
     if code and is_mix_code(code):
+        # Vertaal de mix-staffelcode naar de PLAIN pallet-eenheid (zelfde maat)
+        # zodat de regel consistent is met zuster-artikelen (23522 -> PALLET 2,
+        # net als 23523) en geen handmatige review vergt. Geen schone vertaling
+        # -> base + review-vlag (nooit stil de mix-code zelf gebruiken).
+        plain = _plain_pallet_equiv(code, eenheden, base)
+        if plain is not None:
+            pcode, per = plain
+            n = base_qty / per
+            if n >= 1 and abs(n - round(n)) <= _PALLET_TOL:
+                regel["verkoop_uom_gekozen"] = pcode
+                regel["verkoop_aantal"] = int(round(n))
+                return None
         regel["verkoop_uom_gekozen"] = base
         regel["verkoop_aantal"] = base_qty
         return (
             f"⚠ VERKOOPEENHEID CONTROLEREN (regel {regel.get('positie')}): artikel "
-            f"{art} heeft mix-staffelcode '{code}' als verkoopeenheid in NAV; "
-            f"teruggevallen op '{base}'."
+            f"{art} heeft mix-staffelcode '{code}' als verkoopeenheid in NAV "
+            f"en geen eenduidige pallet-eenheid; teruggevallen op '{base}'."
         )
 
     keuze = _verkoop_keuze(kaart, eenheden, base, base_qty)

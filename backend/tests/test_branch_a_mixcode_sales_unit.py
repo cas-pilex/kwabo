@@ -1,12 +1,10 @@
-"""FASE 1 — PPG #941 (XO092614): een NAV-kaart die een MIX-staffelcode als
-verkoopeenheid (Sales_Unit_of_Measure) draagt mag die NIET stil als
-verkoopeenheid op een niet-mix-order zetten.
-
-Echte casus: 3 ProGold-zusterartikelen, alle in STUK besteld, kregen
-STUK / M1PAL30 / PALLET omdat 23522's kaart `verkoop_eenheid = M1PAL30` (een
-mix-UOM, is_mix_uom=True) heeft. M1PAL30 is een mix-staffelcode, geen geldige
-verkoopeenheid op een gewone order → terugval op base + review-vlag.
-PALLET (23523) is wél een geldige verkoopeenheid en blijft.
+"""FASE 1 + gap-fix — PPG #941 (XO092614): een NAV-kaart die een MIX-staffelcode
+als verkoopeenheid (Sales_Unit_of_Measure) draagt is een datafout. Die code mag
+NOOIT stil als verkoopeenheid op een niet-mix-order, maar moet worden vertaald
+naar de PLAIN pallet-eenheid van het artikel (zelfde qty_per_base) — zodat de
+regel consistent is met zuster-artikelen (23522 -> PALLET 2, net als 23523) en
+GEEN handmatige review vergt. Alleen als er geen schone pallet-vertaling is valt
+hij terug op de base-eenheid + review-vlag.
 """
 from __future__ import annotations
 
@@ -44,16 +42,30 @@ def _regel(art, qty=60.0):
 
 
 @pytest.mark.asyncio
-async def test_mixcode_verkoopeenheid_valt_terug_op_base_met_review(session):
-    """23522: kaart-verkoop_eenheid = M1PAL30 (mix-UOM) → NIET als
-    verkoopeenheid; terugval op STUK + review-vlag."""
+async def test_mixcode_verkoopeenheid_vertaalt_naar_plain_pallet(session):
+    """23522: kaart-verkoop_eenheid = M1PAL30 (mix-UOM, qty 30) → vertaald naar de
+    PLAIN PALLET-eenheid (60 STUK / 30 = 2 PALLET), NIET STUK, GEEN review-vlag."""
     _set_mix(session, "10001", False)
     _kaart(session, "23522", basis="STUK", verkoop="M1PAL30",
            eenheden=[("STUK", 1.0, False), ("M1PAL30", 30.0, True),
-                     ("PALLET", 30.0, False)])
+                     ("PALLET", 30.0, False), ("FCA PAL30", 30.0, False),
+                     ("AFHAAL", 30.0, False)])
     out = await apply_mixprijzen_node(_state(_regel("23522")), session=session)
     r = out["orderregels"][0]
-    assert r["verkoop_uom_gekozen"] != "M1PAL30"
+    assert r["verkoop_uom_gekozen"] == "PALLET"
+    assert r["verkoop_aantal"] == 2
+    assert not any("verkoop_eenheid" in p for p in out["needs_review_fields"])
+
+
+@pytest.mark.asyncio
+async def test_mixcode_zonder_plain_pallet_valt_terug_op_base_met_review(session):
+    """Geen schone pallet-vertaling (alleen de mix-code + base) → terugval op
+    base + review-vlag (veilig, nooit stil de mix-code)."""
+    _set_mix(session, "10001", False)
+    _kaart(session, "29999", basis="STUK", verkoop="M1PAL30",
+           eenheden=[("STUK", 1.0, False), ("M1PAL30", 30.0, True)])
+    out = await apply_mixprijzen_node(_state(_regel("29999")), session=session)
+    r = out["orderregels"][0]
     assert r["verkoop_uom_gekozen"] == "STUK"
     assert r["verkoop_aantal"] == 60.0
     assert any("verkoop_eenheid" in p for p in out["needs_review_fields"])
@@ -62,8 +74,8 @@ async def test_mixcode_verkoopeenheid_valt_terug_op_base_met_review(session):
 
 @pytest.mark.asyncio
 async def test_echte_pallet_verkoopeenheid_blijft(session):
-    """23523: kaart-verkoop_eenheid = PALLET (géén mix-code) → blijft de
-    verkoopeenheid (60 STUK → 2 PALLET), géén review-vlag."""
+    """23523: kaart-verkoop_eenheid = PALLET (géén mix-code) → blijft PALLET
+    (60 STUK → 2 PALLET), géén review-vlag."""
     _set_mix(session, "10001", False)
     _kaart(session, "23523", basis="STUK", verkoop="PALLET",
            eenheden=[("STUK", 1.0, False), ("PALLET", 30.0, False),
