@@ -52,7 +52,7 @@ from sqlmodel import Session
 from kwabo.db.repository import ArtikelkaartRepo, KlantRepo
 from kwabo.db.session import engine
 from kwabo.utils.logging import log
-from kwabo.utils.mixcode import parse_mix_code
+from kwabo.utils.mixcode import is_mix_code, parse_mix_code
 from kwabo.utils.pallet_logic import _qty_per_base
 
 # How close rolls/rolls-per-pallet must be to a whole number to auto-accept the
@@ -153,7 +153,7 @@ def _verkoop_keuze(
     return kandidaten[0] if len(kandidaten) == 1 else None
 
 
-def _branch_a(regel: dict, art_repo: ArtikelkaartRepo) -> None:
+def _branch_a(regel: dict, art_repo: ArtikelkaartRepo) -> Optional[str]:
     """E1/E2: een niet-mix-regel krijgt ALTIJD een expliciete eenheid + het
     omgerekende aantal in `verkoop_uom_gekozen`/`verkoop_aantal`.
 
@@ -162,29 +162,48 @@ def _branch_a(regel: dict, art_repo: ArtikelkaartRepo) -> None:
     PALLET33 = €45.738 i.p.v. 2 PALLET33). Op NAV's default vertrouwen kan dus
     nooit. Een geldige NIET-base bestel-eenheid blijft staan (2-6-fix: "60
     stuks blijft 60 stuks") — de composer PATCHt die al expliciet.
+
+    Returns een review-waarschuwing (str) als de kaart-verkoopeenheid niet
+    bruikbaar was (mix-staffelcode als Sales-UoM), anders None.
     """
     art = regel.get("artikelnummer_kwabo_matched")
     if not art:
-        return
+        return None
     kaart = art_repo.get(art)
     base = ((kaart.basis_eenheid if kaart else "") or "").strip()
     if not kaart or not base:
-        return  # geen mirror-data -> geen veilige keuze mogelijk
+        return None  # geen mirror-data -> geen veilige keuze mogelijk
     ordered = (regel.get("eenheid") or "").strip()
     if ordered and ordered.upper() != base.upper():
-        return  # klant koos expliciet een geldige alternatieve eenheid
+        return None  # klant koos expliciet een geldige alternatieve eenheid
     try:
         qty = float(regel.get("hoeveelheid") or 0)
     except (TypeError, ValueError):
-        return
+        return None
     if qty <= 0:
-        return
+        return None
 
     eenheden = art_repo.list_eenheden(art)
     # match_articles viel bij een ONgeldige bestel-eenheid al terug op base;
     # de hoeveelheid staat dan in de oorspronkelijke eenheid. Onbekende codes
     # tellen als base (qty_per_base 1.0) — zelfde aanname als _to_rolls.
     base_qty = qty * _qty_per_base(eenheden, regel.get("eenheid_origineel") or "")
+
+    # PPG #941: een MIX-staffelcode (M{n}PAL{n}, bv. M1PAL30 op artikel 23522)
+    # als Sales_Unit_of_Measure is een NAV-datafout — geen geldige
+    # verkoopeenheid op een niet-mix-order. Nooit stil als verkoopeenheid
+    # zetten: expliciete base + review (zo krijgen drie zusterartikelen niet
+    # STUK/M1PAL30/PALLET door een scheve kaart). Een gewone pallet-code
+    # (PALLET, PALLET33) is GEEN mix-code en blijft de normale Branch-A-keuze.
+    code = ((kaart.verkoop_eenheid or "")).strip()
+    if code and is_mix_code(code):
+        regel["verkoop_uom_gekozen"] = base
+        regel["verkoop_aantal"] = base_qty
+        return (
+            f"⚠ VERKOOPEENHEID CONTROLEREN (regel {regel.get('positie')}): artikel "
+            f"{art} heeft mix-staffelcode '{code}' als verkoopeenheid in NAV; "
+            f"teruggevallen op '{base}'."
+        )
 
     keuze = _verkoop_keuze(kaart, eenheden, base, base_qty)
     if keuze is not None:
@@ -194,6 +213,7 @@ def _branch_a(regel: dict, art_repo: ArtikelkaartRepo) -> None:
     else:
         regel["verkoop_uom_gekozen"] = base
         regel["verkoop_aantal"] = base_qty
+    return None
 
 
 def _evaluate(state: dict, klant_repo: KlantRepo, art_repo: ArtikelkaartRepo) -> dict:
@@ -210,9 +230,21 @@ def _evaluate(state: dict, klant_repo: KlantRepo, art_repo: ArtikelkaartRepo) ->
     if not klant or not klant.mixprijzen:
         # Customer not mix-eligible — mix phase is skipped, but Branch A
         # (expliciete verkoopeenheid, E1/E2) geldt voor élke gematchte regel.
+        warnings = list(state.get("validatie_warnings") or [])
+        needs_review = list(state.get("needs_review_fields") or [])
         for r in regels_out:
-            _branch_a(r, art_repo)
+            w = _branch_a(r, art_repo)
+            if w:
+                warnings.append(w)
+                entry = f"verkoop_eenheid:{r.get('positie')}"
+                if entry not in needs_review:
+                    needs_review.append(entry)
         new_state["orderregels"] = regels_out
+        if warnings != (state.get("validatie_warnings") or []):
+            new_state["validatie_warnings"] = warnings
+        if needs_review != (state.get("needs_review_fields") or []):
+            new_state["needs_review_fields"] = needs_review
+            new_state["needs_review_count"] = len(needs_review)
         log.info(
             "apply_mixprijzen",
             email_id=state.get("email_id"),
@@ -292,13 +324,21 @@ def _evaluate(state: dict, klant_repo: KlantRepo, art_repo: ArtikelkaartRepo) ->
     # moeten met een EXPLICIETE eenheid naar NAV. Mix-regels (incl. de
     # review-gevallen, herkenbaar aan mix_uom_kandidaat) blijven van de
     # mix-logica.
+    warnings = list(state.get("validatie_warnings") or [])
     for r in regels_out:
         if "mix_uom_kandidaat" not in r:
-            _branch_a(r, art_repo)
+            w = _branch_a(r, art_repo)
+            if w:
+                warnings.append(w)
+                entry = f"verkoop_eenheid:{r.get('positie')}"
+                if entry not in needs_review:
+                    needs_review.append(entry)
 
     new_state["orderregels"] = regels_out
     new_state["mixprijzen_actief"] = n_actief > 0
     new_state["order_mix_total_pallets"] = total_pallets or None
+    if warnings != (state.get("validatie_warnings") or []):
+        new_state["validatie_warnings"] = warnings
     if needs_review != (state.get("needs_review_fields") or []):
         new_state["needs_review_fields"] = needs_review
         new_state["needs_review_count"] = len(needs_review)
