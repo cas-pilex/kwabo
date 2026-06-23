@@ -11,7 +11,7 @@
 |---|---|---|---|
 | **A — ship-to = afleveradres** | `612e6af` (+`9747c9b`) | #944 ship-to 3981 LB Bunnik (stil) → **7559 SR Hengelo** | **PASS** |
 | **B — agent/portaal via afleveradres** | `c0d4b2b` (+`9747c9b`) | TABS #954/#955/#834 → 61793 conf 1.0 **zonder vlag** (stil) → 3 **verschillende** juiste eindklanten + vlag | **PASS** |
-| **C — eenheid (mix-code als verkoopeenheid)** | `3a7b2cb` | #941/#922 regel 23522 → **M1PAL30** (stil) → **STUK + review-vlag** | **PASS** |
+| **C — eenheid (mix-code als verkoopeenheid)** | `3a7b2cb`+`f98482c` | #941/#922 regel 23522 → **M1PAL30** (stil, ≠ zuster 23523) → **PALLET 2** (consistent met 23523, géén vlag) | **PASS** |
 
 **Differentieel-kerngetal:** OUDE code reproduceert **6 stille fouten** (4 klant/ship-to + 2 eenheid);
 NIEUWE code **0**. De harness vangt dus de echte bugs → **validatie geldig**.
@@ -35,8 +35,8 @@ matching-nodes). Read-only prod; wegwerp-sqlite; geseede masterdata = verse prod
 | **#955** | TABS → PontMeyer Alkmaar | klant **61793** conf 1.0 géén vlag | **61005** PontMeyer Alkmaar, vlag, ship-to 1821 BT | OUD ja → NIEUW nee |
 | **#834** | TABS → PontMeyer Zwaag | klant **61793** conf 1.0 géén vlag | **61088** PontMeyer Zwaag, vlag, ship-to 1689 AK | OUD ja → NIEUW nee |
 | **#944** | BAUHAUS → Hengelo (klant 61854) | ship-to **3981 LB Bunnik** (factuurstad uit PDF) | **7559 SR Hengelo** | OUD ja → NIEUW nee |
-| **#941** r2 | PPG artikel 23522 (kaart-verkoop_eenheid = mix-code) | verkoop_uom **M1PAL30** (stil) | **STUK** + review-vlag | OUD ja → NIEUW nee |
-| **#922** r1 | PPG artikel 23522 (2e order) | verkoop_uom **M1PAL30** (stil) | **STUK** + review-vlag | OUD ja → NIEUW nee |
+| **#941** r2 | PPG artikel 23522 (kaart-verkoop_eenheid = mix-code) | verkoop_uom **M1PAL30** (stil, ≠ zuster 23523=PALLET) | **PALLET 2** (consistent), géén vlag | OUD ja → NIEUW nee |
+| **#922** r1 | PPG artikel 23522 (2e order) | verkoop_uom **M1PAL30** (stil) | **PALLET 1**, géén vlag | OUD ja → NIEUW nee |
 | **#716** | Würth 1-op-1 e-mail (regressie) | 61030 conf 1.0, ship-to 5215 MK | **identiek** | nee → nee |
 | **#717** | Kuipers 1-op-1 e-mail (regressie) | 61844 conf 1.0, ship-to 7783 DC | **identiek** | nee → nee |
 
@@ -52,7 +52,7 @@ naar **3 verschillende** eindklanten op hun eigen leveradres — niet op Woerden
 |---|---|---|---|---|---|---|---|
 | **A** ship-to | "ship-to = besteller/factuur i.p.v. afleveradres" (#944 → Bunnik) | `612e6af`,`9747c9b` | #944→Hengelo, #662→Groningen (ander adres), #716/#717 1-adres ongewijzigd | `verify_ronde2.py` → #944 ship_to=7559 SR, #662=9723 AW | MockNAV + echte ship-to-master | nee | **PASS** |
 | **B** agent/portaal | "agent-mail 100%-match zonder vlag naar één vaste vestiging" (TABS→61793) | `c0d4b2b`,`9747c9b` | #954→Woerden, #955→Alkmaar, #834→Zwaag, Zevij #915→60245; regressie #716/#717 | `verify_ronde2.py` → 0 agent/portaal-order confident-zonder-vlag | echte klant-/ship-to-data | nee | **PASS** |
-| **C** eenheid/mix | "mix-staffelcode (M1PAL30) stil als verkoopeenheid; 1??? op regel" (#941) | `3a7b2cb` | #941/#922 (mix-code→STUK+vlag), #845 manueel PAL, #847 ROL→PALLET | `verify_ronde2.py --eenheid` → #941 r2 STUK + warning | echte artikelkaarten | nee | **PASS** |
+| **C** eenheid/mix | "mix-staffelcode (M1PAL30) stil als verkoopeenheid; 1??? op regel" (#941) | `3a7b2cb`+`f98482c` | #941/#922 (mix-code→**PALLET**, consistent), #819 PAL→PALLET 4, #845 ambigu→review, #847 ROL→PALLET | `verify_ronde2.py --eenheid` → #941 r2 **PALLET 2** (= zuster 23523) | echte artikelkaarten + verse resolve_line_uom | nee | **PASS** |
 | **D** differentieel | "harness moet bugs op OUD reproduceren" | n.v.t. | core+eenheid op `c566bee` | OUD 6 stille fouten → NIEUW 0 | worktree `c566bee` | — | **GELDIG** |
 | **E** breed/regressie | "0 stille fouten breed; geen regressie" | alle | 23 orders + suite + --regression | 0/23 SF; 671 passed; 17 reg passed; 48 invariant | gemengd | nee | **PASS** |
 
@@ -81,12 +81,17 @@ agent/portaal-order krijgt conf 0.9 + vlag of kandidaten. Geen confident-fout-zo
 | #721 | 61472 Van Dongen | naam_extract | 0.8 | ✓ | 3240 AG | naam-fallback |
 | #847 | None | — | — | ✓ | None | niet gematcht → **gevlagd** (geen stille fout) |
 
-**Misses/kanttekeningen (geen stille fout — alle gevlagd of data-getrouw):**
+**Misses/kanttekeningen (geen stille fout — alle gevlagd, correct of NAV-afhankelijk):**
 - **#847**: klant niet automatisch gematcht → review-vlag (correct, niet stil).
 - **#707**: klant ok, geen ship-to-records in master → ship-to None (NAV default; geen review-trigger).
-- **#819** (eenheid): artikel 23691 heeft `verkoop_eenheid=STUK` op de kaart → 4 STUK (data-getrouw;
-  géén pallet-UoM in de mirror — data-observatie, geen codefout).
-- **#854** (eenheid): artikel 23229 niet gematcht (manual) → eenheid niet herleidbaar; geen stille fout.
+- **#819** (eenheid): "4 PAL" van 23691 → de huidige pijplijn resolvet **PAL → PALLET 4** (artikel
+  heeft één pallet-UoM, qty 20). De bevroren historie toonde STUK 4 (van vóór de funct3-fix); **vers
+  is het correct**. Geverifieerd: `resolve_line_uom('PAL') -> 'PALLET'`.
+- **#845** (eenheid): "2 PAL" van 15620 → artikel heeft TWEE pallet-maten (PALLET 30 **én** PALLET35)
+  → resolve gokt bewust niet maar **vlagt** (STUK + review; reviewer kiest). Geen stille fout
+  (grondwet: niet de eerste beste pakken — zie 238601 PALLET33/35/42).
+- **#854** (eenheid): artikel 23229 niet gematcht onder mock (NAV/Vision-afhankelijk) → eenheid niet
+  herleidbaar offline; geen stille fout (zou on-site matchen).
 
 ---
 
@@ -108,9 +113,10 @@ Per order: keur goed in het dashboard en push; controleer in NAV2018:
 | **#834** TABS | 61088 PontMeyer Zwaag | 1689 AK Zwaag | — | nee |
 | **#944** BAUHAUS | 61854 Bauhaus | **7559 SR Hengelo** (NIET 3981 LB Bunnik) | STUK + aantal | nee |
 | **#662** BAUHAUS | 61854 Bauhaus | **9723 AW Groningen** | — | nee |
-| **#941** PPG | 61483 PPG-Driessen | 4815 PN Breda | r1 23559 **STUK** 45; r2 23522 **STUK** 60 (NIET M1PAL30); r3 23523 **PALLET** 2 | nee |
-| **#922** PPG | 61483 | per order | 23522 **STUK** (NIET M1PAL30) | nee |
-| **#845** Lasaulec | 61745 | Lemmer | 15620 **PAL** 2 (manuele B-keuze) | nee |
+| **#941** PPG | 61483 PPG-Driessen | 4815 PN Breda | r1 23559 **STUK** 45; r2 23522 **PALLET 2**; r3 23523 **PALLET 2** (consistent; NIET M1PAL30) | nee |
+| **#922** PPG | 61483 | per order | 23522 **PALLET 1** (NIET M1PAL30) | nee |
+| **#819** | 61969 | per order | 23691 **PALLET 4** (4 PAL → 4 PALLET, NIET STUK 4) | nee |
+| **#845** Lasaulec | 61745 | Lemmer | 15620 → **review** (PALLET 30 vs PALLET35 ambigu): reviewer kiest PALLET; aantal 2 | nee |
 
 **Te bevestigen on-site:** of NAV elke `unitOfMeasureCode` (STUK/PALLET/PAL) ACCEPTEERT op de
 betreffende artikelen (mock bewijst alleen de operations-vorm, niet NAV-acceptatie).

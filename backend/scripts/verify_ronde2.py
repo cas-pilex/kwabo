@@ -203,10 +203,34 @@ async def run_graaf(oid, env, cfg):
 
 
 async def run_eenheid(oid, env):
-    """Blok C: echte prod-matched regels door apply_mixprijzen + echte kaarten."""
+    """Blok C: echte prod-matched regels — herresolve de eenheid uit de
+    OORSPRONKELIJK bestelde eenheid (resolve_line_uom, zoals match_articles) +
+    apply_mixprijzen, tegen de echte kaarten. Zo toont het de huidige-code-
+    uitkomst (PAL->PALLET, mix-code->plain pallet), niet de bevroren historie."""
+    from kwabo.utils.eenheid_resolve import resolve_line_uom
+    from kwabo.db.repository import ArtikelkaartRepo
     st = json.loads(env["order_state"])
-    regels = [dict(r) for r in (st.get("orderregels") or [])]
     klant_nr = (st.get("klant_match") or {}).get("navision_klantnr")
+    regels = []
+    with Session(engine) as s:
+        repo = ArtikelkaartRepo(s)
+        for r in (st.get("orderregels") or []):
+            art = r.get("artikelnummer_kwabo_matched")
+            besteld = (r.get("eenheid_origineel") or r.get("eenheid") or "").strip()
+            nr = dict(r)
+            # Wis afgeleide velden uit de historie zodat Branch-A vers herrekent
+            # (anders blijft een stale verkoop_uom uit de oude state staan).
+            for k in ("verkoop_uom_gekozen", "verkoop_aantal", "mix_uom_gekozen",
+                      "mix_aantal", "mix_uom_kandidaat"):
+                nr.pop(k, None)
+            if art:
+                kaart = repo.get(art)
+                if kaart and kaart.basis_eenheid:
+                    base = kaart.basis_eenheid.strip()
+                    nr["eenheid_origineel"] = besteld or base
+                    nr["eenheid"], _vlag = resolve_line_uom(
+                        {"eenheid": besteld or base}, base, repo.list_eenheden(art))
+            regels.append(nr)
     state = {"email_id": str(oid), "klant_match": {"navision_klantnr": klant_nr},
              "orderregels": regels, "needs_review_fields": [], "validatie_warnings": []}
     out = await apply_mixprijzen_node(state)
