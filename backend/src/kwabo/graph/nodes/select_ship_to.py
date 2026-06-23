@@ -192,6 +192,19 @@ def _decide(state: dict, candidates: list[KlantenkaartShipTo]) -> dict:
         )
         return new_state
 
+    # (0) Sterkste, meest specifieke leversignaal: een UNIEKE kandidaat met
+    # exact de afleveradres-postcode. Die wint vóór de order-tekst-heuristiek —
+    # anders kan een stad die toevallig elders in de order-tekst staat (BAUHAUS
+    # #944: de factuurstad 'Bunnik' in de PDF) de juiste leverpostcode
+    # (7559 SR Hengelo, óók een kandidaat) overstemmen.
+    addr_pc = _normalize_postcode(afleveradres.get("postcode"))
+    if addr_pc:
+        pc_hits = [c for c in candidates
+                   if _normalize_postcode(getattr(c, "postcode", None)) == addr_pc]
+        if len(pc_hits) == 1:
+            return _choose(pc_hits[0].ship_to_code, "afleveradres_postcode_exact",
+                           postcode=pc_hits[0].postcode)
+
     # (1) Primary, per Cas: a multi-location customer prints the vestiging in
     # the order/PDF (the klantnaam, e.g. "Pontmeyer Heerenveen"). Match each
     # candidate's CITY against the order text. Auto-pick ONLY when exactly one
