@@ -10,6 +10,12 @@ REGELS (cruciaal):
 - Het eigen artikelnummer van de klant ("Artikel", "Klantartikel", "Artikel-Nr.",
   "Artikelcode", "Art.-Nr.") = artikelnummer_klant.
 - Vermeldt de klant beide → vul beide; alleen één → vul alleen die.
+- BELANGRIJK — verzin NOOIT een Kwabo-nummer. Vul `artikelnummer_kwabo` ALLEEN als
+  de kolom expliciet het Kwabo/leveranciersnummer is ("Uw/Ons artikelnummer",
+  "Vendor Item No", "Artikel Kwabo"). Bij twijfel, of als het label dubbelzinnig
+  is, of als het een EAN/streepjescode/GTIN (13 cijfers) is: laat
+  `artikelnummer_kwabo` LEEG en zet het nummer in `artikelnummer_klant`. Een fout
+  Kwabo-nummer wordt blind vertrouwd; een klant-nummer wordt veilig geverifieerd.
 - Hoeveelheden: getal. Eenheden: ROL, STUK, PAL, M2, M1, BOS, DOOS, KG, LTR (onbekend = letterlijk).
 - BELANGRIJK voor pallet-orders: als de klant schrijft "<N> Paletten à <M> Stück",
   "<N> PAL × <M> ROL", "<N> Paletten je <M> Rollen", "<N> Europaletten" e.d., dan is

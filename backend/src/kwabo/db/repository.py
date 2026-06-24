@@ -484,6 +484,23 @@ class ShipToRepo:
             ).all()
         )
 
+    def klant_nrs_by_postcode(self, postcode_norm: str) -> list[str]:
+        """Distincte klant_nrs met een ship-to op deze EXACTE (genormaliseerde:
+        kleine letters, spaties weg) postcode. Voor de unieke-leveradres-
+        bevestiging in match_customer: een postcode die bij precies één klant
+        hoort identificeert die klant ONAFHANKELIJK van de naam. Normalisatie
+        spiegelt select_ship_to._normalize_postcode."""
+        if not postcode_norm:
+            return []
+        rows = self.s.exec(
+            select(KlantenkaartShipTo.klant_nr, KlantenkaartShipTo.postcode)
+        ).all()
+        out: list[str] = []
+        for knr, pc in rows:
+            if "".join((pc or "").split()).lower() == postcode_norm:
+                out.append(knr)
+        return list(dict.fromkeys(out))
+
     def upsert(self, record: KlantenkaartShipTo) -> KlantenkaartShipTo:
         existing = self.s.get(
             KlantenkaartShipTo, (record.klant_nr, record.ship_to_code)

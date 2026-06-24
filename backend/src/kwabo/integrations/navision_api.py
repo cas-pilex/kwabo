@@ -646,6 +646,12 @@ def _build_navision_client() -> NavisionClient:
         # See navision_nav2018.py for the URL/field translation rules.
         from kwabo.integrations.navision_nav2018 import Nav2018ODataClient
         return Nav2018ODataClient()
+    if mode == "mirror":
+        # Read-only stub die masterdata-lookups uit de gesyncde lokale mirror
+        # leest i.p.v. de demo-seed — voor OFFLINE faithful matching-validatie
+        # zonder live NAV-creds en zonder demo-vervuiling. Geen productie-push.
+        from kwabo.integrations.navision_mirror import MirrorNavisionClient
+        return MirrorNavisionClient()
     raise ValueError(f"Unknown NAVISION_MODE: {mode}")
 
 

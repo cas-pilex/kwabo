@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { statusLabel } from "@/lib/status";
 import { OrderReview } from "./order-review";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             Order #{order.id} · {order.bestelnummer_klant || order.email_subject?.slice(0, 50)}
           </h1>
           <div className="mt-0.5 flex items-center gap-3 text-sm text-[var(--kwabo-muted)]">
-            <span>Status: <span className="font-medium">{order.status.replace("_", " ")}</span></span>
+            <span>Status: <span className="font-medium">{statusLabel(order.status)}</span></span>
             {parentId && (
               <Link
                 href={`/orders/${parentId}`}

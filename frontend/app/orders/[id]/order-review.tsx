@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import {
   api,
@@ -116,10 +116,13 @@ export function OrderReview({ order, items }: Props) {
       const r = await api.needsReview(order.id);
       setMissing(r.fields);
       setPreviewKey((k) => k + 1);
-    } catch {}
+    } catch (e) {
+      // Een stille catch liet de Refresh-knop (en alle onChanged-callbacks van
+      // ShipToPicker/Europallet/IncomingDocument) niets doen bij een fout —
+      // de reviewer zag dan geen reactie. Toon het wél.
+      toast.error(`Verversen mislukt: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
-
-  useEffect(() => { /* no-op on mount; rely on initial */ }, []);
 
   async function patch(path: string, value: unknown) {
     try {
@@ -173,7 +176,10 @@ export function OrderReview({ order, items }: Props) {
     setSaving(true);
     try {
       await api.reject(order.id, { reviewer: "dashboard", reason: "Manual reject" });
-      setMsg("Afgewezen");
+      // Prefix met ✓ zodat de inline-status groen kleurt (de kleurcheck op
+      // regel ~522 gebruikt msg.startsWith("✓")); zonder dit kleurde een
+      // geslaagde afwijzing rood alsof hij mislukte.
+      setMsg("✓ Afgewezen");
       toast.success("Order afgewezen");
       router.refresh();
     } catch (e) {

@@ -55,6 +55,11 @@ NAAM_ACCEPT = 90
 NAAM_GAP = 10
 NAAM_SHOW = 75
 
+# Brons die door een UNIEKE leverpostcode tot conf 1.0 (vlagvrij) mogen worden
+# bevestigd (DEEL A2). Bewust ZONDER 'leveradres_shipto' (agent/gedeelde mailbox)
+# en zonder 'email'/'domein_alias' (die hebben hun eigen confidence-regime).
+_LEVERADRES_BEVESTIGBARE_BRONNEN = {"naam_extract", "navision_name", "vestiging_leveradres"}
+
 
 def _extract_email(addr: str) -> str:
     m = EMAIL_RE.search(addr or "")
@@ -581,6 +586,35 @@ async def match_customer_node(state: OrderState) -> OrderState:
             if not match:
                 klant_kandidaten = vest_kandidaten
                 kandidaten_term = "leveradres-vestiging"
+
+    # DEEL A2 (review-kalibratie, 24-06): een NAAM-afgeleide match die
+    # ONAFHANKELIJK en UNIEK door het leveradres wordt bevestigd mag vlagvrij
+    # door. "Uniek" = de exacte leverpostcode komt in de HELE ship-to-master bij
+    # precies één klant voor, en dat is dezelfde klant. Twee onafhankelijke
+    # unieke signalen (naam + postcode) → veilig conf 1.0; bij een gedeelde
+    # postcode of een postcode die een ANDERE klant aanwijst blijft de
+    # CONTROLEER-vlag staan (grondwet: niet gokken). Beschermt zichzelf bij
+    # franchises (naam→overkoepelend vs postcode→vestiging wijken af → vuurt
+    # niet) en raakt bewust NIET het agent-/gedeelde-mailbox-pad
+    # (leveradres_shipto): umbrella-vs-vestiging blijft daar een reviewbeslissing.
+    if (match
+            and match.get("navision_klantnr") not in DEMO_NAV_KLANTNRS
+            and match.get("match_bron") in _LEVERADRES_BEVESTIGBARE_BRONNEN
+            and float(match.get("match_confidence") or 0) < 1.0):
+        pc_norm = _normalize_postcode((state.get("afleveradres") or {}).get("postcode"))
+        if pc_norm:
+            with Session(engine) as _s:
+                klanten_op_pc = ShipToRepo(_s).klant_nrs_by_postcode(pc_norm)
+            if klanten_op_pc == [match["navision_klantnr"]]:
+                match = {
+                    **match,
+                    "match_confidence": 1.0,
+                    "leveradres_bevestigd": True,
+                    "match_uitleg": (
+                        (match.get("match_uitleg") or match.get("match_bron"))
+                        + f" — onafhankelijk bevestigd door unieke leverpostcode {pc_norm}"
+                    ),
+                }
 
     warnings = list(state.get("validatie_warnings") or [])
     if forward_note:

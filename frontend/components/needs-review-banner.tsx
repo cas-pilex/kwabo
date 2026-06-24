@@ -5,12 +5,33 @@ const LABELS: Record<string, string> = {
   bestelnummer_klant: "Bestelnr klant",
   gewenste_leverdatum: "Leverdatum",
   afleveradres: "Afleveradres",
+  ship_to_gekozen: "Afleverpunt (ship-to)",
+  verzendwijze: "Verzendwijze",
+  afleverinstructies: "Afleverinstructies",
+  klantnaam_besteller: "Naam besteller",
 };
+
+// Leesbare labels voor regel-subvelden (anders toonde de chip de ruwe
+// JSON-padnaam, bv. "artikelnummer_kwabo_matched").
+const REGEL_VELD_LABELS: Record<string, string> = {
+  artikelnummer_kwabo_matched: "artikel",
+  artikelnummer_kwabo: "artikel",
+  hoeveelheid: "aantal",
+  eenheid: "eenheid",
+  leverdatum_regel: "leverdatum",
+};
+
+function regelVeld(veld: string): string {
+  return REGEL_VELD_LABELS[veld] ?? veld.replace(/_/g, " ");
+}
 
 function pretty(path: string): string {
   if (LABELS[path]) return LABELS[path];
+  // Eenheid-vlag heeft de vorm "verkoop_eenheid:<positie>".
+  const eh = path.match(/^verkoop_eenheid:(\d+)$/);
+  if (eh) return `Regel ${eh[1]} · eenheid`;
   const m = path.match(/^orderregels\[(\d+)\]\.(.+)$/);
-  if (m) return `Regel ${Number(m[1]) + 1} · ${m[2].replace(/_/g, " ")}`;
+  if (m) return `Regel ${Number(m[1]) + 1} · ${regelVeld(m[2])}`;
   return path;
 }
 
