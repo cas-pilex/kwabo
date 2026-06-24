@@ -96,11 +96,10 @@ Stap 1 is "mirror-first" (artikelkaart-mirror bevestigt bestaan zonder NAV). Sta
 goede mappings stil op `manual` → review-ruis. Fix-richting: bevestig bestaan via
 `ArtikelkaartRepo.get()` (mirror) met `nav.get_item` alleen als fallback — symmetrisch met stap 1.
 
-### C3 — Stale/contradictoire e-mail-alias
-De enige alias-rij mapt `@pontmeyer.nl → 61793` (label: "fix-ronde 11-06"). Dat is precies de
-**oude foute** TABS→PontMeyer-mapping die FASE1 corrigeerde. Een pontmeyer-domein-order kan
-hierdoor weer naar 61793 worden geduwd. Fix-richting: deze rij heroverwegen/verwijderen en de
-alias-tabel bewust vullen (of leeglaten) i.p.v. één stale relikwie.
+### C3 — e-mail-alias `@pontmeyer.nl → 61793` — INGETROKKEN (géén defect)
+Bij nader onderzoek (24-06) is 61793 = PontMeyer **Heerenveen** en is `heerenveen@pontmeyer.nl`
+zijn eigen adres; de alias is dus legitiem, niet stale. **Niet verwijderen.** (De TABS-orders komen
+van `@tabsholland.nl`, niet `@pontmeyer.nl`, dus de alias raakt ze niet eens.)
 
 ---
 
@@ -165,11 +164,22 @@ meetvalkuilen die ik eruit heb gefilterd:**
 | #516/#847 | 60103/61532 | 61502/61816 | Werkzeuge-Dietrich → Duitse eindklant (**Strecken**) |
 | #537 | 50000 | 50789 | BMN multi-vestiging |
 
-**Root cause (geverifieerd):** alle 6 zijn **agent-/distributeur-/multi-vestiging-orders** — de
-afzender-e-mail staat op géén klantenkaart; de order moet op leveradres naar een specifieke
-klant/vestiging. Dit is exact de **Strecken/dropship-disambiguatie** die deels is uitgesteld
-(funct1 DEEL B). **Allemaal gevlagd → géén stille fout**, maar mens en automatch kiezen een andere
-(vaak specifiekere) klant. ⇒ leest als "matching verkeerd" ÉN "te veel review" tegelijk.
+**Root cause (geverifieerd, met klant-namen uitgezocht 24-06):** de 6 splitsen in TWEE klassen:
+
+1. **PontMeyer (#121/#567/#833) — de CODE heeft gelijk, de mens vereenvoudigde.** 61793 = PontMeyer
+   *Heerenveen* (ship-to enkel 8447 GH). De leverpostcodes wijzen UNIEK naar de tak-accounts:
+   2571 AK→61047 (Den Haag-Loosduinseweg), 6827 DD→60995 (Arnhem), 2102 LL→61019 (Heemstede). De code
+   koos de juiste tak; de mens pushte alles naar Heerenveen 61793 (een vereenvoudiging die NAV accepteert
+   maar het verkeerde account = verkeerde prijsgroep/krediet). ⇒ **geen codefout.** De alias
+   `@pontmeyer.nl→61793` is Heerenveens eigen alias — **C3 is dus géén defect** (niet verwijderen).
+
+2. **Werkzeuge-Dietrich (#516/#847) — echte Strecken, business-regel nodig.** WD (Duitse distributeur)
+   bestelt en levert aan een eindklant. #516: levert aan Farbtex (71083); mens factureerde **60103 WD**
+   (de distributeur), code koos **61502 Farbtex** (het leveradres) → fout voor Strecken. #847: levert aan
+   se Huber Straubing (94315, gedeeld door 3 klanten); mens koos 61532, code koos 61816 (ándere se-Huber-
+   entiteit) → ambigu. De regel is zelfs in de mens-data **inconsistent** (#516→distributeur,
+   #847→eindklant), dus niet veilig af te leiden. **Allemaal gevlagd → géén stille fout**, maar dit
+   vereist een expliciete business-regel per distributeur-domein (factureer afzender vs. leveradres).
 
 **Eindstand graded (na correcte filtering): 0 bevestigde stille fouten.** Het systeem is grotendeels
 veilig (vlagt onzekerheid). De échte pijn = **review-volume op agent/distributeur/multi-vestiging-
