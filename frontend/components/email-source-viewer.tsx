@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
 
 type Bijlage = { naam: string; type: string; inhoud_tekst: string };
@@ -106,7 +107,8 @@ export function EmailSourceViewer({
       const url = await api.attachmentSignedUrl(orderId, current.naam, disposition);
       window.open(url, "_blank", "noopener,noreferrer");
     } catch (err) {
-      alert(`Kon bijlage niet openen: ${err instanceof Error ? err.message : String(err)}`);
+      // Consistent met de rest van de app (sonner-toast) i.p.v. een blokkerende alert().
+      toast.error(`Kon bijlage niet openen: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 

@@ -83,6 +83,34 @@ class KlantRepo:
             return matches[0]
         return None
 
+    def by_email_domain(self, email: str) -> list[Klantenkaart]:
+        """Alle klanten waarvan het email/email_bestelling-veld het DOMEIN van
+        `email` bevat (token-geverifieerd). Een agent-/groepsmailbox (TABS:
+        supplychain@/confirmation@tabsholland.nl) deelt zo één domein over veel
+        vestigingen/merken. De caller herkent 'gedeeld' aan de telling en
+        disambigueert dan op het leveradres i.p.v. een lukrake kaart te pakken."""
+        if not email or "@" not in email:
+            return []
+        domain = email.rsplit("@", 1)[1].strip().lower()
+        if not domain:
+            return []
+        like = f"%@{domain}%"
+        rows = self.s.exec(
+            select(Klantenkaart).where(
+                func.lower(Klantenkaart.email).like(like)
+                | func.lower(Klantenkaart.email_bestelling).like(like)
+            )
+        ).all()
+        out: list[Klantenkaart] = []
+        for c in rows:
+            domains = {
+                e.rsplit("@", 1)[1]
+                for e in (_split_emails(c.email) | _split_emails(c.email_bestelling))
+            }
+            if domain in domains:
+                out.append(c)
+        return out
+
     def by_domain_alias(self, email: str) -> list[Klantenkaart]:
         """Klanten met een domein-alias ("@pontmeyer.nl"-rij in
         klant_email_aliases) dat het domein van `email` dekt. Bewust een
@@ -455,6 +483,23 @@ class ShipToRepo:
                 select(KlantenkaartShipTo).where(KlantenkaartShipTo.klant_nr == klant_nr)
             ).all()
         )
+
+    def klant_nrs_by_postcode(self, postcode_norm: str) -> list[str]:
+        """Distincte klant_nrs met een ship-to op deze EXACTE (genormaliseerde:
+        kleine letters, spaties weg) postcode. Voor de unieke-leveradres-
+        bevestiging in match_customer: een postcode die bij precies één klant
+        hoort identificeert die klant ONAFHANKELIJK van de naam. Normalisatie
+        spiegelt select_ship_to._normalize_postcode."""
+        if not postcode_norm:
+            return []
+        rows = self.s.exec(
+            select(KlantenkaartShipTo.klant_nr, KlantenkaartShipTo.postcode)
+        ).all()
+        out: list[str] = []
+        for knr, pc in rows:
+            if "".join((pc or "").split()).lower() == postcode_norm:
+                out.append(knr)
+        return list(dict.fromkeys(out))
 
     def upsert(self, record: KlantenkaartShipTo) -> KlantenkaartShipTo:
         existing = self.s.get(

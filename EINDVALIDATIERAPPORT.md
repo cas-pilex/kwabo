@@ -138,6 +138,23 @@ Voor Nico — geen jargon. Na deploy van deze versie + de NAV-sync (Cas doet sta
    Eindcontrole na de fix-ronde: volledige suite 593 passed / 17 skipped (was 586 — 7 nieuwe tests).
 8. **ADMIN_PASSWORD beschikbaar voor probes** zodat S3/S4-endpoints (health-summary, db-counts, config/storage_active) ook scripted gecheckt kunnen worden.
 
+### 5.8 CHECKPOINT FUNCTIE 7 — inkomend document (17-06) → **GO**
+
+Vier vragen, beantwoord:
+
+1. **Nog 404? Code of partner?** → **Partner-actie, by design.** De skip is bewust (`navision_nav2018.py:622-651`); de flag `nav2018_incoming_document_enabled` staat default uit (`config.py:105-111`). De page `PLX_IncomingDocument` is door de NAV-partner (nog) niet via OData gepubliceerd — er is geen codefout. *Verse live-diagnose:* `GET /api/diagnostics/nav/services` tegen prod (de endpoint vereist een admin-Bearer; uit te voeren met `ADMIN_PASSWORD`). Verwacht: `PLX_IncomingDocument` ontbreekt in `names[]` ⇒ 404 bevestigd. (Een `401` i.p.v. `404` zou juist een permissie- i.p.v. publicatie-kwestie zijn.)
+2. **Ziet Nico de banner per order?** → **Ja, getest.** `SourceDocLinkBanner.tsx` rendert bovenaan de order-review zodra de warning met prefix *"Bron-document is NIET …"* aanwezig is (gezet in `push_navision.py:51-68`, gepersist op `row.warnings`, meegestuurd in `GET /api/orders/{id}`). Bewijs: `tests/test_push_navision_attachment_warning.py` (4 passed) + de end-to-end banner-keten in het nieuwe verify-script.
+3. **Composer-pad klaar + getest?** → **Ja.** De composer emit de drie ops (`navision_steps.py:332-371`), de real-NAV client implementeert ze (`navision_real.py:345-405`) en de placeholder-substitutie is gewired (`nav_operations.py`). De nav2018-translate-regel is bewust **niet** gewired: zodra de flag aanstaat valt de op door naar `_translate_path` en faalt **LUID** (`ValueError`), nooit een stille skip.
+4. **OPS-formulering voor Cas (richting NAV-partner):**
+   - Publiceer een OData-page **`PLX_IncomingDocument`** (entityset) op het NAV 2018 ODataV4-endpoint, onder dezelfde company/web-service-set als `PLX_SalesOrder`.
+   - Velden minimaal: `description`, `vendorName`; een koppelveld **`incomingDocumentNumber`** op `PLX_SalesOrder`; en een **attachments**-subresource (`/incomingDocuments({id})/attachments`) die een bestand accepteert (`fileName` + content) — exact de drie ops uit `navision_steps.py` / `navision_real.py`.
+   - Verifieerbaar: de naam moet verschijnen in `GET /api/diagnostics/nav/services` → `names[]`.
+   - Pas dán aan onze kant: env `NAV2018_INCOMING_DOCUMENT_ENABLED=true` **én** een translate-regel toevoegen in `navision_nav2018.py` (`_translate_path`). Zonder die regel faalt het bewust luid — geen stille schade.
+
+**Verse parity-verificatie:** nieuw script `scripts/verify_funct7_incoming_document.py` (deterministisch, geen netwerk, gestubde transport) bewijst A) flag-uit → 3 incoming-doc-ops overgeslagen + header/regel-ops zonder error, B) flag-aan → incoming-doc-op faalt luid met `error`, C) de skip-marker levert exact de banner-tekst op waar `SourceDocLinkBanner.tsx` op rendert. **RESULTAAT: ALLES GROEN.**
+
+**Oordeel:** op de twee harde criteria — *(a)* helder dat dit een partner-actie is en *(b)* zichtbaar voor Nico i.p.v. stil — staat het op **GO**. Enige openstaande handeling: de verse `nav/services`-probe met `ADMIN_PASSWORD` draaien om de afwezigheid van de page vandaag vast te leggen; valt die onverwacht uit (page bestaat al / `401`), dan herzien we vraag 1.
+
 ---
 
 ## 6. EERLIJKHEIDSPARAGRAAF — wat dit rapport NIET bewijst

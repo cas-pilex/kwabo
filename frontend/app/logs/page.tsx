@@ -11,7 +11,6 @@ export default function LogsPage() {
 
   // Initial tail fetch
   useEffect(() => {
-    console.log("[logs] useEffect init fetch");
     (async () => {
       try {
         const token = await getAuthToken();
@@ -19,10 +18,8 @@ export default function LogsPage() {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
         const d = await r.json();
-        console.log("[logs] got", d?.lines?.length, "lines");
         setLines(d.lines || []);
-      } catch (e) {
-        console.error("[logs] fetch err", e);
+      } catch {
         setLines([`[frontend] kan niet verbinden met ${API_BASE}`]);
       }
     })();

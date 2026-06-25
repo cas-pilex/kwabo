@@ -44,6 +44,18 @@ _screenshots/
 frontend/package-lock.json
 package-lock.json
 
+# scratch: per-ronde werkmappen + diagnose-probes (underscore-prefix = wegwerp)
+backend/_*/
+backend/scripts/_*.py
+# roterende logs (*.log dekt kwabo.log.1/.2 niet)
+*.log.[0-9]*
+# lokale verificatie-dumps + screenshots in repo-root
+/*_output.txt
+/checkpoint-*.png
+/*.jpeg
+# runtime incoming-document spool
+data/incoming_documents/
+
 # OS / editor
 .DS_Store
 .coverage

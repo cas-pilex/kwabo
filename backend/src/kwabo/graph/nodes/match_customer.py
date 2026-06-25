@@ -10,7 +10,7 @@ from kwabo.utils import utcnow
 from rapidfuzz import fuzz, process
 from sqlmodel import Session
 
-from kwabo.db.repository import KlantRepo
+from kwabo.db.repository import KlantRepo, ShipToRepo
 from kwabo.db.seed import DEMO_NAV_KLANTNRS
 from kwabo.db.session import engine
 from kwabo.graph.state import OrderState
@@ -21,8 +21,15 @@ from kwabo.integrations.navision_api import NavisionClient, get_navision_client
 from kwabo.graph.nodes.select_ship_to import (
     _normalize_postcode,
     _order_signal_text,
+    _score_ship_to,
     _word_in,
 )
+
+# Een afzenderdomein dat op dit aantal (of meer) DISTINCTE klantenkaarten staat
+# is een agent-/groepsmailbox (TABS: ~98 klanten op tabsholland.nl). De bare
+# e-mailmatch is dan geen betrouwbaar klant-signaal — disambigueer op het
+# leveradres via de ship-to-master.
+SHARED_MAILBOX_MIN_KLANTEN = 3
 from kwabo.utils.logging import log
 
 EMAIL_RE = re.compile(r"[\w\.\-\+]+@[\w\.\-]+")
@@ -47,6 +54,11 @@ PORTAL_DOMAINS = {"zevij-necomij.com", "orders.nl"}
 NAAM_ACCEPT = 90
 NAAM_GAP = 10
 NAAM_SHOW = 75
+
+# Brons die door een UNIEKE leverpostcode tot conf 1.0 (vlagvrij) mogen worden
+# bevestigd (DEEL A2). Bewust ZONDER 'leveradres_shipto' (agent/gedeelde mailbox)
+# en zonder 'email'/'domein_alias' (die hebben hun eigen confidence-regime).
+_LEVERADRES_BEVESTIGBARE_BRONNEN = {"naam_extract", "navision_name", "vestiging_leveradres"}
 
 
 def _extract_email(addr: str) -> str:
@@ -267,6 +279,67 @@ def _correct_vestiging_op_leveradres(
     return None, vest
 
 
+def _gedeelde_mailbox_kandidaten(groep: list) -> list[dict]:
+    return [
+        {
+            "navision_klantnr": k.nav_klantnr,
+            "klantnaam": k.naam,
+            "plaats": k.plaats,
+            "score": None,
+            "bron": "gedeelde_mailbox",
+        }
+        for k in groep[:8]
+    ]
+
+
+def _disambiguate_shared_mailbox(
+    session, groep: list, state: dict
+) -> tuple[dict | None, list[dict]]:
+    """Agent-/groepsmailbox (TABS): kies de klant op het LEVERADRES via de
+    ship-to-adressen van de groep. De klantenkaarten zelf hebben vaak geen
+    plaats/postcode (customers-sync vult ze niet), dus we scoren tegen de
+    ship-to-master (postcode > plaats > naam > straat, zoals select_ship_to).
+
+    Uniek hoogst (met leveradres-match) → match (conf 0.9 + CONTROLEER); geen
+    leveradres-signaal of geen unieke winnaar → kandidaten (nooit gokken,
+    grondwet 5). #954: supplychain@tabsholland.nl → leveradres Jongeneel
+    Woerden 3449 JE wijst 50094 aan, niet de e-mailkaart 61793.
+    """
+    afleveradres = state.get("afleveradres") or {}
+    if not (afleveradres.get("postcode") or afleveradres.get("naam")
+            or afleveradres.get("straat")):
+        return None, _gedeelde_mailbox_kandidaten(groep)
+
+    shipto_repo = ShipToRepo(session)
+    scored: list[tuple] = []
+    for k in groep:
+        ship_tos = shipto_repo.list_for_klant(k.nav_klantnr)
+        best = max((_score_ship_to(st, afleveradres) for st in ship_tos), default=0)
+        scored.append((k, best))
+    scored.sort(key=lambda x: x[1], reverse=True)
+    top_k, top_score = scored[0]
+    second = scored[1][1] if len(scored) > 1 else 0
+
+    if top_score > 0 and top_score > second:
+        uitleg = (
+            f"gedeelde mailbox — gekozen op leveradres "
+            f"{_leveradres_descriptor(afleveradres)} via ship-to van '{top_k.naam}'"
+        )
+        return _naam_match_dict(top_k, 0.9, bron="leveradres_shipto", uitleg=uitleg), []
+
+    kandidaten = [
+        {
+            "navision_klantnr": k.nav_klantnr,
+            "klantnaam": k.naam,
+            "plaats": k.plaats,
+            "score": round(sc, 1) if sc else None,
+            "bron": "gedeelde_mailbox",
+        }
+        for k, sc in scored if sc > 0
+    ][:8]
+    return None, (kandidaten or _gedeelde_mailbox_kandidaten(groep))
+
+
 def _extract_domain_name(addr: str) -> str:
     email = _extract_email(addr)
     if not email:
@@ -366,11 +439,26 @@ async def match_customer_node(state: OrderState) -> OrderState:
 
     nav: NavisionClient = get_navision_client()
     match = None
+    # Gedeelde/agent-mailbox (TABS #954): als het afzenderDOMEIN op veel
+    # klantenkaarten staat, is een exacte e-mailmatch GEEN betrouwbaar
+    # klant-signaal — ook niet als die mailbox op precies één kaart staat
+    # (supplychain@tabsholland.nl → 61793). Disambigueer dan op het leveradres.
+    shared_mailbox = False
+    shared_kandidaten: list[dict] = []
+    shared_term: str | None = None
 
     with Session(engine) as s:
         repo = KlantRepo(s)
         klant = repo.by_email(effective_email) if effective_email else None
-        if klant:
+        groep = repo.by_email_domain(effective_email) if effective_email else []
+        if len({k.nav_klantnr for k in groep}) >= SHARED_MAILBOX_MIN_KLANTEN:
+            shared_mailbox = True
+            shared_term = (
+                "@" + effective_email.rsplit("@", 1)[1]
+                if "@" in effective_email else effective_email
+            )
+            match, shared_kandidaten = _disambiguate_shared_mailbox(s, groep, state)
+        elif klant:
             match = {
                 "navision_klantnr": klant.nav_klantnr,
                 "klantnaam": klant.naam,
@@ -388,7 +476,7 @@ async def match_customer_node(state: OrderState) -> OrderState:
     ambiguous_candidates: list[dict] | None = None
     ambiguous_term: str | None = None
 
-    if not match and effective_email:
+    if not match and effective_email and not shared_mailbox:
         res = await nav.search_customers(email=effective_email)
         chosen, ambiguous, matched_on = _pick_customer(res, state)
         if chosen:
@@ -411,7 +499,7 @@ async def match_customer_node(state: OrderState) -> OrderState:
     # bij meerdere alias-klanten alleen een kandidatenlijst.
     klant_kandidaten: list[dict] = []
     kandidaten_term: str | None = None
-    if not match and ambiguous_candidates is None and effective_email:
+    if not match and ambiguous_candidates is None and effective_email and not shared_mailbox:
         with Session(engine) as s:
             alias_klanten = KlantRepo(s).by_domain_alias(effective_email)
         if len(alias_klanten) == 1:
@@ -447,13 +535,15 @@ async def match_customer_node(state: OrderState) -> OrderState:
         (state.get("klantnaam_besteller") or "").strip()
         or (fwd.original_from_name or "").strip()
     )
-    if not match and ambiguous_candidates is None and not klant_kandidaten and naam_signaal:
+    if (not match and ambiguous_candidates is None and not klant_kandidaten
+            and naam_signaal and not shared_mailbox):
         match, klant_kandidaten = _match_by_name(
             naam_signaal, state.get("afleveradres") or {}, _order_signal_text(state)
         )
         kandidaten_term = naam_signaal
 
-    if not match and ambiguous_candidates is None and not klant_kandidaten:
+    if (not match and ambiguous_candidates is None and not klant_kandidaten
+            and not shared_mailbox):
         # Name fuzzy search via Nav — gebruik forward-domein indien aanwezig.
         # K4: pure doorstuur-portalen overslaan — hun domein noemt nooit de
         # klant, dus elke hit zou per definitie fout zijn.
@@ -478,16 +568,53 @@ async def match_customer_node(state: OrderState) -> OrderState:
                 ambiguous_candidates = res
                 ambiguous_term = domain
 
+    # Gedeelde mailbox zonder unieke leveradres-winnaar → toon de groepskandidaten
+    # (geen lukrake confidente pick). #954.
+    if shared_mailbox and not match and not klant_kandidaten:
+        klant_kandidaten = shared_kandidaten
+        kandidaten_term = shared_term
+
     # DEEL A (uitbreiding): vestiging-correctie op leveradres — geldt voor ELKE
     # match (ook e-mail conf 1.0). Idempotent voor de K3-naam-match die al op het
     # leveradres koos. #834: agent-mail op de verkeerde vestiging → leveradres leidt.
-    if match:
+    # Een leveradres_shipto-match (gedeelde mailbox) is al op het leveradres
+    # gekozen — niet nog eens corrigeren.
+    if match and (match or {}).get("match_bron") != "leveradres_shipto":
         corrected, vest_kandidaten = _correct_vestiging_op_leveradres(match, state)
         if corrected is not match:
             match = corrected
             if not match:
                 klant_kandidaten = vest_kandidaten
                 kandidaten_term = "leveradres-vestiging"
+
+    # DEEL A2 (review-kalibratie, 24-06): een NAAM-afgeleide match die
+    # ONAFHANKELIJK en UNIEK door het leveradres wordt bevestigd mag vlagvrij
+    # door. "Uniek" = de exacte leverpostcode komt in de HELE ship-to-master bij
+    # precies één klant voor, en dat is dezelfde klant. Twee onafhankelijke
+    # unieke signalen (naam + postcode) → veilig conf 1.0; bij een gedeelde
+    # postcode of een postcode die een ANDERE klant aanwijst blijft de
+    # CONTROLEER-vlag staan (grondwet: niet gokken). Beschermt zichzelf bij
+    # franchises (naam→overkoepelend vs postcode→vestiging wijken af → vuurt
+    # niet) en raakt bewust NIET het agent-/gedeelde-mailbox-pad
+    # (leveradres_shipto): umbrella-vs-vestiging blijft daar een reviewbeslissing.
+    if (match
+            and match.get("navision_klantnr") not in DEMO_NAV_KLANTNRS
+            and match.get("match_bron") in _LEVERADRES_BEVESTIGBARE_BRONNEN
+            and float(match.get("match_confidence") or 0) < 1.0):
+        pc_norm = _normalize_postcode((state.get("afleveradres") or {}).get("postcode"))
+        if pc_norm:
+            with Session(engine) as _s:
+                klanten_op_pc = ShipToRepo(_s).klant_nrs_by_postcode(pc_norm)
+            if klanten_op_pc == [match["navision_klantnr"]]:
+                match = {
+                    **match,
+                    "match_confidence": 1.0,
+                    "leveradres_bevestigd": True,
+                    "match_uitleg": (
+                        (match.get("match_uitleg") or match.get("match_bron"))
+                        + f" — onafhankelijk bevestigd door unieke leverpostcode {pc_norm}"
+                    ),
+                }
 
     warnings = list(state.get("validatie_warnings") or [])
     if forward_note:
@@ -584,7 +711,7 @@ async def match_customer_node(state: OrderState) -> OrderState:
         "source": (
             "klantenkaart" if bron in (
                 "email", "forward_email", "naam_extract", "domein_alias",
-                "vestiging_leveradres",
+                "vestiging_leveradres", "leveradres_shipto",
             )
             else "navision" if bron and bron.startswith("navision_")
             else "missing"

@@ -18,12 +18,26 @@ from kwabo.utils.eenheid_resolve import resolve_line_uom
 from kwabo.utils.logging import log
 
 
+async def _artikel_bestaat(art_repo: ArtikelkaartRepo, nav: NavisionClient, nr: str) -> bool:
+    """Mirror-first bestaanscheck (C2, 24-06): de gesyncde artikelkaart-mirror
+    bewijst dat het artikel bestaat zónder NAV-round-trip — symmetrisch met
+    stap 1. Alleen bij een mirror-miss vragen we live NAV. Vóór deze fix
+    gate'den stap 2/3/4 (kruisverwijzing/klantenkaart/history) op een live
+    `nav.get_item`, óók als de mirror het artikel al kende: NAV-traagheid/-storing
+    of een niet-in-NAV-zichtbaar artikel zette dan een geldige klant-mapping
+    stil op `manual` (gemeten op echte prod-data, order #941)."""
+    if art_repo.get(nr) is not None:
+        return True
+    return bool(await nav.get_item(nr))
+
+
 async def _match_single(
     regel: dict, klant_nr: str | None, nav: NavisionClient, s: Session
 ) -> OrderRegel:
     """Match één regel. `s` is de regel-eigen DB-sessie (Fase 4 C2: één
     sessie per regel i.p.v. drie — de aanroeper opent en sluit hem)."""
     result: OrderRegel = dict(regel)
+    art_repo = ArtikelkaartRepo(s)
 
     # 1) Exact Kwabo-nummer vermeld en bestaat in Nav
     kw = regel.get("artikelnummer_kwabo")
@@ -33,13 +47,7 @@ async def _match_single(
         # expliciet kwabo-artnr. Cache-miss (artikel niet gesynced, of mirror
         # leeg) valt door naar live NAV zodat nieuwe artikelen niet onnodig
         # de fuzzy-cascade in gaan.
-        if ArtikelkaartRepo(s).get(kw) is not None:
-            result["artikelnummer_kwabo_matched"] = kw
-            result["match_confidence"] = 1.0
-            result["match_methode"] = "exact"
-            return result
-        item = await nav.get_item(kw)
-        if item:
+        if await _artikel_bestaat(art_repo, nav, kw):
             result["artikelnummer_kwabo_matched"] = kw
             result["match_confidence"] = 1.0
             result["match_methode"] = "exact"
@@ -61,7 +69,7 @@ async def _match_single(
             KruisverwijzingRepo(s).lookup(klant_nr, ka) is not None
             or ArtikelRepo(s).mapping(klant_nr, ka) is not None
         )
-        if not expliciete_mapping and ArtikelkaartRepo(s).get(ka) is not None:
+        if not expliciete_mapping and art_repo.get(ka) is not None:
             result["artikelnummer_kwabo_matched"] = ka
             # Zonder klant_nr is de afwezigheid van een kruisverwijzing
             # niet verifieerbaar → onder de review-drempel (0.85) zodat de
@@ -77,7 +85,7 @@ async def _match_single(
         # so it takes precedence over klantenkaart and history.
         kv_repo = KruisverwijzingRepo(s)
         kv_kwabo = kv_repo.lookup(klant_nr, regel["artikelnummer_klant"])
-        if kv_kwabo and await nav.get_item(kv_kwabo):
+        if kv_kwabo and await _artikel_bestaat(art_repo, nav, kv_kwabo):
             result["artikelnummer_kwabo_matched"] = kv_kwabo
             result["match_confidence"] = 0.95
             result["match_methode"] = "kruisverwijzing"
@@ -86,14 +94,14 @@ async def _match_single(
         repo = ArtikelRepo(s)
         # 3) Klantenkaart mapping
         mapping = repo.mapping(klant_nr, regel["artikelnummer_klant"])
-        if mapping and await nav.get_item(mapping.kwabo_artikelnr):
+        if mapping and await _artikel_bestaat(art_repo, nav, mapping.kwabo_artikelnr):
             result["artikelnummer_kwabo_matched"] = mapping.kwabo_artikelnr
             result["match_confidence"] = 0.9
             result["match_methode"] = "klantenkaart"
             return result
         # 4) History
         hist = repo.best_history(klant_nr, regel["artikelnummer_klant"])
-        if hist and await nav.get_item(hist.kwabo_artikelnr):
+        if hist and await _artikel_bestaat(art_repo, nav, hist.kwabo_artikelnr):
             result["artikelnummer_kwabo_matched"] = hist.kwabo_artikelnr
             result["match_confidence"] = 0.95
             result["match_methode"] = "history"

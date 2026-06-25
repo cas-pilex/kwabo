@@ -1,0 +1,508 @@
+{
+  "order_id": 802,
+  "email_from": "Dennis Reus <Dennis.Reus@pontmeyer.nl>",
+  "email_subject": "Bestelling",
+  "status": "review",
+  "order_state": {
+    "email_id": "AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAAZcAaRAAA=",
+    "email_from": "Dennis Reus <Dennis.Reus@pontmeyer.nl>",
+    "email_subject": "Bestelling",
+    "email_body": "Goedemorgen,\r\n\r\nZie bijlage.\r\n\r\nGaarne zsm bezorgen aub.\r\n\r\nMet vriendelijke groet,\r\nDennis Reus\r\nVestigingsmanager Zwaag\r\n\r\n\r\n[cid:image001.jpg@01DCFCAC.9FACAAE0]\r\nPontMeyer Zwaag\r\nDe Factorij 23,\r\n1689 AK Zwaag\r\nKvK: 35028311\r\ntel: 0229-212300\r\nMob. 06-53851840\r\nemail Zwaag@Pontmeyer.nl<mailto:Zwaag@Pontmeyer.nl> www.pontmeyer.nl<http://www.pontmeyer.nl/>\r\n[cid:image002.jpg@01DCFCAC.9FACAAE0]<https://www.linkedin.com/company/pontmeyer>\r\n[cid:image003.jpg@01DCFCAC.9FACAAE0]<https://www.facebook.com/pontmeyer1>\r\n\r\n\r\n\r\nVan: noreply@pontmeyer.nl <noreply@pontmeyer.nl>\r\nVerzonden: maandag 15 juni 2026 09:50\r\nAan: Dennis Reus <Dennis.Reus@pontmeyer.nl>\r\nOnderwerp: Attached Image\r\n\r\n\r\n",
+    "email_date": "Mon, 15 Jun 2026 07:52:08 +0000",
+    "bijlagen": [
+      {
+        "naam": "3769_001.pdf",
+        "type": "pdf",
+        "inhoud_tekst": "--- PAGE 1 ---\nBladzij\n1t t\nKwabo Techniek B.V. Bestelnummer/datum\nVia Ferney 4506868861 I 15.06.2026\nPostbus 266 Afdelingitelefoon\n1130AG VOLENDAM Zwaag 1O229-2123OO\nTelnr:0299-361 OO1 Ons Email\nE-mail:info@kwabo.nl zwaag@pontmeyer.nl\nAangelegd door\nDennis Reus\nUw leveranciersnummer bij ons\n28553\n1\n84223 PontMeyer Zwaag TABS Holland B.V.\nDe Factorij 23 Zwaag ( BA 223t.\n1689 AK ZWAAG Postbus 2206\n15OOGE ZAANDAM\nLevertermijn 18.06.2026\nAflevercond.: CPT aan huis\nValuta: EUR\nBij levering en facturering gelieve het bestelnummer te vermelden.\nGeachte leverancier LET OP: uitsluitend lossen tussen 7.OO en 15.30 uur\nPos.\nArtikel Omschrijving\nBestelhoevh Eenheid Prijs per eenheid Nettowaarde\n00010 K700100088 tfc top coat premium afdekvlies\n670mm rol a 25m2\n33\nstuks\nUw artikelnummer: 238601\nEuropees arti kelnummer : 871 99561 54805\n25,35\nBrutoprijs EUR ST 836,55\n1\n23,10\nNettowaarde incl EUR ST 762,30\n00020\nK700100093 tfc top coat premium afdekvlies\nl OOOmm rol a 25m2\n45\nstuks\nUw artikelnummer: 238531\nEuropees artikelnummer 8718347525538\n:\nBrutoprijs 24,8O EUR 1ST 1 .1 1 6,00\nNettowaarde incl 22,55 EUR 1ST 1.O14,75\nTotale nettowaarde excl. BTW EUR 1.777,O5"
+      }
+    ],
+    "source_path": "graph://AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAAZcAaRAAA=",
+    "is_order": true,
+    "classificatie_reden": "E-mail bevat bestelling met bijlage (3769_001.pdf) met bestelnummer 4506868861 van PontMeyer aan Kwabo Techniek B.V.",
+    "classificatie_confidence": 0.95,
+    "taal": "NL",
+    "klantnaam_besteller": "PontMeyer Zwaag",
+    "bestelnummer_klant": "4506868861",
+    "orderdatum": "2026-06-15",
+    "gewenste_leverdatum": "2026-06-18",
+    "afleveradres": {
+      "naam": "BA223 PontMeyer Zwaag",
+      "straat": "De Factorij 23",
+      "postcode": "1689 AK",
+      "plaats": "ZWAAG",
+      "land": "NL"
+    },
+    "afleverinstructies": "CPT aan huis, uitsluitend lossen tussen 7.00 en 15.30 uur",
+    "orderregels": [
+      {
+        "positie": 1,
+        "artikelnummer_klant": "K700100088",
+        "artikelnummer_kwabo": "238601",
+        "omschrijving": "tfc top coat premium afdekvlies 670mm rol a 25m2",
+        "hoeveelheid": 33.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": 23.1,
+        "ean_code": "8719956154805",
+        "leverdatum_regel": null,
+        "opmerkingen": null,
+        "artikelnummer_kwabo_matched": "238601",
+        "match_confidence": 1.0,
+        "match_methode": "exact",
+        "eenheid_origineel": "STUK",
+        "eenheid_default": "STUK",
+        "verkoop_uom_gekozen": "STUK",
+        "verkoop_aantal": 33.0,
+        "prijs_validated": null
+      },
+      {
+        "positie": 2,
+        "artikelnummer_klant": "K700100093",
+        "artikelnummer_kwabo": "238531",
+        "omschrijving": "tfc top coat premium afdekvlies 1000mm rol a 25m2",
+        "hoeveelheid": 45.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": 22.55,
+        "ean_code": "8718347525538",
+        "leverdatum_regel": null,
+        "opmerkingen": null,
+        "artikelnummer_kwabo_matched": "238531",
+        "match_confidence": 1.0,
+        "match_methode": "exact",
+        "eenheid_origineel": "STUK",
+        "eenheid_default": "STUK",
+        "verkoop_uom_gekozen": "STUK",
+        "verkoop_aantal": 45.0,
+        "prijs_validated": null
+      }
+    ],
+    "opmerkingen": "Gaarne zsm bezorgen aub",
+    "klant_match": {
+      "navision_klantnr": "61793",
+      "klantnaam": "PontMeyer Heerenveen",
+      "match_confidence": 0.9,
+      "match_bron": "domein_alias",
+      "is_4plus": false,
+      "kredietlimiet": 0.0,
+      "betalingsconditie": "14DAG2%"
+    },
+    "klant_kandidaten": [],
+    "alle_artikelen_gematcht": true,
+    "alle_prijzen_valide": true,
+    "validatie_warnings": [
+      "⚠ KLANT IS GEEN 4+ LID — controleer aankoopvoorwaarden",
+      "Geen prijsafspraak in DB voor regel 1 (238601) — prijs €23.1 uit de mail wordt 1-op-1 doorgezet.",
+      "Geen prijsafspraak in DB voor regel 2 (238531) — prijs €22.55 uit de mail wordt 1-op-1 doorgezet."
+    ],
+    "review_status": "pending",
+    "ship_to_kandidaten": [
+      {
+        "klant_nr": "61793",
+        "ship_to_code": "8447 GH",
+        "naam": "PontMeyer Heerenveen",
+        "straat": "Skrynmakker 17",
+        "postcode": "8447 GH",
+        "plaats": "HEERENVEEN",
+        "land": "NL",
+        "is_default": false
+      }
+    ],
+    "ship_to_gekozen": "8447 GH",
+    "mixprijzen_actief": false,
+    "order_mix_total_pallets": null,
+    "europallet_regel": null,
+    "incoming_document_storage_key": "by_email_id/AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1h-44a19e81b1baa2df.eml",
+    "stappen_log": [
+      {
+        "stap": "intake",
+        "timestamp": "2026-06-15T07:54:10.152938+00:00",
+        "beslissing": "E-mail opgehaald, 1 bijlagen geëxtraheerd",
+        "details": {
+          "bijlage_namen": [
+            "3769_001.pdf"
+          ]
+        }
+      },
+      {
+        "stap": "classify",
+        "timestamp": "2026-06-15T07:54:12.570685+00:00",
+        "beslissing": "ORDER (conf=0.95)",
+        "details": {
+          "is_order": true,
+          "reden": "E-mail bevat bestelling met bijlage (3769_001.pdf) met bestelnummer 4506868861 van PontMeyer aan Kwabo Techniek B.V.",
+          "confidence": 0.95
+        }
+      },
+      {
+        "stap": "extract",
+        "timestamp": "2026-06-15T07:54:39.626842+00:00",
+        "beslissing": "Geëxtraheerd: 2 regels, taal=NL, 0 velden needs_review",
+        "details": {
+          "bestelnummer": "4506868861",
+          "multi_orders": 1
+        }
+      },
+      {
+        "stap": "match_customer",
+        "timestamp": "2026-06-15T07:54:41.744155+00:00",
+        "beslissing": "Klant gematcht: 61793 (domein_alias)",
+        "details": {
+          "navision_klantnr": "61793",
+          "klantnaam": "PontMeyer Heerenveen",
+          "match_confidence": 0.9,
+          "match_bron": "domein_alias",
+          "is_4plus": false,
+          "kredietlimiet": 0.0,
+          "betalingsconditie": "14DAG2%"
+        }
+      },
+      {
+        "stap": "match_articles",
+        "timestamp": "2026-06-15T07:54:44.192519+00:00",
+        "beslissing": "2/2 regels gematcht",
+        "details": {
+          "per_methode": {
+            "exact": 2,
+            "exact_klantnr": 0,
+            "kruisverwijzing": 0,
+            "klantenkaart": 0,
+            "history": 0,
+            "fuzzy": 0,
+            "manual": 0
+          }
+        }
+      },
+      {
+        "stap": "validate_prices",
+        "timestamp": "2026-06-15T07:54:46.659599+00:00",
+        "beslissing": "0/2 prijzen ok",
+        "details": {
+          "warnings_new": [
+            "Geen prijsafspraak in DB voor regel 1 (238601) — prijs €23.1 uit de mail wordt 1-op-1 doorgezet.",
+            "Geen prijsafspraak in DB voor regel 2 (238531) — prijs €22.55 uit de mail wordt 1-op-1 doorgezet."
+          ]
+        }
+      }
+    ],
+    "errors": [],
+    "_meta": {
+      "taal": {
+        "value": "NL",
+        "source": "pdf",
+        "source_detail": "3769_001.pdf p.1 document taal",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "klantnaam_besteller": {
+        "value": "PontMeyer Zwaag",
+        "source": "pdf",
+        "source_detail": "3769_001.pdf p.1 header 'BA223 PontMeyer Zwaag'",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "bestelnummer_klant": {
+        "value": "4506868861",
+        "source": "pdf",
+        "source_detail": "3769_001.pdf p.1 header 'Bestelnummer/datum'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "orderdatum": {
+        "value": "2026-06-15",
+        "source": "pdf",
+        "source_detail": "3769_001.pdf p.1 header 'Bestelnummer/datum'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "gewenste_leverdatum": {
+        "value": "2026-06-18",
+        "source": "pdf",
+        "source_detail": "3769_001.pdf p.1 header 'Levertermijn'",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "afleveradres": {
+        "value": {
+          "naam": "BA223 PontMeyer Zwaag",
+          "straat": "De Factorij 23",
+          "postcode": "1689 AK",
+          "plaats": "ZWAAG",
+          "land": "NL"
+        },
+        "source": "pdf",
+        "source_detail": "3769_001.pdf p.1 section 'Afleveradres'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "afleverinstructies": {
+        "value": "CPT aan huis, uitsluitend lossen tussen 7.00 en 15.30 uur",
+        "source": "pdf",
+        "source_detail": "3769_001.pdf p.1 header en instructietekst",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "opmerkingen": {
+        "value": "Gaarne zsm bezorgen aub",
+        "source": "email_body",
+        "source_detail": "email body van Dennis Reus",
+        "confidence": 0.9,
+        "needs_review": false
+      },
+      "orderregels": [
+        {
+          "artikelnummer_klant": {
+            "value": "K700100088",
+            "source": "pdf",
+            "source_detail": "3769_001.pdf p.1 pos. 00010 col 'Artikel'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": "238601",
+            "source": "pdf",
+            "source_detail": "3769_001.pdf p.1 pos. 00010 'Uw artikelnummer' | cleared by match",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "omschrijving": {
+            "value": "tfc top coat premium afdekvlies 670mm rol a 25m2",
+            "source": "pdf",
+            "source_detail": "3769_001.pdf p.1 pos. 00010 col 'Omschrijving'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 33,
+            "source": "pdf",
+            "source_detail": "3769_001.pdf p.1 pos. 00010 col 'Bestelhoevh'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "STUK",
+            "source": "pdf",
+            "source_detail": "3769_001.pdf p.1 pos. 00010 'stuks'/'ST'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": 23.1,
+            "source": "pdf",
+            "source_detail": "3769_001.pdf p.1 pos. 00010 'Nettowaarde incl' prijs",
+            "confidence": 0.99,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": "8719956154805",
+            "source": "pdf",
+            "source_detail": "3769_001.pdf p.1 pos. 00010 'Europees artikelnummer'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "238601",
+            "source": "exact",
+            "source_detail": "match-methode=exact",
+            "confidence": 1.0,
+            "needs_review": false
+          }
+        },
+        {
+          "artikelnummer_klant": {
+            "value": "K700100093",
+            "source": "pdf",
+            "source_detail": "3769_001.pdf p.1 pos. 00020 col 'Artikel'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": "238531",
+            "source": "pdf",
+            "source_detail": "3769_001.pdf p.1 pos. 00020 'Uw artikelnummer' | cleared by match",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "omschrijving": {
+            "value": "tfc top coat premium afdekvlies 1000mm rol a 25m2",
+            "source": "pdf",
+            "source_detail": "3769_001.pdf p.1 pos. 00020 col 'Omschrijving'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 45,
+            "source": "pdf",
+            "source_detail": "3769_001.pdf p.1 pos. 00020 col 'Bestelhoevh'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "STUK",
+            "source": "pdf",
+            "source_detail": "3769_001.pdf p.1 pos. 00020 'stuks'/'ST'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": 22.55,
+            "source": "pdf",
+            "source_detail": "3769_001.pdf p.1 pos. 00020 'Nettowaarde incl' prijs",
+            "confidence": 0.99,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": "8718347525538",
+            "source": "pdf",
+            "source_detail": "3769_001.pdf p.1 pos. 00020 'Europees artikelnummer'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "238531",
+            "source": "exact",
+            "source_detail": "match-methode=exact",
+            "confidence": 1.0,
+            "needs_review": false
+          }
+        }
+      ],
+      "klant_match": {
+        "value": "61793",
+        "source": "klantenkaart",
+        "source_detail": "domein_alias",
+        "confidence": 0.9,
+        "needs_review": true
+      }
+    },
+    "needs_review_fields": [
+      "klant_match"
+    ],
+    "needs_review_count": 1,
+    "extra_orders_raw": [],
+    "nav_operations": [
+      {
+        "op": "POST",
+        "path": "/salesOrders",
+        "body": {
+          "customerNumber": "61793"
+        },
+        "label": "Klant kiezen (Sell-to Customer No. 61793)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrders({id})",
+        "body": {
+          "shipToCode": "8447 GH"
+        },
+        "label": "Verzendadres kiezen (Ship-to Code 8447 GH)",
+        "expects": {
+          "shipToAddress": "auto"
+        },
+        "optional": true
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrders({id})",
+        "body": {
+          "externalDocumentNumber": "4506868861"
+        },
+        "label": "PO-nummer klant (4506868861)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrders({id})",
+        "body": {
+          "requestedDeliveryDate": "2026-06-18"
+        },
+        "label": "Gewenste leverdatum (2026-06-18)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrders({id})",
+        "body": {
+          "shipmentDate": "2026-06-16"
+        },
+        "label": "Verzenddatum (2026-06-16)"
+      },
+      {
+        "op": "POST",
+        "path": "/salesOrders({id})/salesOrderLines",
+        "body": {
+          "lineType": "Item",
+          "itemNumber": "238601"
+        },
+        "label": "Regel 1: regel toevoegen (238601)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrderLines({id})",
+        "body": {
+          "unitOfMeasureCode": "STUK"
+        },
+        "label": "Regel 1: eenheid kiezen (STUK)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrderLines({id})",
+        "body": {
+          "quantity": 33.0
+        },
+        "label": "Regel 1: aantal invullen (33.0)"
+      },
+      {
+        "op": "POST",
+        "path": "/salesOrders({id})/salesOrderLines",
+        "body": {
+          "lineType": "Item",
+          "itemNumber": "238531"
+        },
+        "label": "Regel 2: regel toevoegen (238531)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrderLines({id})",
+        "body": {
+          "unitOfMeasureCode": "STUK"
+        },
+        "label": "Regel 2: eenheid kiezen (STUK)"
+      },
+      {
+        "op": "PATCH",
+        "path": "/salesOrderLines({id})",
+        "body": {
+          "quantity": 45.0
+        },
+        "label": "Regel 2: aantal invullen (45.0)"
+      }
+    ]
+  }
+}

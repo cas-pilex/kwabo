@@ -1,0 +1,54 @@
+{
+  "order_id": 524,
+  "email_from": "Malte Klippstein <malte.klippstein@werkzeuge-dietrich.de>",
+  "email_subject": "Werkzeuge Dietrich GmbH & Co. KG",
+  "status": "not_order",
+  "order_state": {
+    "email_id": "69b6cf8d2df2af1f",
+    "email_from": "Malte Klippstein <malte.klippstein@werkzeuge-dietrich.de>",
+    "email_subject": "Werkzeuge Dietrich GmbH & Co. KG",
+    "email_body": "",
+    "email_date": "Fri, 13 Mar 2026 06:44:59 +0000",
+    "bijlagen": [
+      {
+        "naam": "Werkzeuge Dietrich GmbH & Co. KG.pdf",
+        "type": "pdf",
+        "inhoud_tekst": "--- PAGE 1 ---\nWerkzeuge Dietrich GmbH & Co.KG, Leineweberstr. 4, 31303 Burgdorf\nLieferschein\nZL Farbtex Herrenberg Zentrallager\nfarbtex GmbH & Co KG Lieferdatum Auftrag Seite\nHewlett-Packard-Straße 1 Geb.3 26.03.2026 2270633802 1 / 1\n00332 Herrenberg Kundenummer Auftragsdatum\n12.03.2026\nIhre Referenz\n4401054959\nAußendienst Innendienst\nVKI Burgdorf Team WD Burgdorf\nTelfon Außendienst Telefon Innendienst\n05136/8816-0 05136/8816-0\nLieferadresse\nFax Außendienst Fax Innendienst\nfarbtex GmbH & Co KG\n05136/881635 05136/8816-99\nHerrenberg Zentrallager\nMobil Außendienst Niederlassung\nHewlett-Packard-Str. 1 Geb.\nWD Burgdorf\n71083 Herrenberg-Gültstein\n_______________________________________________________________________\nPos. Material-Nr. EAN Menge ME\nBezeichnung\n_______________________________________________________________________\n00010 4086-019309 4045644024254 1.320,000 ROL\nWD Abdeckvlies TFC 220g/qm 1x50m"
+      }
+    ],
+    "source_path": null,
+    "is_order": false,
+    "classificatie_reden": "Dit is een Lieferschein (pakbon/leveringsbon) van Werkzeuge Dietrich, geen inkooporder",
+    "classificatie_confidence": 0.95,
+    "orderregels": [],
+    "alle_artikelen_gematcht": false,
+    "alle_prijzen_valide": false,
+    "validatie_warnings": [],
+    "review_status": "pending",
+    "incoming_document_storage_key": "by_email_id/69b6cf8d2df2af1f.eml",
+    "stappen_log": [
+      {
+        "stap": "intake",
+        "timestamp": "2026-05-31T21:57:41.943294+00:00",
+        "beslissing": "E-mail opgehaald, 1 bijlagen geëxtraheerd",
+        "details": {
+          "bijlage_namen": [
+            "Werkzeuge Dietrich GmbH & Co. KG.pdf"
+          ]
+        }
+      },
+      {
+        "stap": "classify",
+        "timestamp": "2026-05-31T21:57:46.267191+00:00",
+        "beslissing": "GEEN_ORDER (conf=0.95)",
+        "details": {
+          "is_order": false,
+          "reden": "Dit is een Lieferschein (pakbon/leveringsbon) van Werkzeuge Dietrich, geen inkooporder",
+          "confidence": 0.95
+        }
+      }
+    ],
+    "errors": [],
+    "nav_operations": []
+  }
+}
