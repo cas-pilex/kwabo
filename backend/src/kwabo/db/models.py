@@ -200,6 +200,43 @@ class ArtikelPalletKennis(SQLModel, table=True):
     bevestigd_door: Optional[str] = Field(default=None)
 
 
+class PromptVersion(SQLModel, table=True):
+    """Versiegeschiedenis van een bewerkbare AI-prompt.
+
+    De effectieve prompt = de rij met (prompt_key, is_active=True); er is er
+    maximaal één actief per key. Opslaan/rollback/reset voegt een NIEUWE rij toe
+    en zet de vorige actieve op False, zodat de historie lineair en volledig
+    blijft (terugrollen kan altijd). Zonder rij valt de resolver terug op het
+    .txt-bestand in prompts/ — daardoor blijven bestaande golden-tests geldig.
+    """
+
+    __tablename__ = "prompt_versions"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    prompt_key: str = Field(index=True)  # "classify" | "extract"
+    content: str
+    note: Optional[str] = None
+    is_active: bool = Field(default=True, nullable=False)
+    source: str = "edit"  # edit | rollback | reset
+    created_by: Optional[str] = None
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class AppConfigOverride(SQLModel, table=True):
+    """Runtime-override voor een instelling die anders uit config.py/env komt.
+
+    value wordt JSON-gecodeerd opgeslagen zodat bool/getal/string netjes
+    terugkomen. Zonder rij geldt de config.py-default (effective_setting()).
+    """
+
+    __tablename__ = "app_config_overrides"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    key: str = Field(unique=True, index=True)
+    value: str  # JSON-encoded
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
 class OrderLog(SQLModel, table=True):
     __tablename__ = "order_log"
 

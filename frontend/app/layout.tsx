@@ -38,6 +38,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <MailboxNavItem />
               <Link href="/audit" className="hover:text-white">Audit</Link>
               <Link href="/logs" className="hover:text-white">Logs</Link>
+              <Link href="/configuratie" className="hover:text-white">Configuratie</Link>
               <LogoutButton />
             </nav>
           </div>

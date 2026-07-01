@@ -512,4 +512,70 @@ export const api = {
   oauthStartUrl: () => `${API_BASE}/api/mailbox/oauth/start`,
   oauthDisconnect: () =>
     req<{ ok: boolean }>("/api/mailbox/oauth/disconnect", { method: "POST" }),
+
+  // --- Configuratie: AI-prompts + instellingen + pipeline-overzicht ---
+  getPrompts: () => req<PromptOut[]>("/api/config/prompts"),
+  getPromptVersions: (key: string) =>
+    req<PromptVersionOut[]>(`/api/config/prompts/${key}/versions`),
+  savePrompt: (key: string, body: { content: string; note?: string | null }) =>
+    req<PromptOut>(`/api/config/prompts/${key}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  rollbackPrompt: (key: string, versionId: number) =>
+    req<PromptOut>(`/api/config/prompts/${key}/rollback/${versionId}`, {
+      method: "POST",
+    }),
+  resetPrompt: (key: string) =>
+    req<PromptOut>(`/api/config/prompts/${key}/reset`, { method: "POST" }),
+  getConfigSettings: () => req<SettingOut[]>("/api/config/settings"),
+  saveConfigSettings: (body: Record<string, unknown>) =>
+    req<SettingOut[]>("/api/config/settings", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  getPipelineSteps: () => req<{ steps: PipelineStep[] }>("/api/config/steps"),
+};
+
+export type PromptOut = {
+  key: string;
+  label: string;
+  beschrijving: string;
+  content: string;
+  default_content: string;
+  is_overridden: boolean;
+  active_version_id: number | null;
+  updated_at: string | null;
+};
+
+export type PromptVersionOut = {
+  id: number;
+  prompt_key: string;
+  content: string;
+  note: string | null;
+  is_active: boolean;
+  source: string;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type SettingOut = {
+  key: string;
+  label: string;
+  beschrijving: string;
+  type: "string" | "number" | "bool";
+  value: unknown;
+  default: unknown;
+  is_overridden: boolean;
+};
+
+export type PipelineStep = {
+  key: string;
+  label: string;
+  type: "llm-prompt" | "deterministisch";
+  prompt_key: string | null;
+  beschrijving: string;
+  input: string;
+  output: string;
+  bron: string;
 };

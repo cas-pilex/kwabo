@@ -1,25 +1,23 @@
 """Classify node — is this email an order?"""
 from __future__ import annotations
 
-from datetime import datetime
-
-from kwabo.utils import utcnow
-from pathlib import Path
-
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from kwabo.config import settings
+from kwabo.config_store import effective_setting, resolve_prompt
 from kwabo.graph.llm import get_llm
 from kwabo.graph.llm_cache import cache_get, cache_key, cache_put
 from kwabo.graph.state import OrderState
+from kwabo.utils import utcnow
 from kwabo.utils.json_parser import parse_json_loose
 from kwabo.utils.logging import log
 
-PROMPT_PATH = Path(__file__).resolve().parents[2] / "prompts" / "classify.txt"
-
 
 async def classify_node(state: OrderState) -> OrderState:
-    system = PROMPT_PATH.read_text(encoding="utf-8")
+    # Effectieve prompt/model uit de Configuratie-override (of anders bestand/env).
+    system = resolve_prompt("classify")
+    model = effective_setting("anthropic_model", settings.anthropic_model)
+    temperature = float(effective_setting("llm_temperature", 0.0))
     bijlagen = state.get("bijlagen") or []
     bijl_preview = ""
     for b in bijlagen:
@@ -34,10 +32,10 @@ async def classify_node(state: OrderState) -> OrderState:
     )
 
     key = cache_key(
-        settings.anthropic_model,
+        model,
         system,
         human,
-        extras={"max_tokens": 16000, "temperature": 0, "node": "classify"},
+        extras={"max_tokens": 16000, "temperature": temperature, "node": "classify"},
     )
     cached = cache_get(key)
     if cached is not None:
@@ -46,7 +44,7 @@ async def classify_node(state: OrderState) -> OrderState:
         llm = get_llm()
         resp = await llm.ainvoke([SystemMessage(content=system), HumanMessage(content=human)])
         content = resp.content
-        cache_put(key, {"model": settings.anthropic_model, "response": content})
+        cache_put(key, {"model": model, "response": content})
     try:
         parsed = parse_json_loose(content)
     except Exception as e:  # noqa: BLE001

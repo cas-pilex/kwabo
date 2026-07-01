@@ -10,17 +10,15 @@ from __future__ import annotations
 
 import base64
 import json
-from pathlib import Path
 from typing import Any
 
 import anthropic
 
 from kwabo.config import settings
+from kwabo.config_store import effective_setting, resolve_prompt
 from kwabo.graph.llm_cache import cache_get, cache_key, cache_put
 from kwabo.integrations.email_client import RawEmail
 from kwabo.utils.json_parser import parse_json_loose
-
-PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "extract_v2.txt"
 
 _client: anthropic.AsyncAnthropic | None = None
 
@@ -110,9 +108,9 @@ async def extract_from_email(raw: RawEmail, model: str | None = None, max_retrie
     """
     import asyncio
 
-    system = PROMPT_PATH.read_text(encoding="utf-8")
+    system = resolve_prompt("extract")
     blocks = _build_blocks(raw)
-    used_model = model or settings.anthropic_model
+    used_model = model or effective_setting("anthropic_model", settings.anthropic_model)
 
     user_repr = json.dumps(blocks, default=str, sort_keys=True)
     key = cache_key(

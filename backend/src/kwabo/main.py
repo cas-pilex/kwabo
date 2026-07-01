@@ -13,6 +13,7 @@ from sqlmodel import Session
 from kwabo.api.artikelen import router as artikelen_router
 from kwabo.api.audit import router as audit_router
 from kwabo.api.auth import require_admin, router as auth_router
+from kwabo.api.config import router as config_router
 from kwabo.api.intake_trigger import router as intake_router
 from kwabo.api.klanten import router as klanten_router
 from kwabo.api.logs import router as logs_router
@@ -255,6 +256,7 @@ def create_app() -> FastAPI:
     app.include_router(mailbox_router, dependencies=auth_gate)
     app.include_router(preview_router, dependencies=auth_gate)
     app.include_router(prijs_router, dependencies=auth_gate)
+    app.include_router(config_router, dependencies=auth_gate)
 
     # NAV connectivity diagnostic — handy for the dashboard, also auth-gated.
     from kwabo.api.diagnostics import router as diagnostics_router
