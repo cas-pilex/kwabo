@@ -180,6 +180,7 @@ class Nav2018ODataClient:
         incoming_document_enabled: bool | None = None,
     ) -> None:
         from kwabo.config import settings
+        from kwabo.config_store import effective_setting
 
         self.base_url = (base_url or settings.nav_base_url).rstrip("/")
         self.company = company or settings.nav_company
@@ -202,7 +203,10 @@ class Nav2018ODataClient:
         # historic skip-with-warning behaviour; flip on once PLX_IncomingDocument
         # is published and the transport translation is wired.
         self.incoming_document_enabled = (
-            settings.nav2018_incoming_document_enabled
+            effective_setting(
+                "nav2018_incoming_document_enabled",
+                settings.nav2018_incoming_document_enabled,
+            )
             if incoming_document_enabled is None
             else incoming_document_enabled
         )
