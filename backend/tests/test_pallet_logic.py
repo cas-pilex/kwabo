@@ -1,11 +1,11 @@
-"""Tests for the pure europallet computation (T8).
+"""Tests for the pure europallet computation (T8, herzien voor B4).
 
-The unit-style tests use a tiny in-memory stub for ``PalletKennisRepo`` so
-they exercise the heuristic + kennis branches without touching the DB.
-The graph-node-level test (``test_compute_europallet_node_sets_state``)
-runs the async node against the real session fixture to confirm the
-node correctly stores the regel under ``state["europallet_regel"]`` and
-does NOT mutate ``state["orderregels"]``.
+B4 (structurele upgrade): het leerbestand ``artikel_pallet_kennis`` en de
+DOOS-/24-heuristiek zijn bewust UIT de telling (vervuild resp. gok); de
+expliciete bron is ``pallet_plaatsen_basis`` per (artikel, eenheid). De
+tests die eerder de kennis-/heuristiek-takken dekten, dekken nu het
+equivalente gedrag via de plaatsen-stub — en verifiëren expliciet dat het
+leerbestand GENEGEERD wordt.
 """
 from __future__ import annotations
 
@@ -41,6 +41,22 @@ class _StubRepo:
         return self._k.get((artikelnr, (eenheid or "").upper()))
 
 
+@dataclass
+class _Plaatsen:
+    plaatsen_per_eenheid: float
+
+
+class _PlaatsenStub:
+    """Drop-in voor ``PalletPlaatsenRepo`` (B4: de expliciete databron)."""
+
+    def __init__(self, mapping: Optional[dict] = None) -> None:
+        self._m = mapping or {}
+
+    def lookup(self, artikelnr: str, eenheid: str):
+        v = self._m.get((artikelnr, (eenheid or "").upper()))
+        return _Plaatsen(plaatsen_per_eenheid=v) if v is not None else None
+
+
 def _state(regels: list[dict]) -> dict:
     return {"orderregels": regels}
 
@@ -67,14 +83,18 @@ def test_stuk_with_no_kennis_skips_heuristic_returns_none():
     assert out is None
 
 
-def test_doos_qty_24_no_kennis_yields_one_pallet():
+def test_doos_via_plaatsen_basis_yields_one_pallet():
+    """B4: DOOS telt alleen mee via de expliciete bron (1/24 plaats per doos);
+    de oude /24-gok zonder bron bestaat niet meer."""
     regel = {
         "positie": 1,
         "artikelnummer_kwabo_matched": "1515155",
         "eenheid": "DOOS",
         "hoeveelheid": 24,
     }
-    out = compute_europallet(_state([regel]), repo=_StubRepo())
+    out = compute_europallet(
+        _state([regel]), repo=_StubRepo(),
+        plaatsen_repo=_PlaatsenStub({("1515155", "DOOS"): 1 / 24}))
     assert out is not None
     assert out["artikelnummer_kwabo"] == PALLET_ARTIKELNR
     assert out["artikelnummer_kwabo_matched"] == PALLET_ARTIKELNR
@@ -84,8 +104,21 @@ def test_doos_qty_24_no_kennis_yields_one_pallet():
     assert out["positie"] == 2  # next-positie after the single regel
 
 
+def test_doos_zonder_bron_is_onbekend_geen_gok():
+    """B4: DOOS zonder plaatsen-waarde/NAV-maat -> géén pallet (en de node
+    vlagt 'europallet onbekend' — zie test_europallet_databron.py)."""
+    regel = {
+        "positie": 1,
+        "artikelnummer_kwabo_matched": "1515155",
+        "eenheid": "DOOS",
+        "hoeveelheid": 24,
+    }
+    out = compute_europallet(_state([regel]), repo=_StubRepo())
+    assert out is None
+
+
 def test_two_doos_regels_sum_to_one_pallet():
-    """12/24 + 12/24 = 1.0 → ceil(1.0) = 1."""
+    """12/24 + 12/24 = 1.0 → ceil(1.0) = 1 (via de expliciete bron)."""
     regels = [
         {
             "positie": 1,
@@ -100,13 +133,18 @@ def test_two_doos_regels_sum_to_one_pallet():
             "hoeveelheid": 12,
         },
     ]
-    out = compute_europallet(_state(regels), repo=_StubRepo())
+    out = compute_europallet(
+        _state(regels), repo=_StubRepo(),
+        plaatsen_repo=_PlaatsenStub({("A", "DOOS"): 1 / 24, ("B", "DOOS"): 1 / 24}))
     assert out is not None
     assert out["hoeveelheid"] == 1
     assert out["positie"] == 3
 
 
-def test_kennis_pallet_required_with_per_pallet_10():
+def test_leerbestand_wordt_genegeerd_in_telling():
+    """B4: het (vervuilde) leerbestand stuurt de telling NIET meer — zonder
+    plaatsen-waarde of NAV-maat is de uitkomst 'geen pallet' (+ onbekend-vlag
+    op node-niveau), niet 20/10=2."""
     kennis = {("ART", "ROL"): _Kennis(pallet_required=True, per_pallet=10)}
     regels = [
         {
@@ -117,8 +155,23 @@ def test_kennis_pallet_required_with_per_pallet_10():
         }
     ]
     out = compute_europallet(_state(regels), repo=_StubRepo(kennis))
+    assert out is None
+
+
+def test_plaatsen_basis_vervangt_kennis_per_pallet_10():
+    """Dezelfde casus mét de expliciete bron: 20 ROL × 1/10 = 2 pallets."""
+    regels = [
+        {
+            "positie": 1,
+            "artikelnummer_kwabo_matched": "ART",
+            "eenheid": "ROL",
+            "hoeveelheid": 20,
+        }
+    ]
+    out = compute_europallet(
+        _state(regels), repo=_StubRepo(),
+        plaatsen_repo=_PlaatsenStub({("ART", "ROL"): 1 / 10}))
     assert out is not None
-    # 20 / 10 = 2.0 pallets exact.
     assert out["hoeveelheid"] == 2
 
 
@@ -140,7 +193,7 @@ def test_kennis_pallet_not_required_yields_none():
 def test_existing_pallet_regel_is_skipped_no_double_counting():
     """If the input already contains a 19820 line, never re-count it."""
     regels = [
-        # Regular regel that should produce a pallet via heuristic.
+        # Regular regel with an explicit plaatsen-waarde (B4-bron).
         {
             "positie": 1,
             "artikelnummer_kwabo_matched": "ART",
@@ -155,9 +208,11 @@ def test_existing_pallet_regel_is_skipped_no_double_counting():
             "hoeveelheid": 5,
         },
     ]
-    out = compute_europallet(_state(regels), repo=_StubRepo())
+    out = compute_europallet(
+        _state(regels), repo=_StubRepo(),
+        plaatsen_repo=_PlaatsenStub({("ART", "DOOS"): 1 / 24}))
     assert out is not None
-    # 24 / 24 = 1 — no contribution from the second (pallet) line.
+    # 24 × 1/24 = 1 — no contribution from the second (pallet) line.
     assert out["hoeveelheid"] == 1
 
 
@@ -175,22 +230,8 @@ def test_unmatched_regel_skipped():
     assert out is None
 
 
-def test_doos_qty_below_min_skips_heuristic():
-    """hoeveelheid < 5 must NOT trigger the heuristic even for DOOS."""
-    regels = [
-        {
-            "positie": 1,
-            "artikelnummer_kwabo_matched": "ART",
-            "eenheid": "DOOS",
-            "hoeveelheid": 4,
-        }
-    ]
-    out = compute_europallet(_state(regels), repo=_StubRepo())
-    assert out is None
-
-
 def test_total_below_threshold_returns_none():
-    """6 / 24 = 0.25 < 0.5 → no pallet line."""
+    """6 × 1/24 = 0.25 < 0.5 → no pallet line (gedocumenteerde afrondingsregel)."""
     regels = [
         {
             "positie": 1,
@@ -199,13 +240,14 @@ def test_total_below_threshold_returns_none():
             "hoeveelheid": 6,
         }
     ]
-    out = compute_europallet(_state(regels), repo=_StubRepo())
+    out = compute_europallet(
+        _state(regels), repo=_StubRepo(),
+        plaatsen_repo=_PlaatsenStub({("ART", "DOOS"): 1 / 24}))
     assert out is None
 
 
 def test_partial_pallet_rounds_up():
-    """36 / 24 = 1.5 → ceil = 2."""
-    kennis = {("ART", "DOOS"): _Kennis(pallet_required=True, per_pallet=24)}
+    """36 × 1/24 = 1.5 → ceil = 2 (gedocumenteerde afrondingsregel)."""
     regels = [
         {
             "positie": 1,
@@ -214,25 +256,17 @@ def test_partial_pallet_rounds_up():
             "hoeveelheid": 36,
         }
     ]
-    out = compute_europallet(_state(regels), repo=_StubRepo(kennis))
+    out = compute_europallet(
+        _state(regels), repo=_StubRepo(),
+        plaatsen_repo=_PlaatsenStub({("ART", "DOOS"): 1 / 24}))
     assert out is not None
     assert out["hoeveelheid"] == 2
 
 
 @pytest.mark.asyncio
 async def test_compute_europallet_node_sets_state(session):
-    """The graph node stores the regel on state and does not touch orderregels."""
-    repo = PalletKennisRepo(session)
-    repo.upsert(
-        ArtikelPalletKennis(
-            kwabo_artikelnr="ART",
-            eenheid="DOOS",
-            pallet_required=True,
-            per_pallet=24,
-            confidence=0.5,
-        )
-    )
-
+    """The graph node stores the regel on state and does not touch orderregels.
+    B4: de bron is de plaatsen-stub (het leerbestand telt niet meer mee)."""
     state = {
         "email_id": "t8-test",
         "klant_match": {"navision_klantnr": "10001"},
@@ -246,7 +280,9 @@ async def test_compute_europallet_node_sets_state(session):
         ],
     }
 
-    out = await compute_europallet_node(state, repo=repo)
+    out = await compute_europallet_node(
+        state, repo=PalletKennisRepo(session),
+        plaatsen_repo=_PlaatsenStub({("ART", "DOOS"): 1 / 24}))
     assert out["europallet_regel"] is not None
     assert out["europallet_regel"]["hoeveelheid"] == 2
     assert out["europallet_regel"]["artikelnummer_kwabo"] == PALLET_ARTIKELNR

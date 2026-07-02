@@ -39,3 +39,12 @@ export async function dropEml(name: string) {
 }
 
 export const test = base.extend({});
+
+// Auth (31-05): het dashboard zit achter het kwabo_admin-cookie; de e2e-backend
+// draait zonder ADMIN_PASSWORD dus elke waarde volstaat. Specs van vóór de
+// auth-introductie misten dit en strandden op de /login-redirect (lege tabel).
+export async function login(context: import("@playwright/test").BrowserContext) {
+  await context.addCookies([
+    { name: "kwabo_admin", value: "e2e", url: `http://localhost:${process.env.FRONTEND_PORT ?? 3100}` },
+  ]);
+}

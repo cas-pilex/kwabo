@@ -22,7 +22,7 @@ from typing import Optional
 
 from sqlmodel import Session
 
-from kwabo.db.repository import ArtikelkaartRepo, PalletKennisRepo
+from kwabo.db.repository import ArtikelkaartRepo, PalletKennisRepo, PalletPlaatsenRepo
 from kwabo.db.session import engine
 from kwabo.utils.logging import log
 from kwabo.utils.pallet_logic import PALLET_ARTIKELNR, europallet_breakdown
@@ -37,9 +37,11 @@ def _onderbouwing(bd: dict) -> str:
             f"{'s' if n != 1 else ''} (afgerond naar boven).")
 
 
-def _evaluate(state: dict, repo: PalletKennisRepo, uom_repo=None) -> dict:
+def _evaluate(state: dict, repo: PalletKennisRepo, uom_repo=None,
+              plaatsen_repo=None) -> dict:
     new_state = dict(state)
-    bd = europallet_breakdown(state, repo=repo, uom_repo=uom_repo)
+    bd = europallet_breakdown(state, repo=repo, uom_repo=uom_repo,
+                              plaatsen_repo=plaatsen_repo)
     regel = bd["regel"]
     new_state["europallet_regel"] = regel
 
@@ -51,8 +53,29 @@ def _evaluate(state: dict, repo: PalletKennisRepo, uom_repo=None) -> dict:
         "totaal_pallets": bd["totaal_pallets"],
         "europallet_aantal": bd["europallet_aantal"],
         "uitleg": _onderbouwing(bd),
+        "onbekend": bd.get("onbekend") or [],
     }
     new_state["_meta"] = meta
+
+    # B4: regels zonder enige europallet-databron -> vlag, geen gok. De
+    # warning noemt de artikelen zodat Nico's vul-lijst (pallet_plaatsen_basis)
+    # gericht gevuld kan worden.
+    onbekend = bd.get("onbekend") or []
+    if onbekend:
+        nrf = list(new_state.get("needs_review_fields") or [])
+        if "europallet" not in nrf:
+            nrf.append("europallet")
+        new_state["needs_review_fields"] = nrf
+        new_state["needs_review_count"] = len(nrf)
+        warnings = list(new_state.get("validatie_warnings") or [])
+        arts = ", ".join(
+            f"{o['artikelnr']} ({o['qty']} {o['eenheid']})" for o in onbekend[:6]
+        )
+        warnings.append(
+            f"⚠ EUROPALLET ONBEKEND: geen pallet_plaatsen_basis-waarde en geen "
+            f"bruikbare NAV-eenheid voor: {arts} — telling kan onvolledig zijn."
+        )
+        new_state["validatie_warnings"] = warnings
 
     log.info(
         "compute_europallet",
@@ -67,7 +90,8 @@ def _evaluate(state: dict, repo: PalletKennisRepo, uom_repo=None) -> dict:
 
 
 async def compute_europallet_node(
-    state: dict, *, repo: Optional[PalletKennisRepo] = None
+    state: dict, *, repo: Optional[PalletKennisRepo] = None,
+    plaatsen_repo=None,
 ) -> dict:
     """Compute the optional europallet regel and store it on state.
 
@@ -77,9 +101,10 @@ async def compute_europallet_node(
     engine.
     """
     if repo is not None:
-        return _evaluate(state, repo)
+        return _evaluate(state, repo, plaatsen_repo=plaatsen_repo)
 
     with Session(engine) as s:
         # Same session feeds the item-UOM lookup so stuks/rol lines can be
         # converted to pallets via the article's units-per-pallet.
-        return _evaluate(state, PalletKennisRepo(s), uom_repo=ArtikelkaartRepo(s))
+        return _evaluate(state, PalletKennisRepo(s), uom_repo=ArtikelkaartRepo(s),
+                         plaatsen_repo=PalletPlaatsenRepo(s))

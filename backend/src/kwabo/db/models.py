@@ -200,6 +200,25 @@ class ArtikelPalletKennis(SQLModel, table=True):
     bevestigd_door: Optional[str] = Field(default=None)
 
 
+class PalletPlaatsenBasis(SQLModel, table=True):
+    """B4 (structurele upgrade, voorstel Nico): EXPLICIETE europallet-databron.
+
+    ``plaatsen_per_eenheid`` = hoeveel palletplaatsen één regel-eenheid van dit
+    artikel inneemt (0 = bewust géén plaats: bijpak-artikel). Deze bron gaat
+    vóór de NAV-eenheid; het vervuilde leerbestand ``artikel_pallet_kennis``
+    wordt in de telling genegeerd tot het is opgeschoond. Vullen is een
+    OPS/Nico-actie (zie PALLET_PLAATSEN_VULLIJST.md)."""
+
+    __tablename__ = "pallet_plaatsen_basis"
+
+    kwabo_artikelnr: str = Field(primary_key=True)
+    eenheid_code: str = Field(primary_key=True)
+    plaatsen_per_eenheid: float = 0.0
+    opmerking: Optional[str] = Field(default=None)
+    bevestigd_door: Optional[str] = Field(default=None)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
 class PromptVersion(SQLModel, table=True):
     """Versiegeschiedenis van een bewerkbare AI-prompt.
 

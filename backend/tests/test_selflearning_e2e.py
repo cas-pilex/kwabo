@@ -155,56 +155,56 @@ def _pallet_state(artikelnr: str, eenheid: str, qty: float, *, europallet=None) 
 
 
 @pytest.mark.asyncio
-async def test_learned_pallet_required_adds_europallet(session):
-    """ROL is ignored by the heuristic, so without knowledge no pallet is added.
-    After the human confirms a pallet (learned pallet_required=True), the next
-    identical order DOES get a europallet."""
-    # Pre-condition: no kennis -> ROL contributes nothing -> no europallet.
-    pre = await compute_europallet_node(
-        _pallet_state("ART1", "ROL", 24), repo=PalletKennisRepo(session)
-    )
-    assert pre["europallet_regel"] is None
-
-    # Human approved an order WITH a europallet -> learn pallet_required=True.
+async def test_learned_pallet_wordt_geregistreerd_maar_telt_niet_mee(session):
+    """B4: het leerbestand wordt nog wél GEVULD door menselijke approves
+    (datacollectie voor de opschoning), maar de telling volgt het niet meer —
+    die draait op pallet_plaatsen_basis / NAV-eenheid. Een geleerd 'ja' mag
+    dus GEEN europallet meer toevoegen zolang de expliciete bron ontbreekt
+    (de order krijgt in plaats daarvan de 'europallet onbekend'-vlag)."""
+    # Human approved an order WITH a europallet -> fact wordt geregistreerd.
     _persist_pallet_feedback(
         session,
         _pallet_state("ART1", "ROL", 24, europallet={"artikelnummer_kwabo": "19820"}),
         reviewer="cas@kwabo.nl",
     )
-    # Confirm the fact was written.
     kennis = PalletKennisRepo(session).lookup("ART1", "ROL")
     assert kennis is not None and kennis.pallet_required is True
 
-    # Next identical order now gets a europallet via the learned knowledge.
+    # Telling negeert het leerbestand: geen europallet, wél de onbekend-vlag.
     post = await compute_europallet_node(
         _pallet_state("ART1", "ROL", 24), repo=PalletKennisRepo(session)
     )
-    assert post["europallet_regel"] is not None
-    assert post["europallet_regel"]["hoeveelheid"] == 1  # 24 / per_pallet(24)
+    assert post["europallet_regel"] is None
+    assert "europallet" in (post.get("needs_review_fields") or [])
 
 
 @pytest.mark.asyncio
-async def test_learned_pallet_suppressed_blocks_europallet(session):
-    """DOOS qty>=5 normally triggers the heuristic pallet. After the human
-    removes it (learned pallet_required=False), the next identical order does
-    NOT get a europallet — the learned 'no' overrides the heuristic."""
-    # Pre-condition: heuristic WOULD add a pallet for 24 DOOS.
-    pre = await compute_europallet_node(
-        _pallet_state("ART2", "DOOS", 24), repo=PalletKennisRepo(session)
-    )
-    assert pre["europallet_regel"] is not None
+async def test_pallet_plaatsen_basis_stuurt_de_telling(session):
+    """B4: de expliciete bron stuurt de telling — 24 ROL × 1/24 = 1 europallet;
+    waarde 0 (bijpak-artikel) onderdrukt hem weer, zonder onbekend-vlag."""
+    from dataclasses import dataclass
 
-    # Human approved with europallet removed -> learn pallet_required=False.
-    _persist_pallet_feedback(
-        session,
-        _pallet_state("ART2", "DOOS", 24, europallet=None),
-        reviewer="cas@kwabo.nl",
-    )
-    kennis = PalletKennisRepo(session).lookup("ART2", "DOOS")
-    assert kennis is not None and kennis.pallet_required is False
+    @dataclass
+    class _P:
+        plaatsen_per_eenheid: float
 
-    # Next identical order: learned 'no' suppresses the heuristic pallet.
-    post = await compute_europallet_node(
-        _pallet_state("ART2", "DOOS", 24), repo=PalletKennisRepo(session)
+    class _PlaatsenStub:
+        def __init__(self, per):
+            self.per = per
+
+        def lookup(self, artikelnr, eenheid):
+            return _P(self.per)
+
+    met_waarde = await compute_europallet_node(
+        _pallet_state("ART2", "ROL", 24), repo=PalletKennisRepo(session),
+        plaatsen_repo=_PlaatsenStub(1 / 24),
     )
-    assert post["europallet_regel"] is None
+    assert met_waarde["europallet_regel"] is not None
+    assert met_waarde["europallet_regel"]["hoeveelheid"] == 1
+
+    onderdrukt = await compute_europallet_node(
+        _pallet_state("ART2", "ROL", 24), repo=PalletKennisRepo(session),
+        plaatsen_repo=_PlaatsenStub(0.0),
+    )
+    assert onderdrukt["europallet_regel"] is None
+    assert "europallet" not in (onderdrukt.get("needs_review_fields") or [])

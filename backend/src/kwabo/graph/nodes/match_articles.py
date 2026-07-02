@@ -253,7 +253,8 @@ async def match_articles_node(state: OrderState) -> OrderState:
             # + review (Functie 3 — gedeelde helper, ook gebruikt door de
             # handmatige correctie in api/preview.py).
             eenheden = art_repo.list_eenheden(artnr)
-            r["eenheid"], eenheid_vlag = resolve_line_uom(r, base, eenheden)
+            r["eenheid"], eenheid_vlag = resolve_line_uom(
+                r, base, eenheden, verkoop_eenheid=kaart.verkoop_eenheid)
             if eenheid_vlag:
                 eenheid_review_idx.append(idx)
                 eenheid_warnings.append(

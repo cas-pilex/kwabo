@@ -1,0 +1,159 @@
+{
+  "_uitleg": "Grondwaarheid golden corpus (STRUCTURELE UPGRADE, Fase A). Opdracht-labels (team-feedback, 4e testronde) zijn leidend; conflicten met het oude gitignored backend/_reality/ground_truth.json staan per order in _conflict_met_oude_gt. Alleen niet-null velden worden beoordeeld (zelfde judge-regel als verify_reality.py). Extra velden t.o.v. het oude formaat: europallet_aantal, verzendwijze.",
+  "944": {
+    "klant_nr": "61854",
+    "afleveradres_postcode": "7559 SR",
+    "ship_to_code": "7559 SR",
+    "regels": [
+      {"pos": 1, "eenheid": "STUK", "aantal": 45.0, "artikel": "238531"}
+    ],
+    "_notities": "Afleveradres = BAUHAUS vestiging 462 Hengelo (7559 SR); besteld door Bunnik (3981 LB). Stored prod-state koos 3981 LB = de gemelde fout.",
+    "_conflict_met_oude_gt": "geen (oude GT was op 26-06 al herlabeld naar 7559 SR; de _fase0-versie zei nog 3981 LB)"
+  },
+  "954": {
+    "klant_nr": "50094",
+    "afleveradres_postcode": "3449 JE",
+    "ship_to_code": "3449 JE",
+    "regels": [
+      {"pos": 1, "artikel": "228321"}
+    ],
+    "_notities": "Agent-mailbox tabsholland.nl; eindklant = Jongeneel Woerden BA659 (50094). Stored prod-state koos PontMeyer Heerenveen 61793 = de gemelde fout. Eenheid/aantal bewust null (feedback betrof klantnr)."
+  },
+  "941": {
+    "klant_nr": "61483",
+    "ship_to_code": "4814 RR",
+    "regels": [
+      {"pos": 1, "eenheid": "STUK", "aantal": 45.0, "artikel": "23559"},
+      {"pos": 2, "eenheid": "PALLET", "aantal": 2, "artikel": "23522"},
+      {"pos": 3, "eenheid": "PALLET", "aantal": 2, "artikel": "23523"}
+    ],
+    "europallet_aantal": null,
+    "_notities": "Klant is GEEN mix-klant (mixprijzen=false) -> plain PALLET, geen M{X}PAL{Y}. Stored pos2 gaf M1PAL30 (mix-code als verkoopeenheid) = gemelde fout. Europallet-verwachting onbekend (2+2 pallets + 45 STUK 23559) -> pallet_plaatsen_basis-waarde nodig van Nico/OPS."
+  },
+  "847": {
+    "klant_nr": "61532",
+    "afleveradres_postcode": "94315",
+    "ship_to_code": "94315",
+    "regels": [
+      {"pos": 10, "eenheid": "PALLET", "aantal": 31, "artikel": "23730"},
+      {"pos": 20, "eenheid": "PALLET", "aantal": 35, "artikel": "23733"}
+    ],
+    "_conflict_met_oude_gt": "oude GT zei ship_to_code=31303; opdracht zegt afleveradres Straubing 94315 en noemt 31303 expliciet als de fout (stale ship-to) -> herlabeld naar 94315"
+  },
+  "819": {
+    "klant_nr": "61969",
+    "ship_to_code": null,
+    "verzendwijze": "EXW",
+    "regels": [
+      {"pos": 1, "eenheid": "PALLET", "aantal": 4, "artikel": "23691"}
+    ],
+    "_conflict_met_oude_gt": "oude GT zei eenheid=STUK aantal=4; opdracht zegt '4 Paletten' -> pallet-UoM (23691 heeft PALLET met qty_per_base=20) -> herlabeld naar PALLET 4",
+    "_notities": "AFHAALORDER -> NAV Shipment Method Code EXW (F5). Ship-to bewust null (afhaal)."
+  },
+  "845": {
+    "klant_nr": "61745",
+    "afleveradres_postcode": "8531 PA",
+    "ship_to_code": "8531 PA",
+    "regels": [
+      {"pos": 1, "eenheid": "PALLET", "aantal": 2, "artikel": "15620"}
+    ],
+    "_notities": "Drop-ship naar Polem B.V. Lemmer. 15620: PALLET qty_per_base=30 -> '60 stuks / 2 PAL' = 2 PALLET."
+  },
+  "203": {
+    "klant_nr": "61745",
+    "regels": [
+      {"pos": 1, "eenheid": "PALLET", "aantal": 2, "artikel": "15620"},
+      {"pos": 2, "artikel": "224681"}
+    ],
+    "_notities": "2e Lasaulec-order (generiek-bewijs). Stored matchte pos1 op 15270 en pos2 op 15620 — beide fout. Pos2 eenheid bewust null (besteld als ROL; ROL is geen Item-UoM van 224681)."
+  },
+  "816": {
+    "klant_nr": "60245",
+    "ship_to_code": "4906 CS",
+    "regels": [
+      {"pos": 1, "eenheid": "PALLET", "aantal": 4, "artikel": "23520"},
+      {"pos": 2, "eenheid": "STUK", "aantal": 34.0, "artikel": "229231"},
+      {"pos": 3, "eenheid": "STUK", "aantal": 42.0, "artikel": "184501"},
+      {"pos": 4, "eenheid": "PALLET", "aantal": 7, "artikel": "23516"},
+      {"pos": 5, "eenheid": "PALLET", "aantal": 4, "artikel": "23515"},
+      {"pos": 6, "eenheid": "PALLET", "aantal": 6, "artikel": "23517"},
+      {"pos": 7, "eenheid": "PALLET", "aantal": 1, "artikel": "23511"},
+      {"pos": 8, "eenheid": "PALLET", "aantal": 1, "artikel": "23513"},
+      {"pos": 9, "eenheid": "STUK", "aantal": 45.0, "artikel": "23853"},
+      {"pos": 10, "eenheid": "PALLET", "aantal": 1, "artikel": "23518"}
+    ],
+    "_notities": "Pos9: artikel 23853 is wat besteld is, maar klantprijs staat op 238531 -> F6-prijs-signaal-vlag verwacht (niet machinaal gejudged in Fase A)."
+  },
+  "832": {
+    "klant_nr": "61468",
+    "afleveradres_postcode": "2718 TB",
+    "ship_to_code": null,
+    "europallet_aantal": 1,
+    "regels": [
+      {"pos": 1, "artikel": "238601"}
+    ],
+    "_conflict_met_oude_gt": "oude GT had geen 832-entry; stored state koos PontMeyer Heerenveen 61793 conf 1.0 -> per opdracht-beleid (klant uit afleverpartij) herlabeld naar PontMeyer Zoetermeer 61468",
+    "_notities": "Ship-to null: leveradres = kaartadres van de juiste vestiging. Europallet 1 per F4-fix (33 STUK 238601, PALLET33)."
+  },
+  "833": {
+    "klant_nr": "61019",
+    "afleveradres_postcode": "2102 LL",
+    "ship_to_code": null,
+    "europallet_aantal": 1,
+    "regels": [
+      {"pos": 1, "eenheid": "STUK", "aantal": 5.0, "artikel": "229231"},
+      {"pos": 2, "eenheid": "STUK", "aantal": 15.0, "artikel": "238531"}
+    ],
+    "_conflict_met_oude_gt": "oude GT zei klant_nr=61793 (PontMeyer Heerenveen) + ship_to 8447 GH; opdracht-beleid B2 (agent -> klant uit afleverpartij) -> herlabeld naar PontMeyer Heemstede 61019, ship_to null (kaartadres)"
+  },
+  "834": {
+    "klant_nr": "61088",
+    "afleveradres_postcode": "1689 AK",
+    "ship_to_code": null,
+    "regels": [
+      {"pos": 1, "artikel": "228321"}
+    ],
+    "_conflict_met_oude_gt": "stored state + eerdere runs kozen 61793 conf 1.0; per opdracht-beleid herlabeld naar PontMeyer Zwaag 61088"
+  },
+  "716": {
+    "klant_nr": "61030",
+    "ship_to_code": "5215 MK",
+    "regels": [
+      {"pos": 1, "eenheid": "STUK", "aantal": 66.0, "artikel": "238601"}
+    ],
+    "_notities": "F3-anker: 66 STUK moet expliciet STUK blijven (238601 heeft PALLET42 als Sales-UoM-risico)."
+  },
+  "717": {
+    "klant_nr": "61844",
+    "ship_to_code": "7783 DC",
+    "regels": [],
+    "_notities": "Drop-ship C.F. Kunststoffen Gramsbergen. Regel-GT bewust leeg: stored artikel-match (18390) droeg een review-vlag."
+  },
+  "718": {
+    "klant_nr": "60892",
+    "regels": [
+      {"pos": 1, "artikel": "238601"}
+    ],
+    "_notities": "Mix-klant. klant_art '238601' is letterlijk het Kwabo-nummer; stored matchte 11190 (fout, gevlagd)."
+  },
+  "721": {
+    "klant_nr": "61472",
+    "regels": [
+      {"pos": 1, "artikel": "228321"}
+    ],
+    "_notities": "Besteld als 30 ROL; ROL is geen Item-UoM van 228321 -> eenheid bewust null (B3 bepaalt het beleid)."
+  },
+  "707": {
+    "klant_nr": "61948",
+    "regels": [
+      {"pos": 1, "artikel": "23512"}
+    ],
+    "_notities": "Zevij-portaal -> klant uit afleverpartij GBI Borne (61948). klant_art '23512' is letterlijk het Kwabo-nummer; stored matchte 23374 (fout, gevlagd)."
+  },
+  "685": {
+    "klant_nr": "60203",
+    "ship_to_code": "6101 XK",
+    "regels": [],
+    "_notities": "Mix-klant (mixprijzen=true). Regel-GT bewust leeg: stored matches waren fuzzy en volledig gevlagd; correcte artikelen niet betrouwbaar vast te stellen zonder Kwabo-input."
+  }
+}

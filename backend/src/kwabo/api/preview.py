@@ -382,7 +382,8 @@ def patch_field(order_id: int, body: PatchFieldBody) -> dict:
                     base = kaart.basis_eenheid.strip()
                     regel.setdefault("eenheid_origineel", regel.get("eenheid"))
                     regel["eenheid_default"] = base
-                    regel["eenheid"], eenheid_vlag = resolve_line_uom(regel, base, eenheden)
+                    regel["eenheid"], eenheid_vlag = resolve_line_uom(
+                        regel, base, eenheden, verkoop_eenheid=kaart.verkoop_eenheid)
                     _branch_a(regel, art_repo)
                     meta = state.setdefault("_meta", {})
                     regels_meta = meta.setdefault("orderregels", [])

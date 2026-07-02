@@ -135,6 +135,51 @@ async def test_gedeelde_mailbox_geen_leveradres_match_geeft_kandidaten(bind):
 
 
 @pytest.mark.asyncio
+async def test_gedeelde_mailbox_shipto_tie_gebroken_op_kaartnaam_plaats(bind):
+    """B2 / #847 (Strecken): het agent-domein werkzeuge-dietrich.de dekt 5
+    se-Huber-kaarten en TWEE daarvan hebben een ship-to met exact het
+    leverpostcode 94315 Straubing (61532 'se Huber Straubing' en 61816
+    'se Huber' zonder plaats) — de ship-to-score alleen eindigt in een
+    gelijkspel en de klant bleef None. De afleverPARTIJ zelf breekt de tie:
+    de plaats van het afleveradres (Straubing) staat in de kaartnaam van
+    61532. Verwacht: 61532 als match (conf 0.9 + CONTROLEER), geen gok-tie."""
+    groep = [
+        ("61514", "se Huber Augsburg GmbH & Co. KG",
+         [("86165", "se Huber GmbH & Co. KG", "Weg 1", "D 86165", "Augsburg")]),
+        ("61515", "se Huber Feldkirchen GmbH & Co KG",
+         [("85622", "se Huber Feldkirchen GmbH & Co KG", "Weg 2", "D 85622", "Feldkirchen")]),
+        ("61532", "se Huber Straubing GmbH & Co KG",
+         [("85551", "se Huber Straubing GmbH & Co KG", "Weg 3", "85551", "KIRCHHEIM B. MUENCHEN"),
+          ("94315", "se Huber Straubing GmbH & Co KG", "Borsigstr. 15", "94315", "Straubing")]),
+        ("61533", "se Huber Passau GmbH & Co KG",
+         [("94036", "se Huber Passau GmbH & Co KG", "Weg 4", "94036", "Passau")]),
+        ("61816", "se Huber GmbH & Co KG",
+         [("94315", "se Huber GmbH & Co KG", "Borsigstr. 15", "94315", "Straubing"),
+          ("D 85551", "se Huber GmbH & Co KG", "Weg 5", "D 85551", "KIRCHHEIM B. MUENCHEN")]),
+    ]
+    for nr, naam, shiptos in groep:
+        bind.add(Klantenkaart(nav_klantnr=nr, naam=naam,
+                              email="ab@werkzeuge-dietrich.de;dispo@werkzeuge-dietrich.de"))
+        for code, snaam, straat, pc, plaats in shiptos:
+            bind.add(KlantenkaartShipTo(
+                klant_nr=nr, ship_to_code=code, naam=snaam, straat=straat,
+                postcode=pc, plaats=plaats, land="DE", is_default=False))
+    bind.commit()
+    state = _state(
+        email_from="Katharina Huebke <Katharina.Huebke@werkzeuge-dietrich.de>",
+        email_subject="Bestellung 4270245223",
+        afleveradres={"naam": "se Huber GmbH & Co KG", "straat": "Borsigstr. 15",
+                      "postcode": "94315", "plaats": "STRAUBING", "land": "DE"},
+    )
+    out = await match_customer_node(state)
+    assert out["klant_match"] is not None, out.get("klant_kandidaten")
+    assert out["klant_match"]["navision_klantnr"] == "61532"
+    assert out["klant_match"]["match_confidence"] == 0.9
+    assert out["klant_match"]["match_bron"] == "leveradres_shipto"
+    assert "klant_match" in out["needs_review_fields"]
+
+
+@pytest.mark.asyncio
 async def test_unieke_klant_op_eigen_email_blijft_conf_1(bind):
     """Backward-compat: een klant met een UNIEK e-maildomein (niet gedeeld)
     matcht gewoon confident op conf 1.0."""

@@ -1,9 +1,12 @@
 import { expect } from "@playwright/test";
-import { test, resetEnv, BACKEND } from "./helpers";
+import {test, resetEnv, BACKEND, login } from "./helpers";
 import { promises as fs } from "fs";
 import * as path from "path";
 
-test.beforeEach(resetEnv);
+test.beforeEach(async ({ context }) => {
+  await resetEnv();
+  await login(context);
+});
 
 test("forwarded email matcht originele klant (Kirchner)", async ({ page, request }) => {
   // Drop Kirchner forward into inbox_e2e (with unique hash via filename timestamp)

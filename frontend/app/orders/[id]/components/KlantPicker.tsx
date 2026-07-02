@@ -24,8 +24,20 @@ function describe(k: KlantKandidaat): string {
  */
 export function KlantPicker({ kandidaten, onPick }: Props) {
   const [busy, setBusy] = useState(false);
+  // C2: doorzoekbaar — agent-/franchise-mailboxen leveren zo veel kandidaten
+  // dat een kale select onwerkbaar is (TABS: tientallen vestigingen).
+  const [zoek, setZoek] = useState("");
 
   if (!kandidaten || kandidaten.length === 0) return null;
+
+  const term = zoek.trim().toLowerCase();
+  const gefilterd = term
+    ? kandidaten.filter((k) =>
+        `${k.klantnaam ?? ""} ${k.plaats ?? ""} ${k.navision_klantnr}`
+          .toLowerCase()
+          .includes(term),
+      )
+    : kandidaten;
 
   async function onSelect(value: string) {
     setBusy(true);
@@ -52,9 +64,17 @@ export function KlantPicker({ kandidaten, onPick }: Props) {
           Selectie nodig
         </span>
         <span className="ml-auto text-[10px] text-slate-500">
-          {kandidaten.length} kandidaten
+          {term ? `${gefilterd.length}/${kandidaten.length}` : kandidaten.length} kandidaten
         </span>
       </div>
+      <input
+        type="search"
+        data-testid="klant-zoek"
+        value={zoek}
+        onChange={(e) => setZoek(e.target.value)}
+        placeholder="Zoek op naam, plaats of nummer…"
+        className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--kwabo-navy)]"
+      />
       <select
         data-testid="klant-select"
         disabled={busy}
@@ -69,12 +89,17 @@ export function KlantPicker({ kandidaten, onPick }: Props) {
         <option value="" disabled>
           — Kies klant —
         </option>
-        {kandidaten.map((k) => (
+        {gefilterd.map((k) => (
           <option key={k.navision_klantnr} value={k.navision_klantnr}>
             {describe(k)}
           </option>
         ))}
       </select>
+      {term && gefilterd.length === 0 && (
+        <div className="mt-1 text-[11px] text-slate-500">
+          Geen kandidaten voor &quot;{zoek}&quot; — pas de zoekterm aan of typ het klantnr handmatig.
+        </div>
+      )}
     </div>
   );
 }

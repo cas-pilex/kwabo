@@ -35,6 +35,29 @@ function pretty(path: string): string {
   return path;
 }
 
+// C2: vlaggen in AFHANDEL-volgorde — eerst de klant (die bepaalt ship-to,
+// prijzen en mix), dan het afleverpunt, dan de regels (artikel vóór eenheid:
+// een artikel-wissel herberekent de eenheid), dan de rest. De volgorde in de
+// banner = de volgorde waarin de reviewer het beste kan werken.
+const PRIORITEIT: Array<(f: string) => boolean> = [
+  (f) => f === "klant_match",
+  (f) => f === "afleveradres" || f === "ship_to_gekozen",
+  (f) => /\.artikelnummer_kwabo(_matched)?$/.test(f),
+  (f) => /\.eenheid$/.test(f) || /^verkoop_eenheid:/.test(f) || /^mix_uom:/.test(f),
+  (f) => /\.hoeveelheid$/.test(f),
+  (f) => f === "europallet",
+];
+
+function prioriteit(f: string): number {
+  const i = PRIORITEIT.findIndex((p) => p(f));
+  return i === -1 ? PRIORITEIT.length : i;
+}
+
+export function sorteerVlaggen(fields: string[]): string[] {
+  // Stabiel: binnen dezelfde prioriteitsklasse blijft de server-volgorde staan.
+  return [...fields].sort((a, b) => prioriteit(a) - prioriteit(b));
+}
+
 export function NeedsReviewBanner({
   fields,
   forceArmed,
@@ -53,9 +76,11 @@ export function NeedsReviewBanner({
   }
   return (
     <div className="sticky top-0 z-20 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="font-semibold">⚠ {fields.length} velden vereisen aanvulling:</span>
-        {fields.map((f) => (
+      <div className="flex flex-wrap items-center gap-3" data-testid="review-takenlijst">
+        <span className="font-semibold">
+          ⚠ {fields.length} {fields.length === 1 ? "ding" : "dingen"} te controleren (in volgorde):
+        </span>
+        {sorteerVlaggen(fields).map((f) => (
           <button
             key={f}
             onClick={() => {

@@ -29,6 +29,22 @@ function Onderbouwing({ meta }: { meta?: EuropalletMeta | null }) {
           ))}
         </ul>
       )}
+      {/* B4: regels zonder databron tellen NIET mee — dat moet de reviewer
+          zien (anders lijkt "geen europallet" een uitspraak i.p.v. een gat). */}
+      {(meta.onbekend?.length ?? 0) > 0 && (
+        <div
+          data-testid="europallet-onbekend"
+          className="mt-1.5 rounded border border-rose-200 bg-rose-50 px-1.5 py-1 text-[10px] text-rose-800"
+        >
+          <span className="font-semibold">Niet meegeteld (pallet-plaatsen onbekend): </span>
+          {meta.onbekend!.map((o, i) => (
+            <span key={i}>
+              {i > 0 && ", "}
+              {o.artikelnr} ({o.qty} {o.eenheid})
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

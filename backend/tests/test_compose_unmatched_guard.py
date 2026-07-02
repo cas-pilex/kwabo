@@ -106,6 +106,33 @@ def test_composer_returns_empty_when_no_customer():
 
 
 @pytest.mark.asyncio
+async def test_compose_order_node_warns_on_partially_unmatched_regels(
+    session, monkeypatch
+):
+    """B3 ('1???'-klasse): een order met 1 gematchte + 1 ongematchte regel
+    composet wél, maar de overgeslagen regel mag NIET geruisloos uit de
+    NAV-operaties verdwijnen — expliciete validatie-warning met positie."""
+    from kwabo.db import session as db_session_mod
+    monkeypatch.setattr(db_session_mod, "engine", session.get_bind())
+    import kwabo.graph.nodes.compose_order as compose_mod
+    monkeypatch.setattr(compose_mod, "engine", session.get_bind())
+
+    state = _state_with_regels([
+        {"positie": 1, "artikelnummer_kwabo_matched": "1515155",
+         "hoeveelheid": 5, "eenheid": "ROL"},
+        {"positie": 2, "artikelnummer_kwabo_matched": None,
+         "omschrijving": "Milieutoeslag", "hoeveelheid": 1, "eenheid": None},
+    ], email_id="compose-partial-warn")
+
+    out = await compose_order_node(state)
+
+    assert out["nav_operations"], "gematchte regel moet gewoon composen"
+    warnings = out.get("validatie_warnings") or []
+    assert any("regel 2" in w.lower() and "niet in de nav-operaties" in w.lower()
+               for w in warnings), warnings
+
+
+@pytest.mark.asyncio
 async def test_compose_order_node_records_compose_error_when_unmatched(
     session, monkeypatch
 ):

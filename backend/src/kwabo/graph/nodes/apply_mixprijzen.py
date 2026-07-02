@@ -211,7 +211,13 @@ def _branch_a(regel: dict, art_repo: ArtikelkaartRepo) -> Optional[str]:
         return None  # geen mirror-data -> geen veilige keuze mogelijk
     ordered = (regel.get("eenheid") or "").strip()
     if ordered and ordered.upper() != base.upper():
-        return None  # klant koos expliciet een geldige alternatieve eenheid
+        # Klant koos expliciet een geldige alternatieve eenheid — die blijft
+        # staan (composer PATCHt hem al). Wel eventuele STALE afgeleiden uit
+        # een eerdere run wissen (B3-herverwerking, #819-rerun): anders pusht
+        # de composer de oude verkoop-keuze i.p.v. de gebrugde eenheid.
+        regel.pop("verkoop_uom_gekozen", None)
+        regel.pop("verkoop_aantal", None)
+        return None
     try:
         qty = float(regel.get("hoeveelheid") or 0)
     except (TypeError, ValueError):

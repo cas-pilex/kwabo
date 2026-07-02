@@ -308,3 +308,34 @@ async def test_mix_regel_blijft_van_mixlogica(session):
     r = out["orderregels"][0]
     assert r["mix_uom_gekozen"] is not None
     assert "verkoop_uom_gekozen" not in r
+
+
+@pytest.mark.asyncio
+async def test_herverwerking_wist_stale_verkoop_afgeleiden(session):
+    """B3-herverwerking (#819-rerun): een opgeslagen regel draagt nog de oude
+    afgeleiden (verkoop STUK/4.0) terwijl de eenheid inmiddels naar de
+    pallet-UoM is gebrugd. Branch A laat een geldige niet-base eenheid staan,
+    maar moet de STALE verkoop_*-afgeleiden dan wissen — anders pusht de
+    composer alsnog de oude STUK-keuze naar NAV."""
+    _set_klant_mix(session, "10001", False)
+    _seed_kaart(session, "23691", basis="STUK", verkoop=None)
+    session.add(ArtikelEenheid(kwabo_artikelnr="23691", eenheid_code="STUK",
+                               qty_per_base=1, is_mix_uom=False))
+    session.add(ArtikelEenheid(kwabo_artikelnr="23691", eenheid_code="PALLET",
+                               qty_per_base=20, is_mix_uom=False))
+    session.commit()
+
+    regel = {
+        "positie": 1,
+        "artikelnummer_kwabo_matched": "23691",
+        "hoeveelheid": 4.0,
+        "eenheid": "PALLET",            # al gebrugd door match_articles
+        "eenheid_origineel": "PAL",
+        "eenheid_default": "STUK",
+        "verkoop_uom_gekozen": "STUK",  # stale, uit de opgeslagen state
+        "verkoop_aantal": 4.0,
+    }
+    out = await apply_mixprijzen_node(_state([regel]), session=session)
+    r = out["orderregels"][0]
+    assert r.get("verkoop_uom_gekozen") in (None, "PALLET"), r
+    assert r.get("verkoop_aantal") in (None, 4), r

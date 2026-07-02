@@ -131,10 +131,10 @@ def test_compute_europallet_single_pal_still_counts():
     assert regel["hoeveelheid"] == 1
 
 
-def test_compute_europallet_doos_still_uses_legacy_heuristic():
-    """DOOS path: 5 boxes / 24 per pallet ≈ 0.21 → rounds to 1 pallet via
-    PALLET_THRESHOLD logic (5/24 = 0.208, below 0.5 → returns None).
-    Demonstrates the DOOS heuristic still behaves the old way."""
+def test_compute_europallet_doos_zonder_bron_gokt_niet_meer():
+    """B4: de oude DOOS-/24-heuristiek is uit de telling. Zonder
+    pallet_plaatsen_basis-waarde of NAV-eenheid draagt DOOS niets bij —
+    ongeacht de hoeveelheid (de node vlagt 'europallet onbekend')."""
     state = {
         "orderregels": [
             {
@@ -144,12 +144,7 @@ def test_compute_europallet_doos_still_uses_legacy_heuristic():
             }
         ]
     }
-    # 5 DOOS at HEURISTIC_PER_PALLET=24 → 0.208 → below 0.5 → no pallet
-    regel = compute_europallet(state, repo=_StubKennisRepo())
-    assert regel is None
+    assert compute_europallet(state, repo=_StubKennisRepo()) is None
 
-    # 13 DOOS → 0.54 → just over → one pallet
     state["orderregels"][0]["hoeveelheid"] = 13
-    regel = compute_europallet(state, repo=_StubKennisRepo())
-    assert regel is not None
-    assert regel["hoeveelheid"] == 1
+    assert compute_europallet(state, repo=_StubKennisRepo()) is None

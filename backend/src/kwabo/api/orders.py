@@ -33,7 +33,14 @@ from kwabo.api.schemas import (
 )
 from kwabo.config import settings
 from kwabo.db.models import ArtikelPalletKennis
-from kwabo.db.repository import ArtikelRepo, KlantRepo, OrderLogRepo, PalletKennisRepo
+from kwabo.db.repository import (
+    ArtikelkaartRepo,
+    ArtikelRepo,
+    KlantRepo,
+    OrderLogRepo,
+    PalletKennisRepo,
+    PalletPlaatsenRepo,
+)
 from kwabo.db import session as db_session
 from kwabo.graph.runner import finalize
 from kwabo.utils import utcnow
@@ -891,9 +898,11 @@ def _persist_pallet_feedback(
     # europallet_regel is None — only record explicit "no pallet" feedback
     # when compute_europallet WOULD have produced one for this state. That
     # signals the human deliberately suppressed it (vs. the order simply
-    # not needing a pallet). We re-run compute against the same repo so
-    # any existing kennis is honoured.
-    would_have_added = compute_europallet(state, repo=repo)
+    # not needing a pallet). B4: dezelfde bronnen als de graph-node
+    # (pallet_plaatsen_basis + NAV-eenheid; leerbestand telt niet meer mee).
+    would_have_added = compute_europallet(
+        state, repo=repo, uom_repo=ArtikelkaartRepo(session),
+        plaatsen_repo=PalletPlaatsenRepo(session))
     if not would_have_added:
         return
 
