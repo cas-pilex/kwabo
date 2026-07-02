@@ -4,6 +4,13 @@ Per (artikel, eenheid): hoeveel PALLETPLAATSEN neemt één regel-eenheid in?
 `0` = neemt geen plaats (bijpak-artikel). Voorbeeld: gaan er 33 stuks van een artikel op een pallet, dan is plaatsen_per_eenheid per STUK = 1/33 ≈ 0.0303.
 Zonder waarde geeft de tool de vlag 'europallet onbekend' (geen gok; het vervuilde leerbestand per_pallet=24 wordt genegeerd).
 
+**VOORKEURSROUTE — beheer in Navision, geen lijst nodig:** zet bij deze artikelen in NAV de
+**Sales Unit of Measure (verkoopeenheid)** op de juiste pallet-code (bijv. PALLET33). De
+bestaande NAV-sync pikt dat automatisch op en de europallet-telling klopt dan vanzelf —
+dit bestand is alleen nodig als override voor uitzonderingen (bijv. bijpak-artikel = 0 plaatsen).
+Zelfde geldt voor klant-artikelnummers: leg die als Item Reference in NAV vast (sync loopt al);
+de app-leertabel groeit daarnaast vanzelf met elke goedkeuring.
+
 ## Corpus-artikelen zonder databron (vlag actief)
 
 | artikel | naam | eenheid | NAV-pallet-varianten (qty/base) | corpus-order | plaatsen_per_eenheid (INVULLEN) |
