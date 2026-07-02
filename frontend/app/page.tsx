@@ -190,6 +190,16 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
                         <span className="inline-flex rounded bg-rose-50 px-1.5 py-0.5 text-xs font-medium text-rose-800 ring-1 ring-rose-200">
                           {o.needs_review_count}
                         </span>
+                      ) : o.status === "review" ? (
+                        /* C3: geen enkele vlag -> dit order is klaar om te
+                           pushen; dat vertrouwenssignaal hoort al in de lijst. */
+                        <span
+                          data-testid={`klaar-badge-${o.id}`}
+                          title="Geen openstaande controles — klaar om te pushen"
+                          className="inline-flex rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200"
+                        >
+                          ✓ klaar
+                        </span>
                       ) : (
                         <span className="text-slate-400">—</span>
                       )}

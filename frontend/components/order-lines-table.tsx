@@ -17,6 +17,13 @@ export type Regel = {
   // with the NAV-side base UoM. Shown as a tooltip / sub-line so the
   // reviewer can see "klant schreef PAL, NAV pusht STUK".
   eenheid_origineel?: string | null;
+  // Branch A / mix: de eenheid + het omgerekende aantal dat daadwerkelijk
+  // naar NAV gaat ("60 STUK -> 2 × PALLET"). C1: de reviewer moet de
+  // omrekening zien, niet alleen de bestelde regel.
+  verkoop_uom_gekozen?: string | null;
+  verkoop_aantal?: number | null;
+  mix_uom_gekozen?: string | null;
+  mix_aantal?: number | null;
   prijs_per_eenheid: number | null;
   prijs_validated: boolean | null;
   ean_code: string | null;
@@ -227,6 +234,24 @@ function FragmentRow({
                   ← {r.eenheid_origineel}
                 </span>
               )}
+              {/* C1: de daadwerkelijke NAV-regel (mix > Branch A) mét
+                  omrekening — "besteld 60 STUK → 2 × PALLET". */}
+              {(() => {
+                const navUom = r.mix_uom_gekozen || r.verkoop_uom_gekozen;
+                const navAantal = r.mix_uom_gekozen ? r.mix_aantal : r.verkoop_aantal;
+                if (!navUom || navAantal == null) return null;
+                if (navUom.toUpperCase() === (r.eenheid || "").toUpperCase()
+                    && Number(navAantal) === Number(r.hoeveelheid)) return null;
+                return (
+                  <span
+                    data-testid={`regel-nav-eenheid-${r.positie}`}
+                    className="mt-0.5 inline-flex w-fit rounded bg-sky-50 px-1 py-0.5 text-[9px] font-semibold text-sky-800 ring-1 ring-sky-200"
+                    title={`Besteld ${fmtQty(r.hoeveelheid)} ${r.eenheid_origineel || r.eenheid} — naar NAV gaat ${fmtQty(navAantal)} × ${navUom}`}
+                  >
+                    → NAV: {fmtQty(navAantal)} × {navUom}
+                  </span>
+                );
+              })()}
             </span>
           ) : (
             <span className="text-slate-400">—</span>

@@ -123,11 +123,20 @@ export type EuropalletBijdrage = {
   pallets: number;
 };
 
+// B4: regels waarvoor géén europallet-databron bestaat (pallet_plaatsen_basis
+// leeg én geen bruikbare NAV-eenheid) — de telling kan ze niet meenemen.
+export type EuropalletOnbekend = {
+  artikelnr: string | null;
+  qty: number | null;
+  eenheid: string;
+};
+
 export type EuropalletMeta = {
   regels: EuropalletBijdrage[];
   totaal_pallets: number;
   europallet_aantal: number;
   uitleg: string;
+  onbekend?: EuropalletOnbekend[];
 };
 
 export const AUTH_COOKIE = "kwabo_admin";

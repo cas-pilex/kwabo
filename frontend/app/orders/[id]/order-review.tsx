@@ -61,11 +61,14 @@ type Address = {
 };
 
 type State = {
-  klant_match?: { navision_klantnr?: string; klantnaam?: string; plaats?: string | null; match_bron?: string; match_uitleg?: string; match_confidence?: number; is_4plus?: boolean; kredietlimiet?: number | null; betalingsconditie?: string | null };
+  klant_match?: { navision_klantnr?: string; klantnaam?: string; plaats?: string | null; match_bron?: string; match_uitleg?: string; match_confidence?: number; leveradres_bevestigd?: boolean; is_4plus?: boolean; kredietlimiet?: number | null; betalingsconditie?: string | null };
   bestelnummer_klant?: string | null;
   orderdatum?: string | null;
   gewenste_leverdatum?: string | null;
   afleveradres?: Address | null;
+  // B1: adressen mét rol uit de extractie (aflever/eindontvanger sturen
+  // ship-to; besteller/factuur zijn context en mogen dat nooit).
+  adres_rollen?: Partial<Record<"besteller" | "factuur" | "aflever" | "eindontvanger", Address | null>> | null;
   afleverinstructies?: string | null;
   opmerkingen?: string | null;
   orderregels?: Regel[];
@@ -333,6 +336,21 @@ export function OrderReview({ order, items }: Props) {
                 )}
               </div>
             )}
+            {/* C1: de match-reden is er ALTIJD — niet alleen verstopt in de
+                bevestig-knop. "afleveradres Woerden → Jongeneel Woerden" laat
+                de reviewer in één oogopslag zien waaróm dit de klant is. */}
+            {(initialState.klant_match?.match_uitleg || initialState.klant_match?.match_bron) && (
+              <div className="mb-1.5 text-[11px] text-[var(--kwabo-muted)]" data-testid="klant-match-reden">
+                {initialState.klant_match?.match_uitleg
+                  ? initialState.klant_match.match_uitleg
+                  : `gematcht via ${initialState.klant_match!.match_bron}`}
+                {initialState.klant_match?.leveradres_bevestigd && (
+                  <span className="ml-1 inline-flex rounded bg-emerald-50 px-1 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                    leveradres bevestigd
+                  </span>
+                )}
+              </div>
+            )}
             <FieldInput
               label="Navision klantnr."
               path="klant_match"
@@ -427,6 +445,33 @@ export function OrderReview({ order, items }: Props) {
               </span>
               <ProvenanceBadge meta={meta.afleveradres} size="xs" />
             </div>
+            {/* B1/C1: de adresROLLEN uit de extractie — zo ziet de reviewer
+                dat het besteladres (bijv. Bunnik) bewust NIET het leveradres
+                (Hengelo) is. Alleen tonen wat de extractie vond. */}
+            {initialState.adres_rollen && Object.keys(initialState.adres_rollen).length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1.5" data-testid="adres-rollen">
+                {(["besteller", "factuur", "aflever", "eindontvanger"] as const).map((rol) => {
+                  const a = initialState.adres_rollen?.[rol];
+                  if (!a) return null;
+                  const kort = [a.naam, a.postcode, a.plaats].filter(Boolean).join(", ");
+                  const isLever = rol === "aflever" || rol === "eindontvanger";
+                  return (
+                    <span
+                      key={rol}
+                      title={`${rol}: ${kort}`}
+                      className={
+                        isLever
+                          ? "inline-flex rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-800 ring-1 ring-emerald-200"
+                          : "inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600 ring-1 ring-slate-200"
+                      }
+                    >
+                      <span className="mr-1 font-semibold uppercase">{rol}</span>
+                      {kort || "—"}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <FieldInput label="Naam" path="afleveradres.naam" value={ship.naam ?? ""}
                 onChange={(v) => patch("afleveradres.naam", v)} />
