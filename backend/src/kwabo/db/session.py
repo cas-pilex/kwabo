@@ -106,6 +106,10 @@ def _apply_additive_migrations(target_engine: Optional[Engine] = None) -> None:
     eng = target_engine if target_engine is not None else engine
     dialect = eng.dialect.name
     with eng.begin() as conn:
+        if dialect == "postgresql":
+            # Zelfde hardening als _enforce_rls: nooit oneindig op een lock
+            # wachten tijdens de boot (prod-incident 2-7).
+            conn.execute(text(f"SET LOCAL lock_timeout = '{_DDL_LOCK_TIMEOUT}'"))
         for table, column, decl_by_dialect in _ADDITIVE_MIGRATIONS:
             cols = _existing_columns(conn, table)
             if not cols:
@@ -120,7 +124,21 @@ def _apply_additive_migrations(target_engine: Optional[Engine] = None) -> None:
             conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {decl}"))
 
 
-def _rls_statements(dialect_name: str) -> list[str]:
+# Prod-incident 2-7-2026: een ALTER zonder timeout wachtte oneindig op een
+# stale 'idle in transaction'-lock en hing de hele boot (crash-loop), terwijl
+# de wachtende exclusieve lock óók alle gewone queries blokkeerde. Elke
+# startup-DDL-verbinding krijgt daarom een harde lock_timeout: geblokkeerd ->
+# nette exception -> gelogd en overgeslagen, de app boot door.
+_DDL_LOCK_TIMEOUT = "5s"
+
+_RLS_PENDING_SQL = (
+    "SELECT c.relname FROM pg_class c "
+    "JOIN pg_namespace n ON n.oid = c.relnamespace "
+    "WHERE n.nspname = 'public' AND c.relkind = 'r' AND NOT c.relrowsecurity"
+)
+
+
+def _rls_statements(dialect_name: str, pending: Optional[set] = None) -> list[str]:
     """ALTER TABLE ... ENABLE ROW LEVEL SECURITY for every mapped table.
 
     Postgres-only. Supabase auto-exposes every ``public`` table over its
@@ -137,6 +155,9 @@ def _rls_statements(dialect_name: str) -> list[str]:
     return [
         f'ALTER TABLE public."{table.name}" ENABLE ROW LEVEL SECURITY'
         for table in SQLModel.metadata.sorted_tables
+        # Precheck (2-7): alleen tabellen waar RLS nog NIET aan staat — een
+        # normale boot vraagt dan nul exclusieve locks aan.
+        if pending is None or table.name in pending
     ]
 
 
@@ -148,14 +169,21 @@ def _enforce_rls(target_engine: Optional[Engine] = None) -> None:
     a security-hardening step must never take the app down on boot.
     """
     eng = target_engine if target_engine is not None else engine
-    stmts = _rls_statements(eng.dialect.name)
-    if not stmts:
+    if eng.dialect.name != "postgresql":
         return
     from kwabo.utils.logging import log
 
+    try:
+        with eng.connect() as conn:
+            pending = {row[0] for row in conn.execute(text(_RLS_PENDING_SQL))}
+    except Exception as exc:  # noqa: BLE001
+        log.warning("rls_precheck_failed", error=str(exc))
+        return
+    stmts = _rls_statements(eng.dialect.name, pending=pending)
     for stmt in stmts:
         try:
             with eng.begin() as conn:
+                conn.execute(text(f"SET LOCAL lock_timeout = '{_DDL_LOCK_TIMEOUT}'"))
                 conn.execute(text(stmt))
         except Exception as exc:  # noqa: BLE001
             log.warning("rls_enable_failed", stmt=stmt, error=str(exc))
