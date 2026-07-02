@@ -1,4 +1,29 @@
-"""Match customer node: email → DB → NAV-email → naam-extract → NAV-domein → None."""
+"""Klantresolutie — HET BESLISBOOM-CONTRACT (B2, structurele upgrade).
+
+Elke order doorloopt exact deze boom (volgorde = prioriteit):
+
+  1. DIRECTE e-mail-/domeinmatch (afzender of forward-origineel staat op
+     precies één kaart, domein niet gedeeld) ................ conf 1.0, GEEN vlag
+     -> `repo.by_email` + K2 `nav.search_customers(email=...)`
+  2. AGENT/PORTAAL (afzenderdomein op >= SHARED_MAILBOX_MIN_KLANTEN kaarten,
+     of PORTAL_DOMAINS): de klant komt uit de AFLEVERPARTIJ — score de
+     ship-to's van de groep + de kaart zelf (naam/plaats) tegen het
+     afleveradres. Uniek hoogst ........ conf 0.9 bron `leveradres_shipto` + CONTROLEER
+     Geen unieke winnaar ............... kandidatenlijst + CONTROLEER (nooit gokken)
+     -> `_disambiguate_shared_mailbox` + `_score_kaart_bij_leveradres`
+  3. NAAM-match op `klantnaam_besteller` (token_set_ratio na rechtsvorm-strip,
+     top >= NAAM_ACCEPT=90 én gap >= NAAM_GAP=10) ........... CONTROLEER-vlag
+     -> `_match_by_name`; K2b domein-alias (0.9) ervoor
+  4. MULTI-VESTIGING (PontMeyer/Jongeneel-patroon): disambigueer op het
+     afleveradres — óók een conf-1.0-match wordt gecorrigeerd
+     -> `_correct_vestiging_op_leveradres`; postcode-bevestiging kan een
+     naam-match tot 1.0 promoveren (DEEL A2, alléén bij unieke leverpostcode)
+  5. ANDERS: kandidatenlijst, nooit autopick.
+
+Het `afleveradres` komt sinds B1 uitsluitend uit de rollen aflever/
+eindontvanger van de extractie — een besteladres kan hier dus nooit meer de
+klantkeuze sturen.
+"""
 from __future__ import annotations
 
 import re
@@ -292,13 +317,41 @@ def _gedeelde_mailbox_kandidaten(groep: list) -> list[dict]:
     ]
 
 
+def _score_kaart_bij_leveradres(k, afleveradres: dict) -> int:
+    """B2: score de KLANTENKAART zelf tegen de afleverPARTIJ. Nodig als tie-
+    breaker wanneer twee kaarten hetzelfde leverpunt in hun ship-to's hebben
+    (#847: 61532 'se Huber Straubing' én 61816 'se Huber' hebben allebei een
+    ship-to 94315 Straubing — de plaats in de KAARTNAAM wijst 61532 aan).
+    plaats-in-kaartnaam/kaart-plaats (+3) > kaart-postcode (+2, kaarten hebben
+    die zelden) > naam-token-overlap met de afleverpartij (+1)."""
+    score = 0
+    plaats = (afleveradres.get("plaats") or "").strip()
+    if plaats:
+        if _word_in((k.naam or "").lower(), plaats):
+            score += 3
+        elif (k.plaats or "").strip().lower() == plaats.lower():
+            score += 3
+    kaart_pc = _normalize_postcode(getattr(k, "postcode", None))
+    if kaart_pc and kaart_pc == _normalize_postcode(afleveradres.get("postcode")):
+        score += 2
+    afl_naam = _normaliseer_klantnaam(afleveradres.get("naam") or "")
+    kaart_naam = _normaliseer_klantnaam(k.naam or "")
+    if afl_naam and kaart_naam:
+        tokens = {t for t in afl_naam.split() if len(t) >= 3}
+        if tokens & {t for t in kaart_naam.split() if len(t) >= 3}:
+            score += 1
+    return score
+
+
 def _disambiguate_shared_mailbox(
     session, groep: list, state: dict
 ) -> tuple[dict | None, list[dict]]:
     """Agent-/groepsmailbox (TABS): kies de klant op het LEVERADRES via de
     ship-to-adressen van de groep. De klantenkaarten zelf hebben vaak geen
     plaats/postcode (customers-sync vult ze niet), dus we scoren tegen de
-    ship-to-master (postcode > plaats > naam > straat, zoals select_ship_to).
+    ship-to-master (postcode > plaats > naam > straat, zoals select_ship_to)
+    PLUS de kaart zelf tegen de afleverpartij (B2: breekt ship-to-ties zoals
+    #847 waar twee kaarten hetzelfde leverpunt delen).
 
     Uniek hoogst (met leveradres-match) → match (conf 0.9 + CONTROLEER); geen
     leveradres-signaal of geen unieke winnaar → kandidaten (nooit gokken,
@@ -315,6 +368,7 @@ def _disambiguate_shared_mailbox(
     for k in groep:
         ship_tos = shipto_repo.list_for_klant(k.nav_klantnr)
         best = max((_score_ship_to(st, afleveradres) for st in ship_tos), default=0)
+        best += _score_kaart_bij_leveradres(k, afleveradres)
         scored.append((k, best))
     scored.sort(key=lambda x: x[1], reverse=True)
     top_k, top_score = scored[0]

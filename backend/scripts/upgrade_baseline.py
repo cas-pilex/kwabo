@@ -52,7 +52,11 @@ os.environ["NAVISION_MODE"] = "mirror"
 os.environ["ADMIN_PASSWORD"] = ""
 os.environ.setdefault("MAIL_MODE", "log")
 os.environ.setdefault("EMAIL_MODE", "file_drop")
-os.environ["LLM_CACHE_MODE"] = "off"  # het hele punt: extractie draait ECHT
+# --no-llm: gebruik de opgeslagen extractie en draai alleen de deterministische
+# lagen (match/ship-to/eenheid/europallet/compose) — voor als de API niet
+# beschikbaar is. Default = verse extractie (het hele punt van de baseline).
+_NO_LLM = "--no-llm" in sys.argv
+os.environ["LLM_CACHE_MODE"] = "on" if _NO_LLM else "off"
 
 sys.path.insert(0, str(BACKEND / "src"))
 
@@ -124,11 +128,11 @@ def _try_pdf_bytes(tekst: str | None) -> bytes | None:
     return raw
 
 
-def load_source(path: Path) -> tuple[dict, str]:
-    """Envelope-JSON -> vers graph-state. Retourneert (state, extractie_mode)."""
+def load_source(path: Path) -> tuple[dict, str, dict]:
+    """Envelope-JSON -> vers graph-state. Retourneert (state, extractie_mode, stored)."""
     env = json.loads(path.read_text(encoding="utf-8"))
     st = env.get("order_state") or {}
-    mode = "tekst"
+    mode = "opgeslagen-extractie" if _NO_LLM else "tekst"
     bijlagen = []
     for b in st.get("bijlagen") or []:
         if not isinstance(b, dict):
@@ -147,7 +151,7 @@ def load_source(path: Path) -> tuple[dict, str]:
         bijlagen=bijlagen,
         source_path=st.get("source_path"),
     )
-    return state, mode
+    return state, mode, st
 
 
 # ---------- vastlegging (ongesamenvat) + oordeel ----------
@@ -286,8 +290,20 @@ def judge(out: dict, gt: dict | None) -> dict:
             "n_stille_fouten": len(stille), "n_review": len(review)}
 
 
-async def run_order(state: dict) -> dict:
-    app = get_ingest_app()
+async def run_order(state: dict, stored: dict | None = None) -> dict:
+    if _NO_LLM and stored is not None:
+        # Opgeslagen extractie injecteren; alleen de sub-order-graph draaien
+        # (vanaf match_customer). Zelfde recept als verify_reality --no-llm.
+        from kwabo.graph.graph import get_sub_order_app
+        for k in ("klantnaam_besteller", "bestelnummer_klant", "taal", "afleveradres",
+                  "adres_rollen", "afleverinstructies", "opmerkingen", "orderregels",
+                  "gewenste_leverdatum", "verzendwijze", "_meta"):
+            if k in stored:
+                state[k] = stored[k]
+        state["is_order"] = True
+        app = get_sub_order_app()
+    else:
+        app = get_ingest_app()
     async with nav_client_scope():
         return await app.ainvoke(state)
 
@@ -295,6 +311,8 @@ async def run_order(state: dict) -> dict:
 async def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--orders", nargs="*", help="subset van corpus-order-ids")
+    ap.add_argument("--no-llm", action="store_true",
+                    help="opgeslagen extractie; alleen deterministische lagen")
     args = ap.parse_args()
     OUT_DIR.mkdir(exist_ok=True)
 
@@ -317,8 +335,8 @@ async def main() -> None:
         src = BACKEND / m["bron"].replace("tests/", "tests/", 1)
         print(f"  -> #{oid} {m['label']}", file=sys.stderr)
         try:
-            state, mode = load_source(src)
-            out = await run_order(state)
+            state, mode, stored = load_source(src)
+            out = await run_order(state, stored)
         except Exception as exc:  # noqa: BLE001
             print(f"     !! crash: {type(exc).__name__}: {exc}", file=sys.stderr)
             results.append({"order": oid, "label": m["label"], "bron_type": m["bron_type"],
