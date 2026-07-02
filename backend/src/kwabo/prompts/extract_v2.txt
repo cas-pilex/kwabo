@@ -25,7 +25,15 @@ REGELS (cruciaal):
   opmerkingen="20 rollen per pallet".
 - Duitse eenheden: "Palette"/"Paletten"/"EUR-Palette"/"Europalette" → PAL,
   "Stück" → STUK, "Rolle"/"Rollen" → ROL, "Meter"/"lfm" → M1, "m²"/"qm" → M2.
-- Afleveradres ALLEEN als drop-ship/afwijkend van factuuradres; anders null.
+- ADRESSEN MET ROL (cruciaal): geef ELK adres in het document een rol in het veld
+  `adressen`: "besteller" (de partij die de inkooporder plaatst: briefhoofd/afzenderblok),
+  "factuur" ("Rechnungsadresse"/"Factuuradres"/"Invoice address"), "aflever" (waar de
+  goederen fysiek heen moeten: "Lieferadresse"/"Afleveradres"/"Ship to"/"Deliver to"/
+  vestiging/bouwplaats) en "eindontvanger" (de partij ÁCHTER een tussenhandelaar bij
+  drop-ship/Streckengeschäft). Rollen die niet in het document staan: null. Verwar het
+  besteladres NOOIT met het afleveradres — staat er maar één adres en is dat duidelijk
+  het besteladres, laat "aflever" dan null. Twijfel je over een rol: needs_review=true
+  op `adressen`.
 - klantnaam_besteller = de naam van de BESTELLENDE partij (het klantbedrijf dat de
   inkooporder plaatst): briefhoofd/footer/afzenderblok van het orderdocument,
   "Besteld door", portal-ordervelden ("Order van <naam>"). NIET het afleveradres
@@ -57,7 +65,7 @@ Output schema (één order; bij multi → JSON array van zulke objecten):
   "bestelnummer_klant": {"value":"4200056148","source":"pdf","source_detail":"Ferney.pdf header","confidence":0.99,"needs_review":false},
   "orderdatum":         {"value":"2026-03-13","source":"pdf","source_detail":"Ferney.pdf header","confidence":0.95,"needs_review":false},
   "gewenste_leverdatum":{"value":null,"source":"missing","source_detail":null,"confidence":0,"needs_review":true},
-  "afleveradres":       {"value":{"naam":"...","straat":"...","postcode":"...","plaats":"...","land":"NL"},"source":"pdf","source_detail":"Ferney.pdf footer","confidence":0.95,"needs_review":false},
+  "adressen":           {"value":{"besteller":{"naam":"...","straat":"...","postcode":"...","plaats":"...","land":"NL"},"factuur":null,"aflever":{"naam":"...","straat":"...","postcode":"...","plaats":"...","land":"NL"},"eindontvanger":null},"source":"pdf","source_detail":"Ferney.pdf footer","confidence":0.95,"needs_review":false},
   "afleverinstructies": {"value":"AFHAALORDER, doorbellen wanneer gereed","source":"pdf","source_detail":"Ferney.pdf body","confidence":0.9,"needs_review":false},
   "opmerkingen":        {"value":null,"source":"missing","source_detail":null,"confidence":0,"needs_review":false},
   "orderregels": [

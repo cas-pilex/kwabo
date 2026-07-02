@@ -117,10 +117,50 @@ def _build_state_from_extract(parsed: dict, raw: RawEmail) -> tuple[dict, dict, 
         "bestelnummer_klant": take("bestelnummer_klant"),
         "orderdatum": take("orderdatum"),
         "gewenste_leverdatum": take("gewenste_leverdatum"),
-        "afleveradres": take("afleveradres"),
         "afleverinstructies": take("afleverinstructies"),
         "opmerkingen": take("opmerkingen"),
     }
+
+    # --- B1: adressen met ROL (besteller/factuur/aflever/eindontvanger) ---
+    # Het afgeleide `afleveradres` (waar ship-to en klant-disambiguatie op
+    # draaien) komt UITSLUITEND uit aflever/eindontvanger — een besteladres of
+    # factuuradres mag nooit stilzwijgend leveradres worden (#944, #847).
+    # Oude prompt-vorm (alleen `afleveradres`) blijft werken: de prompt is
+    # live-overridebaar en kan in prod nog de oude output leveren.
+    adres_rollen: dict[str, Any] = {}
+    if "adressen" in parsed:
+        am = _coerce_meta(parsed.get("adressen"))
+        meta["adressen"] = am
+        val = am.get("value") or {}
+        if isinstance(val, dict):
+            adres_rollen = {
+                rol: val.get(rol)
+                for rol in ("besteller", "factuur", "aflever", "eindontvanger")
+                if isinstance(val.get(rol), dict)
+            }
+        # Eindontvanger (Strecken/drop-ship: de partij áchter de tussenhandel)
+        # wint van aflever; besteller/factuur doen nooit mee.
+        rol = ("eindontvanger" if adres_rollen.get("eindontvanger")
+               else "aflever" if adres_rollen.get("aflever") else None)
+        afgeleid = adres_rollen.get(rol) if rol else None
+        if afgeleid is None and parsed.get("afleveradres") is not None:
+            # Mengvorm (LLM leverde beide velden): het losse veld als vangnet.
+            flat["afleveradres"] = take("afleveradres")
+        else:
+            meta["afleveradres"] = {
+                "value": afgeleid,
+                "source": am.get("source") if afgeleid else "missing",
+                "source_detail": f"adressen.{rol}" if rol else am.get("source_detail"),
+                "confidence": am.get("confidence") if afgeleid else 0,
+                "needs_review": bool(am.get("needs_review")),
+            }
+            flat["afleveradres"] = afgeleid
+        if am.get("needs_review"):
+            # Roltwijfel bij de LLM -> vlag, geen gok.
+            needs_review.append("afleveradres")
+    else:
+        flat["afleveradres"] = take("afleveradres")
+    flat["adres_rollen"] = adres_rollen
 
     regels_in = parsed.get("orderregels") or []
     regels_out: list[dict[str, Any]] = []
