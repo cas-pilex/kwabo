@@ -213,7 +213,7 @@ function FragmentRow({
               return <span className="font-semibold">{r.artikelnummer_kwabo_matched}</span>;
             })()
           ) : (
-            <span className="inline-flex rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-800 ring-1 ring-rose-300">
+            <span className="inline-flex rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-300">
               niet gematcht
             </span>
           )}
@@ -245,7 +245,7 @@ function FragmentRow({
                 return (
                   <span
                     data-testid={`regel-nav-eenheid-${r.positie}`}
-                    className="mt-0.5 inline-flex w-fit rounded bg-sky-50 px-1 py-0.5 text-[9px] font-semibold text-sky-800 ring-1 ring-sky-200"
+                    className="mt-0.5 inline-flex w-fit rounded bg-slate-100 px-1 py-0.5 text-[9px] font-semibold text-slate-700 ring-1 ring-slate-200"
                     title={`Besteld ${fmtQty(r.hoeveelheid)} ${r.eenheid_origineel || r.eenheid} — naar NAV gaat ${fmtQty(navAantal)} × ${navUom}`}
                   >
                     → NAV: {fmtQty(navAantal)} × {navUom}

@@ -175,10 +175,12 @@ test("CONTROLEER-klant: één klik op 'Bevestig deze klant' wist de vlag", async
 
   await page.goto(`/orders/${id}`);
 
-  // Uitgangssituatie: knop zichtbaar met de match-bron als context.
+  // Uitgangssituatie: knop zichtbaar; de match-reden staat sinds de
+  // cockpit-herindeling PERMANENT naast de klant (klant-match-reden),
+  // niet meer alleen als context ín de knop.
   const knop = page.getByTestId("klant-bevestig");
   await expect(knop).toBeVisible();
-  await expect(knop).toContainText("naam_extract");
+  await expect(page.getByTestId("klant-match-reden")).toContainText("naam_extract");
 
   await knop.click();
   await page.waitForResponse(

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
   api,
@@ -14,7 +14,6 @@ import {
   type ShipToKandidaat,
 } from "@/lib/api";
 import { EmailSourceViewer } from "@/components/email-source-viewer";
-import { ExtractSummary } from "@/components/extract-summary";
 import { FieldInput } from "@/components/field-input";
 import { NeedsReviewBanner } from "@/components/needs-review-banner";
 import { OrderLinesTable } from "@/components/order-lines-table";
@@ -99,6 +98,43 @@ type State = {
   errors?: string[] | null;
 };
 
+/* Cockpit-cel: het enige terugkerende bouwblok van de pagina. Eén vorm,
+   één kleur — rust komt uit herhaling, niet uit variatie. */
+function Cel({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="rounded-lg border border-[var(--kwabo-border)] bg-slate-50 p-3">
+      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--kwabo-muted)]">
+        {label}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/* Rustige, uniforme detail-sectie onder de vouw. */
+function Sectie({
+  titel,
+  open,
+  children,
+}: {
+  titel: string;
+  open?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <details
+      open={open}
+      className="group rounded-lg bg-white ring-1 ring-[var(--kwabo-border)]"
+    >
+      <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-semibold text-[var(--kwabo-navy)] hover:bg-slate-50">
+        <span className="mr-1 inline-block text-[var(--kwabo-muted)] transition-transform group-open:rotate-90">▸</span>
+        {titel}
+      </summary>
+      <div className="border-t border-[var(--kwabo-border)] p-4">{children}</div>
+    </details>
+  );
+}
+
 export function OrderReview({ order, items }: Props) {
   const router = useRouter();
   const initialState = (order.order_state || {}) as State;
@@ -179,8 +215,8 @@ export function OrderReview({ order, items }: Props) {
     setSaving(true);
     try {
       await api.reject(order.id, { reviewer: "dashboard", reason: "Manual reject" });
-      // Prefix met ✓ zodat de inline-status groen kleurt (de kleurcheck op
-      // regel ~522 gebruikt msg.startsWith("✓")); zonder dit kleurde een
+      // Prefix met ✓ zodat de inline-status groen kleurt (de kleurcheck in de
+      // actieregel gebruikt msg.startsWith("✓")); zonder dit kleurde een
       // geslaagde afwijzing rood alsof hij mislukte.
       setMsg("✓ Afgewezen");
       toast.success("Order afgewezen");
@@ -197,342 +233,39 @@ export function OrderReview({ order, items }: Props) {
   const blocked = missing.length > 0 && !forceArmed;
   const isNotOrder = order.status === "not_order";
   const canAct = order.status === "review" && !isNotOrder;
+  const nMatched = regels.filter((r) => r.artikelnummer_kwabo_matched).length;
+  const overigeWarnings = order.warnings.filter((w) => !isSourceDocWarning(w));
 
   return (
-    <div className="space-y-4">
-      {!isNotOrder && (
-        <NeedsReviewBanner fields={missing} forceArmed={forceArmed} onToggleForce={setForceArmed} />
-      )}
-
-      {order.status === "failed" && (
-        <NavFailureBanner
-          orderId={order.id}
-          firstError={
-            (initialState.errors || []).find((e) => e.startsWith("push_navision:"))
-              ?.replace(/^push_navision:\s*/, "") ?? null
-          }
-        />
-      )}
-
-      {/* FUNCTIE 7: dedicated, onmisbare banner voor de bron-doc-skip met een
-          knop naar het bron-document-paneel. */}
-      <SourceDocLinkBanner
-        warnings={order.warnings}
-        targetId="incoming-document-panel"
-      />
-
-      {/* Fase 5 (D): row.warnings was alleen zichtbaar als teller op het
-          dashboard — de reviewer op deze pagina zag de overige warnings nooit.
-          De bron-doc-warning krijgt de dedicated banner hierboven; de rest
-          blijft in deze generieke lijst (geen dubbeling). */}
-      {(() => {
-        const overige = order.warnings.filter((w) => !isSourceDocWarning(w));
-        if (overige.length === 0) return null;
-        return (
-          <div
-            data-testid="order-warnings-banner"
-            className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-          >
-            <div className="font-semibold">
-              ⚠ {overige.length === 1
-                ? "1 waarschuwing"
-                : `${overige.length} waarschuwingen`}
-            </div>
-            <ul className="mt-1 list-disc space-y-0.5 pl-5">
-              {overige.map((w, i) => (
-                <li key={i}>{w}</li>
-              ))}
-            </ul>
-          </div>
-        );
-      })()}
-
-      {!isNotOrder && (
-        <ExtractSummary
-          emailFrom={order.email_from}
-          emailSubject={order.email_subject}
-          state={initialState}
-        />
-      )}
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        {/* COL 1 — E-mail & bijlagen */}
-        <section className="lg:col-span-4 rounded-lg bg-white p-4 ring-1 ring-[var(--kwabo-border)]">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[var(--kwabo-navy)]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[var(--kwabo-gold)]" /> Bron: e-mail &amp; bijlagen ({(initialState.bijlagen || []).length})
-          </h2>
-          <EmailSourceViewer
-            orderId={order.id}
-            emailFrom={order.email_from}
-            emailDate={order.email_date}
-            emailBody={initialState.email_body ?? ""}
-            bijlagen={initialState.bijlagen || []}
-          />
-
-          <div id="incoming-document-panel" className="mt-3">
-            <IncomingDocumentPanel
-              orderId={order.id}
-              incomingPath={initialState.incoming_document_path ?? null}
-              onChanged={refresh}
-            />
-          </div>
-        </section>
-
-        {/* COL 2 — Extract + Klantkaart (editable) */}
-        <section className="lg:col-span-4 rounded-lg bg-white p-4 ring-1 ring-[var(--kwabo-border)]">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[var(--kwabo-navy)]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[var(--kwabo-gold)]" /> Extract + Klantkaart
-          </h2>
-
-          {/* Ship-to picker (T11) — only renders when state has candidates */}
-          <div className="mb-3">
-            <ShipToPicker
-              orderId={order.id}
-              kandidaten={initialState.ship_to_kandidaten || []}
-              gekozen={initialState.ship_to_gekozen ?? null}
-              needsReviewFields={missing}
-              onChanged={refresh}
-            />
-            {/* Functie 5: afhaalorder → verzendwijze (Shipment Method Code).
-                Alleen tonen als de detectie iets zette; reviewer kan wissen
-                (leeg) of corrigeren via dezelfde patch-flow. */}
-            {initialState.verzendwijze && (
-              <div
-                data-testid="verzendwijze"
-                className="mt-2 rounded-md border border-amber-300 bg-amber-50/60 p-2"
-              >
-                <div className="mb-1 inline-flex rounded bg-amber-200/70 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900 ring-1 ring-amber-300">
-                  Afhaalorder
-                </div>
-                <FieldInput
-                  label="Verzendwijze (Shipment Method Code)"
-                  path="verzendwijze"
-                  value={initialState.verzendwijze ?? ""}
-                  meta={meta.verzendwijze}
-                  onChange={(v) => patch("verzendwijze", v)}
-                  monospace
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Klant */}
-          <div className="mb-4 rounded-lg border border-[var(--kwabo-border)] bg-slate-50 p-3">
-            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--kwabo-muted)]">Klant</div>
-            {/* K3: kandidaten uit de naam-fallback — alleen zolang er geen
-                klant gekozen is; een keuze loopt via dezelfde patch-flow als
-                handmatig typen (incl. refresh). */}
-            {!initialState.klant_match?.navision_klantnr && (
-              <KlantPicker
-                kandidaten={initialState.klant_kandidaten || []}
-                onPick={(nr) => patch("klant_match", nr)}
-              />
-            )}
-            {initialState.klant_match?.klantnaam && (
-              <div className="mb-1.5 text-sm font-semibold text-[var(--kwabo-navy)]" data-testid="klant-naam">
-                {initialState.klant_match.klantnaam}
-                {initialState.klant_match.plaats && (
-                  <span className="font-normal text-[var(--kwabo-muted)]"> · {initialState.klant_match.plaats}</span>
-                )}
-              </div>
-            )}
-            {/* C1: de match-reden is er ALTIJD — niet alleen verstopt in de
-                bevestig-knop. "afleveradres Woerden → Jongeneel Woerden" laat
-                de reviewer in één oogopslag zien waaróm dit de klant is. */}
-            {(initialState.klant_match?.match_uitleg || initialState.klant_match?.match_bron) && (
-              <div className="mb-1.5 text-[11px] text-[var(--kwabo-muted)]" data-testid="klant-match-reden">
-                {initialState.klant_match?.match_uitleg
-                  ? initialState.klant_match.match_uitleg
-                  : `gematcht via ${initialState.klant_match!.match_bron}`}
-                {initialState.klant_match?.leveradres_bevestigd && (
-                  <span className="ml-1 inline-flex rounded bg-emerald-50 px-1 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
-                    leveradres bevestigd
-                  </span>
-                )}
-              </div>
-            )}
-            <FieldInput
-              label="Navision klantnr."
-              path="klant_match"
-              value={initialState.klant_match?.navision_klantnr ?? ""}
-              meta={meta.klant_match}
-              onChange={(v) => patch("klant_match", v)}
-              monospace
-            />
-            {/* Fase 6 V2: een gevulde-maar-onbevestigde match (CONTROLEER,
-                bron domein/naam/NAV-email) kon alleen bevestigd worden door
-                het klantnr opnieuw te typen of force te gebruiken. Eén klik
-                her-patcht hetzelfde nummer; de backend wist dan de vlag en
-                behoudt de 4+/krediet-context. */}
-            {canAct && meta.klant_match?.needs_review && initialState.klant_match?.navision_klantnr && (
-              <button
-                type="button"
-                data-testid="klant-bevestig"
-                onClick={() => patch("klant_match", initialState.klant_match!.navision_klantnr)}
-                title="CONTROLEER verschijnt bij elke match die geen directe e-mailmatch op de klantenkaart is (naam, NAV-zoektocht of domein-alias). Een directe e-mailmatch is zeker en draagt geen vlag."
-                className="mt-1.5 inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100"
-              >
-                ✓ Bevestig deze klant
-                {(initialState.klant_match?.match_uitleg || initialState.klant_match?.match_bron) && (
-                  <span className="font-normal text-amber-700">
-                    ({initialState.klant_match?.match_uitleg
-                      ? initialState.klant_match.match_uitleg
-                      : `gematcht via ${initialState.klant_match!.match_bron}`})
-                  </span>
-                )}
-              </button>
-            )}
-            {initialState.klant_match?.klantnaam && (
-              <div className="mt-1 flex items-center gap-2 text-xs text-[var(--kwabo-muted)]">
-                {initialState.klant_match?.is_4plus === true && (
-                  <span className="inline-flex rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
-                    4+ lid
-                  </span>
-                )}
-                {initialState.klant_match?.is_4plus === false && (
-                  <span className="inline-flex rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700 ring-1 ring-rose-200">
-                    geen 4+
-                  </span>
-                )}
-                {initialState.klant_match?.kredietlimiet != null && Number(initialState.klant_match.kredietlimiet) > 0 && (
-                  <span className="inline-flex rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-200">
-                    krediet € {Number(initialState.klant_match.kredietlimiet).toLocaleString("nl-NL")}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Header */}
-          <div className="mb-4 grid grid-cols-2 gap-3">
-            <FieldInput
-              label="Bestelnr klant"
-              path="bestelnummer_klant"
-              value={initialState.bestelnummer_klant ?? ""}
-              meta={meta.bestelnummer_klant}
-              onChange={(v) => patch("bestelnummer_klant", v)}
-            />
-            <FieldInput
-              label="Orderdatum"
-              path="orderdatum"
-              type="date"
-              value={initialState.orderdatum ?? ""}
-              meta={meta.orderdatum}
-              onChange={(v) => patch("orderdatum", v)}
-            />
-            <FieldInput
-              label="Gewenste leverdatum"
-              path="gewenste_leverdatum"
-              type="date"
-              value={initialState.gewenste_leverdatum ?? ""}
-              meta={meta.gewenste_leverdatum}
-              onChange={(v) => patch("gewenste_leverdatum", v)}
-            />
-            <FieldInput
-              label="Afleverinstructies"
-              path="afleverinstructies"
-              value={initialState.afleverinstructies ?? ""}
-              meta={meta.afleverinstructies}
-              onChange={(v) => patch("afleverinstructies", v)}
-            />
-          </div>
-
-          {/* Adres */}
-          <div className="mb-4 rounded-lg border border-[var(--kwabo-border)] bg-slate-50 p-3">
-            <div className="mb-2 flex items-center gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--kwabo-muted)]">
-                Drop-ship adres
-              </span>
-              <ProvenanceBadge meta={meta.afleveradres} size="xs" />
-            </div>
-            {/* B1/C1: de adresROLLEN uit de extractie — zo ziet de reviewer
-                dat het besteladres (bijv. Bunnik) bewust NIET het leveradres
-                (Hengelo) is. Alleen tonen wat de extractie vond. */}
-            {initialState.adres_rollen && Object.keys(initialState.adres_rollen).length > 0 && (
-              <div className="mb-2 flex flex-wrap gap-1.5" data-testid="adres-rollen">
-                {(["besteller", "factuur", "aflever", "eindontvanger"] as const).map((rol) => {
-                  const a = initialState.adres_rollen?.[rol];
-                  if (!a) return null;
-                  const kort = [a.naam, a.postcode, a.plaats].filter(Boolean).join(", ");
-                  const isLever = rol === "aflever" || rol === "eindontvanger";
-                  return (
-                    <span
-                      key={rol}
-                      title={`${rol}: ${kort}`}
-                      className={
-                        isLever
-                          ? "inline-flex rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-800 ring-1 ring-emerald-200"
-                          : "inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600 ring-1 ring-slate-200"
-                      }
-                    >
-                      <span className="mr-1 font-semibold uppercase">{rol}</span>
-                      {kort || "—"}
-                    </span>
-                  );
-                })}
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-2">
-              <FieldInput label="Naam" path="afleveradres.naam" value={ship.naam ?? ""}
-                onChange={(v) => patch("afleveradres.naam", v)} />
-              <FieldInput label="Straat" path="afleveradres.straat" value={ship.straat ?? ""}
-                onChange={(v) => patch("afleveradres.straat", v)} />
-              <FieldInput label="Postcode" path="afleveradres.postcode" value={ship.postcode ?? ""}
-                onChange={(v) => patch("afleveradres.postcode", v)} />
-              <FieldInput label="Plaats" path="afleveradres.plaats" value={ship.plaats ?? ""}
-                onChange={(v) => patch("afleveradres.plaats", v)} />
-              <FieldInput label="Land" path="afleveradres.land" value={ship.land ?? ""}
-                onChange={(v) => patch("afleveradres.land", v)} />
-            </div>
-          </div>
-
-          {/* Regels */}
-          <div className="mb-3">
-            <OrderLinesTable
-              regels={regels as unknown as import("@/components/order-lines-table").Regel[]}
-              regelsMeta={regelsMeta}
-              items={items}
-              onPatch={patch}
-            />
-            {/* Mix-UOM badges — appear next to lines when mixprijzen is active */}
-            {initialState.mixprijzen_actief && regels.length > 0 && (
-              <div
-                className="mt-2 flex flex-wrap items-center gap-2"
-                data-testid="mix-badges-row"
-              >
-                <span className="text-[11px] text-[var(--kwabo-muted)]">
-                  Mixprijzen actief:
-                </span>
-                {regels.map((r, i) => (
-                  <MixprijzenBadge
-                    key={i}
-                    orderId={order.id}
-                    regel={r}
-                    idx={i}
-                    onChanged={refresh}
-                    totalPallets={initialState.order_mix_total_pallets ?? null}
-                  />
-                ))}
-              </div>
-            )}
-            <EuropalletEditor
-              orderId={order.id}
-              regel={initialState.europallet_regel ?? null}
-              meta={meta.europallet ?? null}
-              onChanged={refresh}
-            />
-          </div>
-
-          <FieldInput
-            label="Opmerkingen"
-            path="opmerkingen"
-            value={initialState.opmerkingen ?? ""}
-            meta={meta.opmerkingen}
-            onChange={(v) => patch("opmerkingen", v)}
-          />
-
-          {/* Acties */}
-          <div className="mt-4 flex flex-wrap items-center gap-2">
+    <div className="space-y-3">
+      {/* ════ COCKPIT — alles om te beslissen, zonder scrollen ════ */}
+      <section className="rounded-lg bg-white p-4 ring-1 ring-[var(--kwabo-border)]">
+        {/* Actieregel: status links, knoppen rechts. */}
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          {!isNotOrder && missing.length === 0 && (
+            <span className="inline-flex items-center rounded bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
+              ✓ Klaar om te pushen
+            </span>
+          )}
+          {msg && (
+            <span className={`text-xs ${msg.startsWith("✓") ? "text-emerald-700" : "text-amber-800"}`}>
+              {msg}
+            </span>
+          )}
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <button
+              onClick={refresh}
+              className="rounded-md border border-[var(--kwabo-border)] bg-white px-3 py-1.5 text-xs hover:bg-slate-50"
+            >
+              Refresh
+            </button>
+            <button
+              onClick={reject}
+              disabled={saving || !canAct}
+              className="rounded-md border border-[var(--kwabo-border)] bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              Afwijzen
+            </button>
             <button
               onClick={approve}
               disabled={saving || !canAct || blocked}
@@ -553,45 +286,303 @@ export function OrderReview({ order, items }: Props) {
               )}
               {saving ? "Bezig…" : "Goedkeuren & Push Navision"}
             </button>
-            <button
-              onClick={reject}
-              disabled={saving || !canAct}
-              className="rounded-md border border-rose-300 bg-white px-3 py-1.5 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-50"
-            >
-              Afwijzen
-            </button>
-            <button
-              onClick={refresh}
-              className="rounded-md border border-[var(--kwabo-border)] bg-white px-3 py-1.5 text-xs hover:bg-slate-50"
-            >
-              Refresh
-            </button>
-            {msg && (
-              <span className={`text-xs ${msg.startsWith("✓") ? "text-emerald-700" : "text-rose-700"}`}>
-                {msg}
-              </span>
-            )}
           </div>
-        </section>
+        </div>
 
-        {/* COL 3 — Navision request preview */}
-        <section className="lg:col-span-4 rounded-lg bg-white p-4 ring-1 ring-[var(--kwabo-border)]">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[var(--kwabo-navy)]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[var(--kwabo-gold)]" /> Navision request
-          </h2>
-          <NavOperationsPreview
+        {/* Takenlijst (alleen als er iets te doen is) — incl. force-checkbox. */}
+        {!isNotOrder && missing.length > 0 && (
+          <div className="mb-3">
+            <NeedsReviewBanner fields={missing} forceArmed={forceArmed} onToggleForce={setForceArmed} />
+          </div>
+        )}
+
+        {/* Cockpit-grid: de drie beslissingen naast elkaar. */}
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          {/* ── KLANT ── */}
+          <Cel label="Klant">
+            {/* K3: kandidaten uit de naam-fallback — alleen zolang er geen
+                klant gekozen is; een keuze loopt via dezelfde patch-flow als
+                handmatig typen (incl. refresh). */}
+            {!initialState.klant_match?.navision_klantnr && (
+              <KlantPicker
+                kandidaten={initialState.klant_kandidaten || []}
+                onPick={(nr) => patch("klant_match", nr)}
+              />
+            )}
+            {initialState.klant_match?.klantnaam && (
+              <div className="mb-1 text-sm font-semibold text-[var(--kwabo-navy)]" data-testid="klant-naam">
+                {initialState.klant_match.klantnaam}
+                {initialState.klant_match.plaats && (
+                  <span className="font-normal text-[var(--kwabo-muted)]"> · {initialState.klant_match.plaats}</span>
+                )}
+              </div>
+            )}
+            {/* C1: de match-reden is er ALTIJD — "afleveradres Woerden →
+                Jongeneel Woerden" laat in één oogopslag zien waaróm. */}
+            {(initialState.klant_match?.match_uitleg || initialState.klant_match?.match_bron) && (
+              <div className="mb-1.5 text-[11px] text-[var(--kwabo-muted)]" data-testid="klant-match-reden">
+                {initialState.klant_match?.match_uitleg
+                  ? initialState.klant_match.match_uitleg
+                  : `gematcht via ${initialState.klant_match!.match_bron}`}
+                {initialState.klant_match?.leveradres_bevestigd && (
+                  <span className="ml-1 inline-flex rounded bg-emerald-50 px-1 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                    leveradres bevestigd
+                  </span>
+                )}
+              </div>
+            )}
+            <FieldInput
+              label="Navision klantnr."
+              path="klant_match"
+              value={initialState.klant_match?.navision_klantnr ?? ""}
+              meta={meta.klant_match}
+              onChange={(v) => patch("klant_match", v)}
+              monospace
+            />
+            {/* Fase 6 V2: één klik her-patcht hetzelfde nummer; de backend
+                wist dan de CONTROLEER-vlag en behoudt 4+/krediet-context. */}
+            {canAct && meta.klant_match?.needs_review && initialState.klant_match?.navision_klantnr && (
+              <button
+                type="button"
+                data-testid="klant-bevestig"
+                onClick={() => patch("klant_match", initialState.klant_match!.navision_klantnr)}
+                title="CONTROLEER verschijnt bij elke match die geen directe e-mailmatch op de klantenkaart is (naam, NAV-zoektocht of domein-alias). Een directe e-mailmatch is zeker en draagt geen vlag."
+                className="mt-1.5 inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100"
+              >
+                ✓ Bevestig deze klant
+              </button>
+            )}
+            {/* Context in één rustige regel — geen kleur-pillen. */}
+            {initialState.klant_match?.klantnaam && (
+              <div className="mt-1.5 text-[11px] text-[var(--kwabo-muted)]">
+                {[
+                  initialState.klant_match?.is_4plus === true ? "4+ lid" : initialState.klant_match?.is_4plus === false ? "geen 4+" : null,
+                  initialState.klant_match?.kredietlimiet != null && Number(initialState.klant_match.kredietlimiet) > 0
+                    ? `krediet € ${Number(initialState.klant_match.kredietlimiet).toLocaleString("nl-NL")}`
+                    : null,
+                ].filter(Boolean).join(" · ")}
+              </div>
+            )}
+          </Cel>
+
+          {/* ── LEVERING ── */}
+          <Cel label="Levering">
+            <ShipToPicker
+              orderId={order.id}
+              kandidaten={initialState.ship_to_kandidaten || []}
+              gekozen={initialState.ship_to_gekozen ?? null}
+              needsReviewFields={missing}
+              onChanged={refresh}
+            />
+            {(ship.naam || ship.postcode || ship.plaats) && (
+              <div className="mt-1 text-sm text-slate-800">
+                <div className="font-medium">{ship.naam || "—"}</div>
+                <div className="text-[12px] text-[var(--kwabo-muted)]">
+                  {[ship.straat, [ship.postcode, ship.plaats].filter(Boolean).join(" "), ship.land]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </div>
+              </div>
+            )}
+            {/* B1/C1: adresrollen — besteller ≠ aflever in één oogopslag,
+                zonder kleurenwaaier: het leveradres is gewoon zwart, context
+                is grijs. */}
+            {initialState.adres_rollen && Object.keys(initialState.adres_rollen).length > 0 && (
+              <div className="mt-2 space-y-0.5 text-[11px]" data-testid="adres-rollen">
+                {(["aflever", "eindontvanger", "besteller", "factuur"] as const).map((rol) => {
+                  const a = initialState.adres_rollen?.[rol];
+                  if (!a) return null;
+                  const kort = [a.naam, a.postcode, a.plaats].filter(Boolean).join(", ");
+                  const isLever = rol === "aflever" || rol === "eindontvanger";
+                  return (
+                    <div key={rol} className={isLever ? "text-slate-700" : "text-[var(--kwabo-muted)]"}>
+                      <span className="mr-1 inline-block w-24 font-semibold uppercase tracking-wide text-[10px]">{rol}</span>
+                      {kort || "—"}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {/* Functie 5: afhaalorder → verzendwijze (Shipment Method Code). */}
+            {initialState.verzendwijze && (
+              <div data-testid="verzendwijze" className="mt-2">
+                <span className="mb-1 inline-flex rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-200">
+                  Afhaalorder
+                </span>
+                <FieldInput
+                  label="Verzendwijze (Shipment Method Code)"
+                  path="verzendwijze"
+                  value={initialState.verzendwijze ?? ""}
+                  meta={meta.verzendwijze}
+                  onChange={(v) => patch("verzendwijze", v)}
+                  monospace
+                />
+              </div>
+            )}
+          </Cel>
+
+          {/* ── ORDER ── */}
+          <Cel label="Order">
+            <div className="grid grid-cols-2 gap-2">
+              <FieldInput
+                label="Bestelnr klant"
+                path="bestelnummer_klant"
+                value={initialState.bestelnummer_klant ?? ""}
+                meta={meta.bestelnummer_klant}
+                onChange={(v) => patch("bestelnummer_klant", v)}
+              />
+              <FieldInput
+                label="Orderdatum"
+                path="orderdatum"
+                type="date"
+                value={initialState.orderdatum ?? ""}
+                meta={meta.orderdatum}
+                onChange={(v) => patch("orderdatum", v)}
+              />
+              <FieldInput
+                label="Gewenste leverdatum"
+                path="gewenste_leverdatum"
+                type="date"
+                value={initialState.gewenste_leverdatum ?? ""}
+                meta={meta.gewenste_leverdatum}
+                onChange={(v) => patch("gewenste_leverdatum", v)}
+              />
+            </div>
+            <div className="mt-2 text-[11px] text-[var(--kwabo-muted)]">
+              {regels.length} {regels.length === 1 ? "regel" : "regels"} · {nMatched} gematcht
+              {initialState.europallet_regel?.hoeveelheid != null && (
+                <> · europallet: {initialState.europallet_regel.hoeveelheid}</>
+              )}
+            </div>
+          </Cel>
+        </div>
+      </section>
+
+      {/* Incidentele banners — alleen als er echt iets is. */}
+      {order.status === "failed" && (
+        <NavFailureBanner
+          orderId={order.id}
+          firstError={
+            (initialState.errors || []).find((e) => e.startsWith("push_navision:"))
+              ?.replace(/^push_navision:\s*/, "") ?? null
+          }
+        />
+      )}
+      {/* FUNCTIE 7: dedicated, onmisbare banner voor de bron-doc-skip met een
+          knop naar het bron-document-paneel. */}
+      <SourceDocLinkBanner warnings={order.warnings} targetId="incoming-document-panel" />
+      {/* Fase 5 (D): overige row.warnings — de bron-doc-warning heeft de
+          dedicated banner hierboven (geen dubbeling). */}
+      {overigeWarnings.length > 0 && (
+        <div
+          data-testid="order-warnings-banner"
+          className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+        >
+          <div className="font-semibold">
+            ⚠ {overigeWarnings.length === 1 ? "1 waarschuwing" : `${overigeWarnings.length} waarschuwingen`}
+          </div>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5">
+            {overigeWarnings.map((w, i) => (
+              <li key={i}>{w}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* ════ REGELS — direct onder de cockpit, full width ════ */}
+      {!isNotOrder && (
+        <section className="rounded-lg bg-white p-4 ring-1 ring-[var(--kwabo-border)]">
+          <OrderLinesTable
+            regels={regels as unknown as import("@/components/order-lines-table").Regel[]}
+            regelsMeta={regelsMeta}
+            items={items}
+            onPatch={patch}
+          />
+          {/* Mix-UOM badges — appear next to lines when mixprijzen is active */}
+          {initialState.mixprijzen_actief && regels.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-2" data-testid="mix-badges-row">
+              <span className="text-[11px] text-[var(--kwabo-muted)]">Mixprijzen actief:</span>
+              {regels.map((r, i) => (
+                <MixprijzenBadge
+                  key={i}
+                  orderId={order.id}
+                  regel={r}
+                  idx={i}
+                  onChanged={refresh}
+                  totalPallets={initialState.order_mix_total_pallets ?? null}
+                />
+              ))}
+            </div>
+          )}
+          <EuropalletEditor
             orderId={order.id}
-            refreshKey={previewKey}
+            regel={initialState.europallet_regel ?? null}
+            meta={meta.europallet ?? null}
+            onChanged={refresh}
           />
         </section>
-      </div>
+      )}
 
-      {/* Audit trail full-width */}
-      <section className="rounded-lg bg-white p-4 ring-1 ring-[var(--kwabo-border)]">
-        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[var(--kwabo-navy)]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[var(--kwabo-gold)]" /> Audit trail (
-          {order.stappen_log?.length ?? 0} stappen)
-        </h2>
+      {/* ════ Details onder de vouw — uniforme, rustige secties ════ */}
+      <Sectie titel="Adres & overige velden bewerken">
+        <div className="mb-2 flex items-center gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--kwabo-muted)]">
+            Drop-ship adres
+          </span>
+          <ProvenanceBadge meta={meta.afleveradres} size="xs" />
+        </div>
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+          <FieldInput label="Naam" path="afleveradres.naam" value={ship.naam ?? ""}
+            onChange={(v) => patch("afleveradres.naam", v)} />
+          <FieldInput label="Straat" path="afleveradres.straat" value={ship.straat ?? ""}
+            onChange={(v) => patch("afleveradres.straat", v)} />
+          <FieldInput label="Postcode" path="afleveradres.postcode" value={ship.postcode ?? ""}
+            onChange={(v) => patch("afleveradres.postcode", v)} />
+          <FieldInput label="Plaats" path="afleveradres.plaats" value={ship.plaats ?? ""}
+            onChange={(v) => patch("afleveradres.plaats", v)} />
+          <FieldInput label="Land" path="afleveradres.land" value={ship.land ?? ""}
+            onChange={(v) => patch("afleveradres.land", v)} />
+        </div>
+        <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+          <FieldInput
+            label="Afleverinstructies"
+            path="afleverinstructies"
+            value={initialState.afleverinstructies ?? ""}
+            meta={meta.afleverinstructies}
+            onChange={(v) => patch("afleverinstructies", v)}
+          />
+          <FieldInput
+            label="Opmerkingen"
+            path="opmerkingen"
+            value={initialState.opmerkingen ?? ""}
+            meta={meta.opmerkingen}
+            onChange={(v) => patch("opmerkingen", v)}
+          />
+        </div>
+      </Sectie>
+
+      <Sectie titel="Navision request" open>
+        <NavOperationsPreview orderId={order.id} refreshKey={previewKey} />
+      </Sectie>
+
+      <Sectie titel={`Bron: e-mail & bijlagen (${(initialState.bijlagen || []).length})`} open>
+        <EmailSourceViewer
+          orderId={order.id}
+          emailFrom={order.email_from}
+          emailDate={order.email_date}
+          emailBody={initialState.email_body ?? ""}
+          bijlagen={initialState.bijlagen || []}
+        />
+        <div id="incoming-document-panel" className="mt-3">
+          <IncomingDocumentPanel
+            orderId={order.id}
+            incomingPath={initialState.incoming_document_path ?? null}
+            onChanged={refresh}
+          />
+        </div>
+      </Sectie>
+
+      <Sectie titel={`Audit trail (${order.stappen_log?.length ?? 0} stappen)`}>
         <ol className="space-y-1 text-xs">
           {order.stappen_log?.map((s, i) => (
             <li key={i} className="flex gap-3 border-b border-[var(--kwabo-border)] pb-1 last:border-0">
@@ -601,7 +592,7 @@ export function OrderReview({ order, items }: Props) {
             </li>
           ))}
         </ol>
-      </section>
+      </Sectie>
     </div>
   );
 }
