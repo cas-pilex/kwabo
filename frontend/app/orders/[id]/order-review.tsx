@@ -296,8 +296,35 @@ export function OrderReview({ order, items }: Props) {
           </div>
         )}
 
-        {/* Cockpit-grid: de drie beslissingen naast elkaar. */}
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      </section>
+
+      {/* ════ BRON LINKS, BESLISSINGEN RECHTS — naast elkaar nachecken ════ */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+        {/* Bron: e-mail & bijlagen — linksboven, altijd direct zichtbaar zodat
+            de reviewer de order zonder scrollen tegen het origineel kan
+            nachecken. Op mobiel komt hij ná de beslissingen (order-2). */}
+        <section className="order-2 lg:order-1 lg:col-span-5 rounded-lg bg-white p-4 ring-1 ring-[var(--kwabo-border)]">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--kwabo-muted)]">
+            Bron: e-mail &amp; bijlagen ({(initialState.bijlagen || []).length})
+          </div>
+          <EmailSourceViewer
+            orderId={order.id}
+            emailFrom={order.email_from}
+            emailDate={order.email_date}
+            emailBody={initialState.email_body ?? ""}
+            bijlagen={initialState.bijlagen || []}
+          />
+          <div id="incoming-document-panel" className="mt-3">
+            <IncomingDocumentPanel
+              orderId={order.id}
+              incomingPath={initialState.incoming_document_path ?? null}
+              onChanged={refresh}
+            />
+          </div>
+        </section>
+
+        {/* De drie beslissingen — rechts naast de bron, gestapeld. */}
+        <div className="order-1 lg:order-2 lg:col-span-7 grid content-start gap-3">
           {/* ── KLANT ── */}
           <Cel label="Klant">
             {/* K3: kandidaten uit de naam-fallback — alleen zolang er geen
@@ -456,7 +483,7 @@ export function OrderReview({ order, items }: Props) {
             </div>
           </Cel>
         </div>
-      </section>
+      </div>
 
       {/* Incidentele banners — alleen als er echt iets is. */}
       {order.status === "failed" && (
@@ -563,23 +590,6 @@ export function OrderReview({ order, items }: Props) {
 
       <Sectie titel="Navision request" open>
         <NavOperationsPreview orderId={order.id} refreshKey={previewKey} />
-      </Sectie>
-
-      <Sectie titel={`Bron: e-mail & bijlagen (${(initialState.bijlagen || []).length})`} open>
-        <EmailSourceViewer
-          orderId={order.id}
-          emailFrom={order.email_from}
-          emailDate={order.email_date}
-          emailBody={initialState.email_body ?? ""}
-          bijlagen={initialState.bijlagen || []}
-        />
-        <div id="incoming-document-panel" className="mt-3">
-          <IncomingDocumentPanel
-            orderId={order.id}
-            incomingPath={initialState.incoming_document_path ?? null}
-            onChanged={refresh}
-          />
-        </div>
       </Sectie>
 
       <Sectie titel={`Audit trail (${order.stappen_log?.length ?? 0} stappen)`}>
