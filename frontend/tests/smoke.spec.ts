@@ -1,8 +1,9 @@
 import { expect } from "@playwright/test";
-import { test, resetEnv, dropEml, BACKEND } from "./helpers";
+import {test, resetEnv, dropEml, BACKEND, login } from "./helpers";
 
-test.beforeEach(async () => {
+test.beforeEach(async ({ context }) => {
   await resetEnv();
+  await login(context);
 });
 
 test("queue toont 3 orders na scan", async ({ page, request }) => {
@@ -33,10 +34,12 @@ test("approve -> Navision push -> status pushed", async ({ page, request }) => {
   // "Goedkeuren & Push Navision" button
   const approveBtn = page.getByRole("button", { name: /goedkeur/i });
 
-  // Als er missing-velden zijn, arm Force approve checkbox (gekoppeld aan label "Force approve")
+  // Als er missing-velden zijn: arm de force-checkbox. Het label heet
+  // "Tóch goedkeuren ondanks ontbrekende velden (gelogd)" — de oude
+  // /Force approve/-tekst bestaat al sinds de NL-banner niet meer.
   const enabled = await approveBtn.isEnabled().catch(() => false);
   if (!enabled) {
-    const forceCheckbox = page.getByLabel(/Force approve/i);
+    const forceCheckbox = page.getByLabel(/T[oó]ch goedkeuren/i);
     await forceCheckbox.check();
   }
 

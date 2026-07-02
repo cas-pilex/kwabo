@@ -1,7 +1,10 @@
 import { expect } from "@playwright/test";
-import { test, resetEnv } from "./helpers";
+import {test, resetEnv, login } from "./helpers";
 
-test.beforeEach(resetEnv);
+test.beforeEach(async ({ context }) => {
+  await resetEnv();
+  await login(context);
+});
 
 test("prijsafspraken CRUD op klant-detail", async ({ page }) => {
   await page.goto("/klanten/10001");

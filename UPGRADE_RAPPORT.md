@@ -45,15 +45,15 @@ Oud = pre-upgrade code (rode baseline, 2-7 ochtend). Nieuw = na B1–B4 (2-7 mid
 
 **Geen enkele order in corpus of steekproef was tegelijk vlagvrij én fout.** Dat is de strengste zinvolle lezing van "0 stille fouten" op orderniveau; op veldniveau blijven de 3 hierboven genoemde afgeleiden + 1 data-gat staan, alle toegelicht.
 
-## 4. D3 — Determinisme ⚠ DEELS (geblokkeerd op API-tegoed)
+## 4. D3 — Determinisme ✓ GESLAAGD
 
-Run 1/3: kernset (954/944/941/847/819/845) **6/6 JUIST** — incl. #845 PALLET/2, #819 PALLET/4 + EXW, #847 61532/94315. Run 2 en 3 crashten op een opnieuw leeg Anthropic-tegoed (het aangevulde tegoed is door D1+D2+D3-run-1 ≈ 44 Vision-runs heen). **Nog te draaien na aanvulling: 2× kernset (12 runs) → 3× identiek-vergelijking staat klaar.**
+Kernset (954/944/941/847/819/845) **drie keer vers** door de pijplijn: alle kernvelden (klant, ship-to, per regel artikel/eenheid/aantal/verkoop/mix, europallet, verzendwijze, oordeel) **3× identiek** voor alle 6 orders; alle 18 runs 6/6 JUIST — incl. #845 PALLET/2, #819 PALLET/4 + EXW, #847 61532/94315.
 
-## 5. D4 — Suites
+## 5. D4 — Suites ✓ ALLES VERS GROEN
 
-- Backend-suite **vers groen: 709 passed / 17 skipped** (was 687/17 vóór de upgrade; +29 nieuwe tests, 10 bewust herschreven naar het B4-contract).
-- `--regression` (17 .eml's, volle LLM): **nog niet vers gedraaid — geblokkeerd op API-tegoed** (~17 runs).
-- Playwright: 13 passed incl. 7 nieuwe Fase C-specs; 7 scan-specs wachten op cache-hervulling (zelfde tegoed), 2 falen pre-existing (bewezen op ongewijzigde code).
+- Backend-suite: **709 passed / 17 skipped** (was 687/17 vóór de upgrade; +29 nieuwe tests, 10 bewust herschreven naar het B4-contract).
+- `--regression` (17 .eml's, volle LLM): **17/17 groen**. Eén test (Stukbouw IOR2601198) was eerst rood — onderzoek wees uit dat de B1-prompt de Kwabo-nummers uit die mail nu **correct** in het kwabo-veld legt (alle 7 bestaan in prod, geverifieerd; de oude extractie matchte er 1); de regressie-harness spiegelde die artikelen niet in zijn mock-mirror. De harness is aangevuld zoals de echte sync dat doet — de fixture-verwachting zelf is NIET versoepeld.
+- Playwright: **22/22 groen** (incl. 7 nieuwe Fase C-specs). De zes eerder falende specs bleken pre-existing kapot: vijf oudere specs misten het auth-cookie van 31-05 (login-redirect → lege tabel) en de smoke-push-spec zocht een verouderd "Force approve"-label; beide hersteld in de specs, plus LLM-cache hervuld na de B1-promptwijziging.
 
 ## 6. Alleen on-site te bewijzen
 - Echte NAV-push-acceptatie van de nieuwe orders (single-field PATCH-flow tegen nav2018, incl. #847's ship-to 94315 en Lasaulec PALLET-regels).
@@ -63,7 +63,6 @@ Run 1/3: kernset (954/944/941/847/819/845) **6/6 JUIST** — incl. #845 PALLET/2
 ## 7. Open punten
 | # | Punt | Eigenaar |
 |---|---|---|
-| 1 | **API-tegoed** aanvullen (~30–40 Vision-runs) → D3 runs 2+3, --regression, Playwright-cache | Cas |
 | 2 | **PALLET_PLAATSEN_VULLIJST.md** invullen (14 paren) → #832/#833 europallet groen | Nico/OPS |
 | 3 | `klantenkaart_artikelen` vullen/leren (24 rijen in prod) → #522-klasse dicht | Nico/OPS + leerloop |
 | 4 | Aanbeveling: klant-vlag → artikel-matches mee vlaggen of her-matchen na klantcorrectie (#537-klasse) | volgende iteratie |

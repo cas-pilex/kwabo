@@ -1,9 +1,12 @@
 import { expect } from "@playwright/test";
-import { test, resetEnv } from "./helpers";
+import {test, resetEnv, login } from "./helpers";
 import { promises as fs } from "fs";
 import * as path from "path";
 
-test.beforeEach(resetEnv);
+test.beforeEach(async ({ context }) => {
+  await resetEnv();
+  await login(context);
+});
 
 test("upload .eml verschijnt in queue", async ({ page }) => {
   await page.goto("/?filter=all");

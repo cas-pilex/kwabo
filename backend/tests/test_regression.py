@@ -118,6 +118,22 @@ def _regression_db(tmp_path_factory, request):
                 basis_eenheid=it.get("baseUnitOfMeasureCode") or "STUK",
                 mixprijzen=bool(it.get("mixprijzen")),
             ))
+        # B1-neveneffect (Stukbouw IOR2601198): de rol-bewuste prompt leest de
+        # Kwabo-nummers uit die mail nu correct als `artikelnummer_kwabo`
+        # (17810/17950/... — bestaan ALLEMAAL in prod, geverifieerd tegen de
+        # prod-export). De mock-mirror miste ze, waardoor n_matched hier van
+        # 1 naar 0 leek te dalen terwijl prod juist 7/7 exact zou matchen.
+        # Spiegel ze zoals de echte sync dat doet — géén fixture-versoepeling.
+        for nr, naam in (
+            ("17810", "Perklijst lengte 150 cm KW-502"),
+            ("17950", "Perklijst lengte 150 cm KW-520"),
+            ("20081", "Perklijst lengte 150 cm KW-539"),
+            ("20093", "Transport/verzendkosten"),
+            ("19832", "Statiegeld transportkisten t.b.v. gips"),
+            ("243781", "Softbreath"),
+        ):
+            if not s.get(Artikelkaart, nr):
+                s.add(Artikelkaart(kwabo_artikelnr=nr, naam=naam, basis_eenheid="STUK"))
         s.commit()
     yield
 
