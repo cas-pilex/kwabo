@@ -70,6 +70,21 @@ async def compose_order_node(state: OrderState) -> OrderState:
             )
             nav_operations = []
 
+    # B3 ("1???"-klasse): regels zonder artikel-match worden door de composer
+    # overgeslagen — dat mag nooit geruisloos. Eén expliciete warning per
+    # overgeslagen regel, zodat toeslag-/non-artikelregels zichtbaar blijven.
+    if state.get("is_order") and nav_operations:
+        overgeslagen = [r for r in regels
+                        if isinstance(r, dict) and not r.get("artikelnummer_kwabo_matched")]
+        if overgeslagen:
+            warnings = list(warnings) + [
+                f"⚠ Regel {r.get('positie')} "
+                f"({(r.get('omschrijving') or r.get('artikelnummer_klant') or 'onbekend')!s}) "
+                f"heeft geen artikel-match en is NIET in de NAV-operaties opgenomen."
+                for r in overgeslagen
+            ]
+            state = {**state, "validatie_warnings": warnings}
+
     state_for_save = {**state, "nav_operations": nav_operations}
 
     payload = {
