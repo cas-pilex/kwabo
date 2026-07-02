@@ -317,6 +317,8 @@ async def main() -> None:
     ap.add_argument("--orders", nargs="*", help="subset van corpus-order-ids")
     ap.add_argument("--no-llm", action="store_true",
                     help="opgeslagen extractie; alleen deterministische lagen")
+    ap.add_argument("--out", default="baseline.json",
+                    help="uitvoerbestand in _upgrade/ (D1/D3: aparte runs bewaren)")
     args = ap.parse_args()
     OUT_DIR.mkdir(exist_ok=True)
 
@@ -366,7 +368,7 @@ async def main() -> None:
         "orders_juist": n_ok, "crashes": n_crash,
         "orders": results,
     }
-    out_file = OUT_DIR / "baseline.json"
+    out_file = OUT_DIR / args.out
     out_file.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     print(f"\n# RESULTAAT -> {out_file}", file=sys.stderr)
     print(f"#   stille fouten: {n_stille} | fout-met-vlag: {n_review} | juist: {n_ok}/{len(results)} | crashes: {n_crash}",
