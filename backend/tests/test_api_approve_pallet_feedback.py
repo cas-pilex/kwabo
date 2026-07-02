@@ -167,14 +167,16 @@ async def test_approve_without_europallet_when_compute_would_have_added(
     session, bind_engine, stub_finalize
 ):
     """europallet_regel=None, but compute_europallet WOULD have added one
-    (24 DOOS in heuristic territory) -> contributors get
-    pallet_required=False (the human suppressed the pallet)."""
+    (PAL-besteleenheid telt 1:1) -> contributors get pallet_required=False
+    (the human suppressed the pallet). B4: de oude DOOS-/24-heuristiek is
+    uit de telling, dus het onderdrukkings-signaal vereist een echte bron
+    (PAL 1:1 / pallet_plaatsen_basis / NAV-eenheid)."""
     regels = [
         {
             "positie": 1,
             "artikelnummer_kwabo_matched": "ART-NOPALLET-1",
-            "hoeveelheid": 24,
-            "eenheid": "DOOS",
+            "hoeveelheid": 2,
+            "eenheid": "PAL",
             "prijs_validated": True,
         },
     ]
@@ -188,7 +190,7 @@ async def test_approve_without_europallet_when_compute_would_have_added(
 
     from sqlmodel import Session as _Session
     with _Session(session.get_bind()) as fresh:
-        k = PalletKennisRepo(fresh).lookup("ART-NOPALLET-1", "DOOS")
+        k = PalletKennisRepo(fresh).lookup("ART-NOPALLET-1", "PAL")
     assert k is not None
     assert k.pallet_required is False
     assert k.confidence == pytest.approx(0.6)

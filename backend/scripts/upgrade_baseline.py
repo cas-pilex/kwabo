@@ -80,6 +80,9 @@ MIRROR = [
     "artikelkaarten", "artikel_eenheden", "klantenkaart_artikelen",
     "artikel_kruisverwijzing", "artikel_matching_history", "artikel_pallet_kennis",
     "prijsafspraken",
+    # B4: expliciete europallet-databron; bestaat (nog) niet in prod ->
+    # prod-read faalt zichtbaar (-2) en de tabel blijft leeg = eerlijk beeld.
+    "pallet_plaatsen_basis",
 ]
 
 
@@ -207,7 +210,8 @@ def summarize(out: dict) -> dict:
         "europallet": {"regel": {k: ep.get(k) for k in ("hoeveelheid", "eenheid", "confidence")}
                        if isinstance(ep, dict) else None,
                        "uitleg": ep_meta.get("uitleg"),
-                       "onderbouwing_regels": ep_meta.get("regels")},
+                       "onderbouwing_regels": ep_meta.get("regels"),
+                       "onbekend": ep_meta.get("onbekend") or []},
         "needs_review_fields": nrf,
         "validatie_warnings": out.get("validatie_warnings") or [],
         "is_order": out.get("is_order"),

@@ -550,6 +550,20 @@ class KruisverwijzingRepo:
         return record
 
 
+class PalletPlaatsenRepo:
+    """B4: expliciete europallet-databron per (artikel, eenheid)."""
+
+    def __init__(self, session: Session) -> None:
+        self.s = session
+
+    def lookup(self, kwabo_artikelnr: str, eenheid: str) -> Optional["PalletPlaatsenBasis"]:
+        from kwabo.db.models import PalletPlaatsenBasis
+        return self.s.get(
+            PalletPlaatsenBasis,
+            (kwabo_artikelnr, (eenheid or "").strip().upper()),
+        )
+
+
 class PalletKennisRepo:
     """Self-learning europallet table — used by europallet decision logic."""
 

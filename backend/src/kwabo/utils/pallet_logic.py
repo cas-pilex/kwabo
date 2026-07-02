@@ -91,7 +91,8 @@ def _pallet_size(eenheden: list, verkoop_eenheid: str | None) -> Optional[float]
     return _pallet_base_units(eenheden)
 
 
-def compute_europallet(state: dict, *, repo, uom_repo=None) -> Optional[dict]:
+def compute_europallet(state: dict, *, repo, uom_repo=None,
+                       plaatsen_repo=None) -> Optional[dict]:
     """Compute the europallet (artikelnr 19820) regel based on the order's lines.
 
     Returns a regel-dict ready to insert into ``state["orderregels"]``, OR
@@ -114,15 +115,27 @@ def compute_europallet(state: dict, *, repo, uom_repo=None) -> Optional[dict]:
     ``total < 0.5`` -> ``None``; otherwise a regel with
     ``hoeveelheid=ceil(total)``, ``eenheid="STUK"``.
     """
-    return europallet_breakdown(state, repo=repo, uom_repo=uom_repo)["regel"]
+    return europallet_breakdown(state, repo=repo, uom_repo=uom_repo,
+                                plaatsen_repo=plaatsen_repo)["regel"]
 
 
-def _line_pallets(regel: dict, *, repo, uom_repo) -> tuple[float, str, Optional[float]]:
+def _line_pallets(regel: dict, *, repo, uom_repo,
+                  plaatsen_repo=None) -> tuple[float, str, Optional[float]]:
     """Pallet-bijdrage van één regel + de gebruikte tak (bron) en pallet-maat.
 
     Geeft ``(pallets, bron, pallet_maat)``; ``pallets == 0.0`` bij geen bijdrage.
-    De tak-volgorde is gelijk aan voorheen — alleen de UoM-conversie kent nu de
-    autoritatieve verkoopeenheid-maat (Functie 4)."""
+
+    B4-BRONPRIORITEIT (structurele upgrade, voorstel Nico):
+      1. mix-/Branch-A-keuze (al uitgedrukt in hele pallets)
+      2. ``pallet_plaatsen_basis`` — het EXPLICIETE veld per (artikel, eenheid);
+         waarde 0 = bewust geen palletplaats (bijpak-artikel), geen vlag
+      3. PAL-besteleenheid 1:1
+      4. NAV-eenheid (verkoop_eenheid-maat / ondubbelzinnige PAL-rij)
+      5. anders: bron ``"onbekend"`` — GEEN gok. Het leerbestand
+         (``artikel_pallet_kennis``, per_pallet default 24) en de oude
+         DOOS-/24-heuristiek zijn bewust UIT de telling: aantoonbaar vervuild
+         (#832: 33/24→2 i.p.v. 1; #716: 66/24→3). ``repo`` blijft als parameter
+         voor compat maar wordt niet meer geraadpleegd."""
     kwabo_nr = regel.get("artikelnummer_kwabo_matched")
     if not kwabo_nr or kwabo_nr == PALLET_ARTIKELNR:
         return 0.0, "geen", None
@@ -152,16 +165,20 @@ def _line_pallets(regel: dict, *, repo, uom_repo) -> tuple[float, str, Optional[
     if qty <= 0:
         return 0.0, "geen", None
 
-    kennis = repo.lookup(kwabo_nr, eenheid)
-    if kennis is not None:
-        if kennis.pallet_required and kennis.per_pallet:
-            return qty / max(kennis.per_pallet, 1), "kennis", float(kennis.per_pallet)
-        return 0.0, "geen", None
+    # 2) Het expliciete veld wint van alles hieronder.
+    if plaatsen_repo is not None:
+        plaatsen = plaatsen_repo.lookup(kwabo_nr, eenheid)
+        if plaatsen is not None:
+            per = float(plaatsen.plaatsen_per_eenheid or 0.0)
+            if per <= 0:
+                return 0.0, "plaatsen_basis_0", None
+            return qty * per, "pallet_plaatsen_basis", round(1.0 / per, 3)
 
-    # A PAL-unit line is already expressed in pallets — count 1:1.
+    # 3) A PAL-unit line is already expressed in pallets — count 1:1.
     if (eenheid in PALLET_EENHEDEN or eenheid.startswith("PAL")) and qty >= PALLET_MIN_QTY:
         return qty, "pal_1op1", None
 
+    # 4) NAV-eenheid: verkoop_eenheid-maat of ondubbelzinnige PAL-rij.
     eenheden = uom_repo.list_eenheden(kwabo_nr) if uom_repo is not None else []
     verkoop_eenheid = None
     get = getattr(uom_repo, "get", None)
@@ -174,23 +191,38 @@ def _line_pallets(regel: dict, *, repo, uom_repo) -> tuple[float, str, Optional[
         bron = "uom_verkoopeenheid" if verkoop_eenheid and _qty_per_base(
             eenheden, verkoop_eenheid) > 1 else "uom_familie"
         return (qty * per_unit_base) / pal_base, bron, pal_base
-    if eenheid in HEURISTIC_EENHEDEN and qty >= HEURISTIC_MIN_QTY:
-        return qty / HEURISTIC_PER_PALLET, "doos_heuristiek", HEURISTIC_PER_PALLET
-    return 0.0, "geen", None
+
+    # 5) Geen enkele bron — expliciet onbekend, nooit een /24-gok.
+    return 0.0, "onbekend", None
 
 
-def europallet_breakdown(state: dict, *, repo, uom_repo=None) -> dict:
-    """Deterministische europallet-telling MET onderbouwing (Functie 4).
+def europallet_breakdown(state: dict, *, repo, uom_repo=None,
+                         plaatsen_repo=None) -> dict:
+    """Deterministische europallet-telling MET onderbouwing (Functie 4/B4).
 
     Geeft ``{"regels": [...], "totaal_pallets": float, "europallet_aantal": int,
-    "regel": dict|None}``. ``regels`` bevat per bijdragende orderregel
-    ``{artikelnr, qty, eenheid, bron, pallet_maat, pallets}`` zodat de reviewer
-    kan zien waarop de N europallets gebaseerd zijn."""
+    "regel": dict|None, "onbekend": [...]}``. ``regels`` bevat per bijdragende
+    orderregel ``{artikelnr, qty, eenheid, bron, pallet_maat, pallets}`` zodat
+    de reviewer kan zien waarop de N europallets gebaseerd zijn. ``onbekend``
+    somt de regels op waarvoor GEEN databron bestaat (vul-lijst voor Nico;
+    de node vlagt hierop — liever gevlagd dan gegokt).
+
+    Afrondingsregel (gedocumenteerd): som van de fractionele palletplaatsen
+    over alle regels; totaal < 0.5 → geen europallet; anders ceil(totaal)."""
     regels = state.get("orderregels") or []
     total = 0.0
     detail: list[dict] = []
+    onbekend: list[dict] = []
     for regel in regels:
-        pallets, bron, pallet_maat = _line_pallets(regel, repo=repo, uom_repo=uom_repo)
+        pallets, bron, pallet_maat = _line_pallets(
+            regel, repo=repo, uom_repo=uom_repo, plaatsen_repo=plaatsen_repo)
+        if bron == "onbekend":
+            onbekend.append({
+                "artikelnr": regel.get("artikelnummer_kwabo_matched"),
+                "qty": regel.get("hoeveelheid"),
+                "eenheid": (regel.get("eenheid_origineel") or regel.get("eenheid") or "").upper(),
+            })
+            continue
         if pallets <= 0:
             continue
         total += pallets
@@ -226,6 +258,7 @@ def europallet_breakdown(state: dict, *, repo, uom_repo=None) -> dict:
         "totaal_pallets": round(total, 3),
         "europallet_aantal": aantal,
         "regel": regel_dict,
+        "onbekend": onbekend,
     }
 
 
