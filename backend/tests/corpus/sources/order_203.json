@@ -1,0 +1,379 @@
+{
+  "order_id": 203,
+  "email_from": "000 IPM Bestellingen <bestellers@lasaulec.nl>",
+  "email_subject": "Lasaulec Order INK0084314",
+  "email_date": "Wed, 13 May 2026 12:50:11 +0000",
+  "status": "review",
+  "order_state": {
+    "email_id": "AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAADFysMAAA=",
+    "email_from": "000 IPM Bestellingen <bestellers@lasaulec.nl>",
+    "email_subject": "Lasaulec Order INK0084314",
+    "email_body": "Geachte leverancier,\r\n\r\nIn de bijlage vindt u onze inkooporder.\r\nWij verzoeken u vriendelijk dit inkoopordernummer duidelijk te vermelden op zowel de pakbon als de factuur.\r\nGraag ontvangen wij de levering conform de gemaakte afspraken en overeengekomen inkoopcondities.\r\nBij vragen of onduidelijkheden kunt u contact met ons opnemen.\r\n\r\n\r\nMet vriendelijke groet,\r\n\r\nLasaulec B.V.\r\nAfdeling Inkoop\r\n",
+    "email_date": "Wed, 13 May 2026 12:50:11 +0000",
+    "bijlagen": [
+      {
+        "naam": "Inkooporder_Lasaulec_INK0084314.PDF",
+        "type": "pdf",
+        "inhoud_tekst": "--- PAGE 1 ---\nAantal | Eenheid | Uw artikelnummer | Lasaulec nummer | Omschrijving\n2,00 | PAL | 15620\nB'keuze PALLET | A552291 | Stucloper TFC Board Premium B keuze 70m2 per pallet\na ca 35rol\n6,00 | ROL | 22468-1 | A602245 | Stucloper TFC Board Premium 30m2 65cm C2S\nInkooporder\nInkooporder INK0084314 Factuuradres\nLasaulec BV\nDatum 13-05-2026 Postbus 405\n8440 AK HEERENVEEN\nLeverancier Afleveradres\npo.invoice@lasaulec.nl\nKwabo Techniek B.V. Centraal magazijn\nJulianaweg 210 A Kûper 2\nAfdeling Inkoop\n1131 DL Volendam 8447 GK Heerenveen\nBestellers.ipm@lasaulec.nl\nTel: 0513-619942\nAantal Eenheid Uw artikelnummer Lasaulec nummer Omschrijving\n2,00 PAL 15620 A552291 Stucloper TFC Board Premium B keuze 70m2 per pallet\nB'keuze PALLET a ca 35rol\n6,00 ROL 22468-1 A602245 Stucloper TFC Board Premium 30m2 65cm C2S\nPagina 1 van 1\nOp al onze leveringen en diensten zijn de Algemene Voorwaarden van toepassing, gedeponeerd bij de KvK te Leeuwarden. Op schriftelijk verzoek wordt een exemplaar kosteloos toegezonden.\nReclamaties binnen 5 werkdagen na factuurdatum. Goederen blijven ons eigendom tot zij volledig zijn betaald. Betaling binnen vervaldatum."
+      }
+    ],
+    "source_path": "graph://AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1hOGU5LWYwNzI4NzM3YzVlNQBGAAAAAADY58tzotv4SoEGfmi7WVzwBwDWLpgugMJWQIjJkpddmTqoAAAAAAEMAADWLpgugMJWQIjJkpddmTqoAAADFysMAAA=",
+    "is_order": true,
+    "classificatie_reden": "E-mail bevat inkooporder INK0084314 van Lasaulec met artikelen en hoeveelheden in PDF-bijlage",
+    "classificatie_confidence": 1.0,
+    "taal": "NL",
+    "bestelnummer_klant": "INK0084314",
+    "orderdatum": "2026-05-13",
+    "gewenste_leverdatum": null,
+    "afleveradres": {
+      "naam": "Centraal magazijn",
+      "straat": "Kûper 2",
+      "postcode": "8447 GK",
+      "plaats": "Heerenveen",
+      "land": "NL"
+    },
+    "afleverinstructies": null,
+    "orderregels": [
+      {
+        "positie": 1,
+        "artikelnummer_klant": "15620 B'keuze PALLET",
+        "artikelnummer_kwabo": "A552291",
+        "omschrijving": "Stucloper TFC Board Premium B keuze 70m2 per pallet a ca 35rol",
+        "hoeveelheid": 2.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": null,
+        "ean_code": null,
+        "leverdatum_regel": null,
+        "opmerkingen": "70m2 per pallet, circa 35 rollen per pallet",
+        "artikelnummer_kwabo_matched": "15270",
+        "match_methode": "fuzzy",
+        "match_confidence": 0.84,
+        "eenheid_origineel": "PAL",
+        "eenheid_default": "STUK",
+        "prijs_validated": null
+      },
+      {
+        "positie": 2,
+        "artikelnummer_klant": "22468-1",
+        "artikelnummer_kwabo": "A602245",
+        "omschrijving": "Stucloper TFC Board Premium 30m2 65cm C2S",
+        "hoeveelheid": 6.0,
+        "eenheid": "STUK",
+        "prijs_per_eenheid": null,
+        "ean_code": null,
+        "leverdatum_regel": null,
+        "opmerkingen": null,
+        "artikelnummer_kwabo_matched": "15620",
+        "match_methode": "fuzzy",
+        "match_confidence": 0.84,
+        "eenheid_origineel": "ROL",
+        "eenheid_default": "STUK",
+        "prijs_validated": null
+      }
+    ],
+    "opmerkingen": "Lasaulec is de klant (inkooporder van klant bij Kwabo). Factuuradres: Lasaulec BV, Postbus 405, 8440 AK HEERENVEEN, po.invoice@lasaulec.nl",
+    "klant_match": null,
+    "alle_artikelen_gematcht": true,
+    "alle_prijzen_valide": true,
+    "validatie_warnings": [
+      "KLANT NIET GEVONDEN: 000 IPM Bestellingen <bestellers@lasaulec.nl>. Handmatige selectie nodig."
+    ],
+    "review_status": "pending",
+    "mixprijzen_actief": false,
+    "europallet_regel": {
+      "positie": 3,
+      "artikelnummer_kwabo": "19820",
+      "artikelnummer_kwabo_matched": "19820",
+      "omschrijving": "Europallet",
+      "hoeveelheid": 2,
+      "eenheid": "STUK",
+      "match_methode": "europallet_compute",
+      "confidence": 0.7
+    },
+    "incoming_document_storage_key": "by_email_id/AAMkADk1ZTMzY2QxLWU0YzctNGVmMC1h.eml",
+    "stappen_log": [
+      {
+        "stap": "intake",
+        "timestamp": "2026-05-29T22:33:17.777482+00:00",
+        "beslissing": "E-mail opgehaald, 1 bijlagen geëxtraheerd",
+        "details": {
+          "bijlage_namen": [
+            "Inkooporder_Lasaulec_INK0084314.PDF"
+          ]
+        }
+      },
+      {
+        "stap": "classify",
+        "timestamp": "2026-05-29T22:33:19.370421+00:00",
+        "beslissing": "ORDER (conf=1.0)",
+        "details": {
+          "is_order": true,
+          "reden": "E-mail bevat inkooporder INK0084314 van Lasaulec met artikelen en hoeveelheden in PDF-bijlage",
+          "confidence": 1.0
+        }
+      },
+      {
+        "stap": "extract",
+        "timestamp": "2026-05-29T22:33:46.050319+00:00",
+        "beslissing": "Geëxtraheerd: 2 regels, taal=NL, 1 velden needs_review",
+        "details": {
+          "bestelnummer": "INK0084314",
+          "multi_orders": 1
+        }
+      },
+      {
+        "stap": "match_customer",
+        "timestamp": "2026-05-29T22:33:48.711606+00:00",
+        "beslissing": "Klant NIET gematcht",
+        "details": {
+          "email": "bestellers@lasaulec.nl"
+        }
+      },
+      {
+        "stap": "match_articles",
+        "timestamp": "2026-05-29T22:34:38.147841+00:00",
+        "beslissing": "2/2 regels gematcht",
+        "details": {
+          "per_methode": {
+            "exact": 0,
+            "kruisverwijzing": 0,
+            "klantenkaart": 0,
+            "history": 0,
+            "fuzzy": 2,
+            "manual": 0
+          }
+        }
+      },
+      {
+        "stap": "validate_prices",
+        "timestamp": "2026-05-29T22:34:39.480643+00:00",
+        "beslissing": "0/2 prijzen ok",
+        "details": {
+          "warnings_new": []
+        }
+      }
+    ],
+    "errors": [],
+    "_meta": {
+      "taal": {
+        "value": "NL",
+        "source": "pdf",
+        "source_detail": "Inkooporder_Lasaulec_INK0084314.PDF p.1 header",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "bestelnummer_klant": {
+        "value": "INK0084314",
+        "source": "pdf",
+        "source_detail": "Inkooporder_Lasaulec_INK0084314.PDF p.1 header",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "orderdatum": {
+        "value": "2026-05-13",
+        "source": "pdf",
+        "source_detail": "Inkooporder_Lasaulec_INK0084314.PDF p.1 header 'Datum'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "gewenste_leverdatum": {
+        "value": null,
+        "source": "missing",
+        "source_detail": null,
+        "confidence": 0.0,
+        "needs_review": true
+      },
+      "afleveradres": {
+        "value": {
+          "naam": "Centraal magazijn",
+          "straat": "Kûper 2",
+          "postcode": "8447 GK",
+          "plaats": "Heerenveen",
+          "land": "NL"
+        },
+        "source": "pdf",
+        "source_detail": "Inkooporder_Lasaulec_INK0084314.PDF p.1 header 'Afleveradres'",
+        "confidence": 0.99,
+        "needs_review": false
+      },
+      "afleverinstructies": {
+        "value": null,
+        "source": "missing",
+        "source_detail": null,
+        "confidence": 0.0,
+        "needs_review": false
+      },
+      "opmerkingen": {
+        "value": "Lasaulec is de klant (inkooporder van klant bij Kwabo). Factuuradres: Lasaulec BV, Postbus 405, 8440 AK HEERENVEEN, po.invoice@lasaulec.nl",
+        "source": "pdf",
+        "source_detail": "Inkooporder_Lasaulec_INK0084314.PDF p.1 header 'Factuuradres'",
+        "confidence": 0.95,
+        "needs_review": false
+      },
+      "orderregels": [
+        {
+          "artikelnummer_klant": {
+            "value": "15620 B'keuze PALLET",
+            "source": "pdf",
+            "source_detail": "Inkooporder_Lasaulec_INK0084314.PDF p.1 table row 1 col 'Uw artikelnummer'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": "A552291",
+            "source": "pdf",
+            "source_detail": "Inkooporder_Lasaulec_INK0084314.PDF p.1 table row 1 col 'Lasaulec nummer'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "omschrijving": {
+            "value": "Stucloper TFC Board Premium B keuze 70m2 per pallet a ca 35rol",
+            "source": "pdf",
+            "source_detail": "Inkooporder_Lasaulec_INK0084314.PDF p.1 table row 1 col 'Omschrijving'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 2.0,
+            "source": "pdf",
+            "source_detail": "Inkooporder_Lasaulec_INK0084314.PDF p.1 table row 1 col 'Aantal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "PAL",
+            "source": "pdf",
+            "source_detail": "Inkooporder_Lasaulec_INK0084314.PDF p.1 table row 1 col 'Eenheid'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": null,
+            "source": "nav_default",
+            "source_detail": "NAV-standaard (geen prijsafspraak)",
+            "confidence": 0.0,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": "70m2 per pallet, circa 35 rollen per pallet",
+            "source": "pdf",
+            "source_detail": "Inkooporder_Lasaulec_INK0084314.PDF p.1 table row 1 col 'Omschrijving'",
+            "confidence": 0.95,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "15270",
+            "source": "fuzzy",
+            "source_detail": "match-methode=fuzzy",
+            "confidence": 0.84,
+            "needs_review": true
+          }
+        },
+        {
+          "artikelnummer_klant": {
+            "value": "22468-1",
+            "source": "pdf",
+            "source_detail": "Inkooporder_Lasaulec_INK0084314.PDF p.1 table row 2 col 'Uw artikelnummer'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo": {
+            "value": "A602245",
+            "source": "pdf",
+            "source_detail": "Inkooporder_Lasaulec_INK0084314.PDF p.1 table row 2 col 'Lasaulec nummer'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "omschrijving": {
+            "value": "Stucloper TFC Board Premium 30m2 65cm C2S",
+            "source": "pdf",
+            "source_detail": "Inkooporder_Lasaulec_INK0084314.PDF p.1 table row 2 col 'Omschrijving'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "hoeveelheid": {
+            "value": 6.0,
+            "source": "pdf",
+            "source_detail": "Inkooporder_Lasaulec_INK0084314.PDF p.1 table row 2 col 'Aantal'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "eenheid": {
+            "value": "ROL",
+            "source": "pdf",
+            "source_detail": "Inkooporder_Lasaulec_INK0084314.PDF p.1 table row 2 col 'Eenheid'",
+            "confidence": 0.99,
+            "needs_review": false
+          },
+          "prijs_per_eenheid": {
+            "value": null,
+            "source": "nav_default",
+            "source_detail": "NAV-standaard (geen prijsafspraak)",
+            "confidence": 0.0,
+            "needs_review": false,
+            "validated": null
+          },
+          "ean_code": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "leverdatum_regel": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "opmerkingen": {
+            "value": null,
+            "source": "missing",
+            "source_detail": null,
+            "confidence": 0.0,
+            "needs_review": false
+          },
+          "artikelnummer_kwabo_matched": {
+            "value": "15620",
+            "source": "fuzzy",
+            "source_detail": "match-methode=fuzzy",
+            "confidence": 0.84,
+            "needs_review": true
+          }
+        }
+      ],
+      "klant_match": {
+        "value": null,
+        "source": "missing",
+        "source_detail": null,
+        "confidence": 0.0,
+        "needs_review": true
+      }
+    },
+    "needs_review_fields": [
+      "gewenste_leverdatum",
+      "klant_match",
+      "orderregels[0].artikelnummer_kwabo_matched",
+      "orderregels[1].artikelnummer_kwabo_matched"
+    ],
+    "needs_review_count": 4,
+    "extra_orders_raw": [],
+    "nav_operations": []
+  }
+}

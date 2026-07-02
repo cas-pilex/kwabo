@@ -1,0 +1,153 @@
+{
+  "_doel": "GOLDEN CORPUS (STRUCTURELE UPGRADE, Fase A). Vaste bronnen per feedback-/regressieorder. Getrouwheid: echt_eml > state_met_pdf (PDF-bytes in opgeslagen state) > tekst_reconstructie (prod order_state zonder PDF-bytes). Bron-.eml naleveren waar 'eml_nalevering' true is (OPS/Cas: Supabase-creds of mailbox-export).",
+  "_bron_types": {
+    "eml": "echt .eml-bestand op schijf (volle Vision-extractie)",
+    "state_met_pdf": "opgeslagen order_state met rauwe %PDF-bytes in tekstvelden",
+    "tekst_reconstructie": "opgeslagen order_state, alleen e-mail-/bijlagetekst (Vision niet reproduceerbaar)"
+  },
+  "orders": {
+    "944": {
+      "label": "BAUHAUS 1049577521",
+      "categorieen": ["adresrollen (besteladres vs afleveradres)", "klantresolutie"],
+      "bron": "tests/corpus/sources/order_944.json",
+      "bron_type": "tekst_reconstructie",
+      "eml_nalevering": true,
+      "feedback": "afleveradres Hengelo 7559 SR; besteld door Bunnik 3981 LB — tool koos eerder besteladres"
+    },
+    "954": {
+      "label": "TABS 4506877460",
+      "categorieen": ["klantresolutie (agent-mailbox)"],
+      "bron": "tests/corpus/sources/order_954.json",
+      "bron_type": "state_met_pdf",
+      "eml_nalevering": true,
+      "feedback": "afzender tabsholland.nl (agent); eindklant = Jongeneel Woerden 3449 JE, niet PontMeyer Heerenveen"
+    },
+    "941": {
+      "label": "PPG/Driessen XO092614",
+      "categorieen": ["eenheid/aantal (mix)", "europallet"],
+      "bron": "tests/corpus/sources/order_941.json",
+      "bron_type": "tekst_reconstructie",
+      "eml_nalevering": true,
+      "feedback": "rode STUK/PALLET-mix per regel; onnavolgbare europallet 4 STUK; mix-code M1PAL30 als verkoopeenheid"
+    },
+    "847": {
+      "label": "Werkzeuge Dietrich -> se Huber (Strecken)",
+      "categorieen": ["adresrollen", "klantresolutie (agent)", "ship-to"],
+      "bron": "tests/test_data/states/order_847_bestellung-werkzeuge-dietrich-gmbh-co-kg.json",
+      "bron_type": "state_met_pdf",
+      "eml_ondersteunend": [
+        "tests/test_data/emails/Bestellung Werkzeuge Dietrich GmbH & Co. KG.eml",
+        "tests/test_data/emails/Werkzeuge Dietrich GmbH & Co. KG.eml"
+      ],
+      "eml_nalevering": false,
+      "feedback": "afleveradres se Huber Straubing 94315; ship-to bleef 31303 hangen"
+    },
+    "819": {
+      "label": "Nexttcom afhaalorder (4 Paletten 23691)",
+      "categorieen": ["eenheid/aantal (pallet-UoM)", "verzendwijze (afhaal)"],
+      "bron": "tests/corpus/sources/order_819.json",
+      "bron_type": "tekst_reconstructie",
+      "eml_nalevering": true,
+      "feedback": "besteld 4 Paletten van 23691 -> moet pallet-UoM zijn, geen STUK 4; AFHAALORDER -> EXW"
+    },
+    "845": {
+      "label": "Lasaulec INK0090679 (art. 15620)",
+      "categorieen": ["eenheid/aantal (pallet-UoM)", "ship-to (drop-ship Polem Lemmer)"],
+      "bron": "tests/corpus/sources/order_845.json",
+      "bron_type": "tekst_reconstructie",
+      "eml_nalevering": true,
+      "feedback": "60 stuks / 2 PAL van 15620 -> 2 PALLET (30/pallet), geen 60 STUK"
+    },
+    "203": {
+      "label": "Lasaulec INK0084314 (2e Lasaulec-order, generiek-bewijs)",
+      "categorieen": ["artikelmatching", "eenheid/aantal"],
+      "bron": "tests/corpus/sources/order_203.json",
+      "bron_type": "tekst_reconstructie",
+      "eml_nalevering": true,
+      "feedback": "zelfde artikel 15620 eerder fout gematcht op 15270; 22468-1 fout op 15620"
+    },
+    "816": {
+      "label": "Zevij-portaal IOR26-008934",
+      "categorieen": ["artikel-prijs-signaal (23853 vs 238531)", "eenheid/aantal"],
+      "bron": "tests/corpus/sources/order_816.json",
+      "bron_type": "tekst_reconstructie",
+      "eml_nalevering": true,
+      "feedback": "pos9: 23853 besteld terwijl klantprijs op 238531 staat -> vlag verwacht (F6-signaal)"
+    },
+    "832": {
+      "label": "TABS 4506870435 -> PontMeyer Zoetermeer",
+      "categorieen": ["klantresolutie (agent, vestiging)", "europallet"],
+      "bron": "tests/test_data/states/order_832_bestelling-4506870435-157.json",
+      "bron_type": "state_met_pdf",
+      "eml_nalevering": false,
+      "feedback": "klant moet afleverpartij PontMeyer Zoetermeer (61468) zijn, niet Heerenveen; europallet moet 1 zijn"
+    },
+    "833": {
+      "label": "TABS 4506870437 -> PontMeyer Heemstede",
+      "categorieen": ["klantresolutie (agent, vestiging)", "europallet"],
+      "bron": "tests/test_data/states/order_833_bestelling-4506870437-157.json",
+      "bron_type": "state_met_pdf",
+      "eml_nalevering": false,
+      "feedback": "klant moet afleverpartij PontMeyer Heemstede (61019) zijn; europallet moet 1 zijn"
+    },
+    "834": {
+      "label": "TABS 4506870444 -> PontMeyer Zwaag (2e agent-order, generiek-bewijs)",
+      "categorieen": ["klantresolutie (agent, vestiging)"],
+      "bron": "tests/test_data/states/order_834_bestelling-4506870444-157.json",
+      "bron_type": "state_met_pdf",
+      "eml_nalevering": false,
+      "feedback": "klant moet afleverpartij PontMeyer Zwaag (61088) zijn"
+    },
+    "716": {
+      "label": "Würth 0095588334 (regressie + F3-anker)",
+      "categorieen": ["regressie", "eenheid/aantal (expliciete STUK)"],
+      "bron": "tests/test_data/states/order_716_bestelling-0095588334.json",
+      "bron_type": "state_met_pdf",
+      "eml_nalevering": false,
+      "feedback": "66 STUK moet 66 STUK blijven (NAV defaultte ooit naar 66 pallets, EUR 45k)"
+    },
+    "717": {
+      "label": "Kuipers BMH 20173111 (regressie)",
+      "categorieen": ["regressie"],
+      "bron": "tests/test_data/states/order_717_inkooporder-kuipers-bmh-inkoopordernumme.json",
+      "bron_type": "tekst_reconstructie",
+      "eml_nalevering": false
+    },
+    "718": {
+      "label": "Witzand PN50040984 (regressie, mix-klant)",
+      "categorieen": ["regressie", "artikelmatching"],
+      "bron": "tests/test_data/states/order_718_witzand-bouwmaterialen-b-v-inkooporder-5.json",
+      "bron_type": "tekst_reconstructie",
+      "eml_nalevering": false,
+      "feedback": "klant_art 238601 is letterlijk een Kwabo-nummer; stored matchte 11190 (fout)"
+    },
+    "721": {
+      "label": "Van Dongen 2601382 (regressie)",
+      "categorieen": ["regressie"],
+      "bron": "tests/test_data/states/order_721_van-dongen-verf-bv-inkooporder-2601382.json",
+      "bron_type": "state_met_pdf",
+      "eml_nalevering": false
+    },
+    "707": {
+      "label": "GBI Borne 2601922 via Zevij-portaal (regressie)",
+      "categorieen": ["regressie", "klantresolutie (portaal)"],
+      "bron": "tests/test_data/states/order_707_order-van-gbi-borne-2601922-2601922.json",
+      "bron_type": "tekst_reconstructie",
+      "eml_nalevering": false
+    },
+    "685": {
+      "label": "Veris 822200 (regressie, mix-klant)",
+      "categorieen": ["regressie"],
+      "bron": "tests/test_data/states/order_685_betreft-onze-bestelling-822200.json",
+      "bron_type": "tekst_reconstructie",
+      "eml_nalevering": false,
+      "feedback": "mix-klant (mixprijzen=true); stored artikel-matches waren fuzzy/gevlagd — geen betrouwbare regel-GT"
+    }
+  },
+  "_tweede_order_kandidaten": {
+    "_doel": "Fase B generiek-bewijs (geen hardcode): per fix een tweede order met andere waarden",
+    "strecken_werkzeuge_dietrich": ["tests/test_data/states/order_846_werkzeuge-dietrich-gmbh-co-kg.json", "tests/test_data/states/order_674_bestellung-werkzeuge-dietrich-gmbh-co-kg.json", "tests/test_data/states/order_675_werkzeuge-dietrich-gmbh-co-kg.json"],
+    "tabs_agent": ["tests/test_data/states/order_832_bestelling-4506870435-157.json", "tests/test_data/states/order_834_bestelling-4506870444-157.json"],
+    "lasaulec": ["tests/corpus/sources/order_203.json"]
+  }
+}
