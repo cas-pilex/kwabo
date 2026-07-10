@@ -1,8 +1,9 @@
 {
-  "_doel": "GOLDEN CORPUS (STRUCTURELE UPGRADE, Fase A). Vaste bronnen per feedback-/regressieorder. Getrouwheid: echt_eml > state_met_pdf (PDF-bytes in opgeslagen state) > tekst_reconstructie (prod order_state zonder PDF-bytes). Bron-.eml naleveren waar 'eml_nalevering' true is (OPS/Cas: Supabase-creds of mailbox-export).",
+  "_doel": "GOLDEN CORPUS (STRUCTURELE UPGRADE, Fase A; her-gelabeld in Fase 1 her-diagnose 10-7). Vaste bronnen per feedback-/regressieorder. Getrouwheid: echt_eml > state_met_pdf (PDF-bytes in opgeslagen state) > tekst_reconstructie (prod order_state zonder PDF-bytes). Bron-.eml naleveren waar 'eml_nalevering' true is (OPS/Cas: Supabase-creds of mailbox-export).",
+  "_fase1_herlabeling_10_7": "Fase A labelde 8 orders als state_met_pdf. Feitencheck 10-7: de %PDF-bytes zitten in email_body (niet in bijlagen) en zijn LOSSY (U+FFFD-replacement-tekens; niet latin-1-terugwinbaar); #721 bevat helemaal geen PDF-bytes. Gevolg: GEEN enkele bron op schijf is Vision-reproduceerbaar; alle state-bronnen zijn feitelijk tekst_reconstructie. Vision-validatie vereist echte .eml's: #847 heeft er 2 op schijf (eml_ondersteunend); voor de rest is nalevering uit Supabase Storage nodig — alle storage-keys zijn bevestigd aanwezig in prod-order_log (zie backend/_upgrade/fase1/corpus_probe.json). Het oorspronkelijke Fase A-label staat per order in 'bron_type_fase_a'.",
   "_bron_types": {
     "eml": "echt .eml-bestand op schijf (volle Vision-extractie)",
-    "state_met_pdf": "opgeslagen order_state met rauwe %PDF-bytes in tekstvelden",
+    "state_met_pdf": "opgeslagen order_state met rauwe %PDF-bytes in tekstvelden (Fase 1: op schijf NIET aangetroffen — zie _fase1_herlabeling_10_7)",
     "tekst_reconstructie": "opgeslagen order_state, alleen e-mail-/bijlagetekst (Vision niet reproduceerbaar)"
   },
   "orders": {
@@ -18,7 +19,8 @@
       "label": "TABS 4506877460",
       "categorieen": ["klantresolutie (agent-mailbox)"],
       "bron": "tests/corpus/sources/order_954.json",
-      "bron_type": "state_met_pdf",
+      "bron_type": "tekst_reconstructie",
+      "bron_type_fase_a": "state_met_pdf (onjuist: PDF lossy in email_body, U+FFFD)",
       "eml_nalevering": true,
       "feedback": "afzender tabsholland.nl (agent); eindklant = Jongeneel Woerden 3449 JE, niet PontMeyer Heerenveen"
     },
@@ -34,12 +36,14 @@
       "label": "Werkzeuge Dietrich -> se Huber (Strecken)",
       "categorieen": ["adresrollen", "klantresolutie (agent)", "ship-to"],
       "bron": "tests/test_data/states/order_847_bestellung-werkzeuge-dietrich-gmbh-co-kg.json",
-      "bron_type": "state_met_pdf",
+      "bron_type": "tekst_reconstructie",
+      "bron_type_fase_a": "state_met_pdf (onjuist: PDF lossy in email_body, U+FFFD)",
       "eml_ondersteunend": [
         "tests/test_data/emails/Bestellung Werkzeuge Dietrich GmbH & Co. KG.eml",
         "tests/test_data/emails/Werkzeuge Dietrich GmbH & Co. KG.eml"
       ],
-      "eml_nalevering": false,
+      "eml_ondersteunend_let_op": "Fase 1 (10-7): dit zijn FAMILIE-orders uit dezelfde shared mailbox, NIET order 847 zelf — de eerste is bestelnr 4401054959 (leveradres 71083), de tweede is een non-order (is_order=false per test_data/expected). Ze draaien mee als Vision-observatie ZONDER GT-koppeling; voor 847 zelf is dus ook eml-nalevering nodig",
+      "eml_nalevering": true,
       "feedback": "afleveradres se Huber Straubing 94315; ship-to bleef 31303 hangen"
     },
     "819": {
@@ -78,32 +82,36 @@
       "label": "TABS 4506870435 -> PontMeyer Zoetermeer",
       "categorieen": ["klantresolutie (agent, vestiging)", "europallet"],
       "bron": "tests/test_data/states/order_832_bestelling-4506870435-157.json",
-      "bron_type": "state_met_pdf",
-      "eml_nalevering": false,
+      "bron_type": "tekst_reconstructie",
+      "bron_type_fase_a": "state_met_pdf (onjuist: PDF lossy in email_body, U+FFFD)",
+      "eml_nalevering": true,
       "feedback": "klant moet afleverpartij PontMeyer Zoetermeer (61468) zijn, niet Heerenveen; europallet moet 1 zijn"
     },
     "833": {
       "label": "TABS 4506870437 -> PontMeyer Heemstede",
       "categorieen": ["klantresolutie (agent, vestiging)", "europallet"],
       "bron": "tests/test_data/states/order_833_bestelling-4506870437-157.json",
-      "bron_type": "state_met_pdf",
-      "eml_nalevering": false,
+      "bron_type": "tekst_reconstructie",
+      "bron_type_fase_a": "state_met_pdf (onjuist: PDF lossy in email_body, U+FFFD)",
+      "eml_nalevering": true,
       "feedback": "klant moet afleverpartij PontMeyer Heemstede (61019) zijn; europallet moet 1 zijn"
     },
     "834": {
       "label": "TABS 4506870444 -> PontMeyer Zwaag (2e agent-order, generiek-bewijs)",
       "categorieen": ["klantresolutie (agent, vestiging)"],
       "bron": "tests/test_data/states/order_834_bestelling-4506870444-157.json",
-      "bron_type": "state_met_pdf",
-      "eml_nalevering": false,
+      "bron_type": "tekst_reconstructie",
+      "bron_type_fase_a": "state_met_pdf (onjuist: PDF lossy in email_body, U+FFFD)",
+      "eml_nalevering": true,
       "feedback": "klant moet afleverpartij PontMeyer Zwaag (61088) zijn"
     },
     "716": {
       "label": "Würth 0095588334 (regressie + F3-anker)",
       "categorieen": ["regressie", "eenheid/aantal (expliciete STUK)"],
       "bron": "tests/test_data/states/order_716_bestelling-0095588334.json",
-      "bron_type": "state_met_pdf",
-      "eml_nalevering": false,
+      "bron_type": "tekst_reconstructie",
+      "bron_type_fase_a": "state_met_pdf (onjuist: PDF lossy in email_body, U+FFFD)",
+      "eml_nalevering": true,
       "feedback": "66 STUK moet 66 STUK blijven (NAV defaultte ooit naar 66 pallets, EUR 45k)"
     },
     "717": {
@@ -125,7 +133,8 @@
       "label": "Van Dongen 2601382 (regressie)",
       "categorieen": ["regressie"],
       "bron": "tests/test_data/states/order_721_van-dongen-verf-bv-inkooporder-2601382.json",
-      "bron_type": "state_met_pdf",
+      "bron_type": "tekst_reconstructie",
+      "bron_type_fase_a": "state_met_pdf (onjuist: bevat helemaal geen PDF-bytes)",
       "eml_nalevering": false
     },
     "707": {
@@ -142,6 +151,25 @@
       "bron_type": "tekst_reconstructie",
       "eml_nalevering": false,
       "feedback": "mix-klant (mixprijzen=true); stored artikel-matches waren fuzzy/gevlagd — geen betrouwbare regel-GT"
+    },
+    "619": {
+      "label": "Bestelling 4506859249 157 (TABS-formaat, observatie)",
+      "categorieen": ["observatie (geen grondwaarheid)"],
+      "bron": "tests/test_data/states/order_619_bestelling-4506859249-157.json",
+      "bron_type": "tekst_reconstructie",
+      "bron_type_fase_a": "state_met_pdf (onjuist: PDF lossy in email_body, U+FFFD)",
+      "eml_nalevering": true,
+      "gt_status": "geen",
+      "feedback": "Fase 1: opgenomen als observatie-order (regressie-orders die WEL goed gingen, opdracht 1a); GT-labels worden bij Gate 1 als labelverzoek voorgelegd, telt tot die tijd niet mee in de foutscore"
+    },
+    "712": {
+      "label": "Bestelnummer 12600242 (observatie)",
+      "categorieen": ["observatie (geen grondwaarheid)"],
+      "bron": "tests/test_data/states/order_712_bestelnummer-12600242.json",
+      "bron_type": "tekst_reconstructie",
+      "eml_nalevering": true,
+      "gt_status": "geen",
+      "feedback": "Fase 1: opgenomen als observatie-order (opdracht 1a); GT-labels worden bij Gate 1 als labelverzoek voorgelegd, telt tot die tijd niet mee in de foutscore"
     }
   },
   "_tweede_order_kandidaten": {
