@@ -524,6 +524,7 @@ export function OrderReview({ order, items }: Props) {
             regelsMeta={regelsMeta}
             items={items}
             onPatch={patch}
+            missing={missing}
           />
           {/* Mix-UOM badges — appear next to lines when mixprijzen is active */}
           {initialState.mixprijzen_actief && regels.length > 0 && (
@@ -541,18 +542,22 @@ export function OrderReview({ order, items }: Props) {
               ))}
             </div>
           )}
-          <EuropalletEditor
-            orderId={order.id}
-            regel={initialState.europallet_regel ?? null}
-            meta={meta.europallet ?? null}
-            onChanged={refresh}
-          />
+          {/* F2.5: id = scroll-anker voor de "Europallet"-banner-chip */}
+          <div id="europallet">
+            <EuropalletEditor
+              orderId={order.id}
+              regel={initialState.europallet_regel ?? null}
+              meta={meta.europallet ?? null}
+              onChanged={refresh}
+            />
+          </div>
         </section>
       )}
 
       {/* ════ Details onder de vouw — uniforme, rustige secties ════ */}
       <Sectie titel="Adres & overige velden bewerken">
-        <div className="mb-2 flex items-center gap-2">
+        {/* F2.5: id = scroll-anker voor de "Afleveradres"/"Adres-rollen"-chips */}
+        <div id="afleveradres" className="mb-2 flex items-center gap-2">
           <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--kwabo-muted)]">
             Drop-ship adres
           </span>

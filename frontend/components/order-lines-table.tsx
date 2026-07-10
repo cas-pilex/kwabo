@@ -24,6 +24,9 @@ export type Regel = {
   verkoop_aantal?: number | null;
   mix_uom_gekozen?: string | null;
   mix_aantal?: number | null;
+  // F2.5: herkomst van de eenheid-keuze in gewone taal (het eenheid-contract
+  // schrijft dit per regel: "pallet-brug: ...", "mix-staffel M7PAL30: ...").
+  eenheid_bron?: string | null;
   prijs_per_eenheid: number | null;
   prijs_validated: boolean | null;
   ean_code: string | null;
@@ -48,11 +51,16 @@ export function OrderLinesTable({
   regelsMeta,
   items,
   onPatch,
+  missing = [],
 }: {
   regels: Regel[];
   regelsMeta: Array<Record<string, FieldMeta>>;
   items: Item[];
   onPatch: (path: string, value: unknown) => void;
+  // F2.5: needs_review_fields — positie-vlaggen (verkoop_eenheid:N /
+  // mix_uom:N) markeren hun regel inline; voorheen was alleen de banner-chip
+  // zichtbaar en miste de reviewer de regel-context.
+  missing?: string[];
 }) {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
@@ -124,6 +132,10 @@ export function OrderLinesTable({
                 const validated = r.prijs_validated;
                 const isExpanded = expanded.has(i);
                 const isMissing = !r.artikelnummer_kwabo_matched;
+                const eenheidVlag =
+                  missing.includes(`verkoop_eenheid:${r.positie}`) ||
+                  missing.includes(`mix_uom:${r.positie}`) ||
+                  missing.includes(`orderregels[${i}].eenheid`);
                 return (
                   <FragmentRow
                     key={i}
@@ -135,6 +147,7 @@ export function OrderLinesTable({
                     validated={validated}
                     isExpanded={isExpanded}
                     isMissing={isMissing}
+                    eenheidVlag={eenheidVlag}
                     items={items}
                     onToggle={() => toggle(i)}
                     onPatch={onPatch}
@@ -165,6 +178,7 @@ function FragmentRow({
   validated,
   isExpanded,
   isMissing,
+  eenheidVlag,
   items,
   onToggle,
   onPatch,
@@ -177,6 +191,7 @@ function FragmentRow({
   validated: boolean | null;
   isExpanded: boolean;
   isMissing: boolean;
+  eenheidVlag?: boolean;
   items: Item[];
   onToggle: () => void;
   onPatch: (path: string, value: unknown) => void;
@@ -186,7 +201,7 @@ function FragmentRow({
       <tr
         onClick={onToggle}
         className={`cursor-pointer transition hover:bg-slate-50 ${
-          isMissing ? "bg-rose-50/40" : ""
+          isMissing ? "bg-rose-50/40" : eenheidVlag ? "bg-amber-50/40" : ""
         } ${isExpanded ? "bg-slate-50" : ""}`}
       >
         <td className="px-2 py-1.5 font-semibold text-[var(--kwabo-navy)]">{r.positie}</td>
@@ -224,8 +239,22 @@ function FragmentRow({
         <td className="px-2 py-1.5 text-right tabular-nums">{fmtQty(r.hoeveelheid)}</td>
         <td className="px-2 py-1.5">
           {r.eenheid ? (
-            <span className="inline-flex flex-col leading-tight">
-              <span>{r.eenheid}</span>
+            <span
+              className="inline-flex flex-col leading-tight"
+              title={r.eenheid_bron || undefined}
+            >
+              <span>
+                {r.eenheid}
+                {eenheidVlag && (
+                  <span
+                    data-testid={`regel-eenheid-vlag-${r.positie}`}
+                    className="ml-1 inline-flex rounded bg-amber-50 px-1 py-0.5 text-[9px] font-semibold text-amber-800 ring-1 ring-amber-300"
+                    title={r.eenheid_bron || "Eenheid-keuze vergt controle"}
+                  >
+                    controleer
+                  </span>
+                )}
+              </span>
               {r.eenheid_origineel && r.eenheid_origineel.toUpperCase() !== r.eenheid.toUpperCase() && (
                 <span
                   className="text-[9px] text-slate-400"

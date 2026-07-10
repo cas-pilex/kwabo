@@ -45,229 +45,32 @@ Like ``select_ship_to``, the node accepts an injectable session for tests.
 """
 from __future__ import annotations
 
-from typing import NamedTuple, Optional
+from typing import Optional
 
 from sqlmodel import Session
 
 from kwabo.db.repository import ArtikelkaartRepo, KlantRepo
 from kwabo.db.session import engine
+from kwabo.utils.eenheid_resolve import (
+    PALLET_TOL,
+    branch_a,
+    mix_tiers_for,
+    to_base_qty,
+)
 from kwabo.utils.logging import log
-from kwabo.utils.mixcode import is_mix_code, parse_mix_code
 from kwabo.utils.pallet_logic import _qty_per_base
 
-# How close rolls/rolls-per-pallet must be to a whole number to auto-accept the
-# pallet count. Mix orders are whole pallets; a non-integer signals an ambiguous
-# quantity we should not silently round, so we flag it for review instead.
-_PALLET_TOL = 0.02
 
-
-class _MixTier(NamedTuple):
-    """A mix staffel tier for one article: the literal NAV code, its M-number
-    threshold (parsed from the code, reliable), and the authoritative
-    units-per-pallet read from ``ArtikelEenheid.qty_per_base`` (NOT the PALxx
-    suffix, which is a possibly-typo'd label)."""
-
-    code: str
-    m_threshold: int
-    units_per_pallet: float
-
-
-def _to_rolls(
-    kwabo_artikelnr: str, regel: dict, eenheden: list
-) -> Optional[float]:
-    """Convert a line's ordered quantity to base units (rolls).
-
-    Uses the customer's originally-ordered unit (``eenheid_origineel``), falling
-    back to the NAV-facing ``eenheid``. An empty/base unit means the quantity is
-    already in base units; an alternate unit is multiplied by its
-    ``qty_per_base``. Returns None when the quantity is non-positive.
-    """
-    try:
-        qty = float(regel.get("hoeveelheid") or 0)
-    except (TypeError, ValueError):
-        return None
-    if qty <= 0:
-        return None
-    unit = (regel.get("eenheid_origineel") or regel.get("eenheid") or "").strip().upper()
-    if not unit:
-        return qty
-    return qty * _qty_per_base(eenheden, unit)
-
-
-def _mix_codes_for(eenheden: list) -> list[_MixTier]:
-    """Parse the article's ArtikelEenheid rows into mix tiers (deduped).
-
-    Each tier pairs the parsed M-number threshold with the row's own
-    ``qty_per_base`` (== NAV ``Qty_per_Unit_of_Measure``) as the authoritative
-    units-per-pallet. The PALxx suffix is ignored for the math.
-    """
-    out: dict[str, _MixTier] = {}
-    for e in eenheden:
-        mc = parse_mix_code(e.eenheid_code)
-        if mc:
-            out[mc.code] = _MixTier(
-                mc.code, mc.m_threshold, float(e.qty_per_base or 0)
-            )
-    return list(out.values())
-
-
-def _verkoop_keuze(
-    kaart, eenheden: list, base: str, base_qty: float
-) -> Optional[tuple[str, float]]:
-    """Branch A (E1): kies de verkoopeenheid waarin de regel naar NAV gaat.
-
-    Primair de kaart-`verkoop_eenheid` (NAV Sales_Unit_of_Measure), mits het
-    een geldige eenheid van dit artikel is én het bestelde base-aantal er op
-    een geheel aantal in past. Zonder dat veld: afleiden uit ArtikelEenheid,
-    maar alleen bij PRECIES ÉÉN gehele niet-mix kandidaat (artikel 238601
-    heeft b.v. PALLET33 én 'EXW PAL33', beide 33/base — twee kandidaten is
-    geen keuze maar een gok). Geen keuze -> None; de caller dwingt dan de
-    base-eenheid expliciet af.
-    """
-    per_code = {
-        (e.eenheid_code or "").strip().upper(): float(e.qty_per_base or 0)
-        for e in eenheden
-    }
-
-    def _heel(per: float) -> Optional[int]:
-        if per <= 0:
-            return None
-        n = base_qty / per
-        return int(round(n)) if n >= 1 and abs(n - round(n)) <= _PALLET_TOL else None
-
-    code = ((kaart.verkoop_eenheid if kaart else "") or "").strip()
-    if code and code.upper() != (base or "").upper():
-        per = per_code.get(code.upper(), 0.0)
-        if per > 0 and _heel(per) is not None:
-            return code, per
-        return None  # veld bekend maar ongeldig/niet-geheel -> expliciete base
-
-    kandidaten = [
-        (e.eenheid_code.strip(), float(e.qty_per_base))
-        for e in eenheden
-        if (e.qty_per_base or 0) > 1
-        and not parse_mix_code(e.eenheid_code)
-        and (e.eenheid_code or "").strip().upper() != (base or "").upper()
-        and _heel(float(e.qty_per_base)) is not None
-    ]
-    return kandidaten[0] if len(kandidaten) == 1 else None
-
-
-def _plain_pallet_equiv(
-    mix_code: str, eenheden: list, base: str
-) -> Optional[tuple[str, float]]:
-    """De PLAIN (niet-mix) pallet-eenheid die dezelfde fysieke pallet-maat heeft
-    als een mix-staffelcode (zelfde ``qty_per_base``). NAV-kaarten dragen soms
-    een mix-code als Sales_Unit_of_Measure (datafout, bv. 23522 -> M1PAL30);
-    de juiste verkoopeenheid is dan de canonieke ``PALLET``-UoM van het artikel.
-
-    Voorkeur: een eenheid waarvan de code met ``PALLET`` begint (de canonieke
-    pallet-UoM, bv. ``PALLET`` of ``PALLET70``); is die er niet en is er precies
-    één plain niet-base eenheid met de juiste maat, dan die. Anders None (ambigu).
-    Geeft ``(code, qty_per_base)`` of None.
-    """
-    mix_qty = next(
-        (float(e.qty_per_base or 0) for e in eenheden
-         if (e.eenheid_code or "").strip().upper() == mix_code.upper()),
-        0.0,
-    )
-    if mix_qty <= 1:
-        return None
-    plains = [
-        (e.eenheid_code.strip(), float(e.qty_per_base))
-        for e in eenheden
-        if e.eenheid_code and not parse_mix_code(e.eenheid_code) and not e.is_mix_uom
-        and float(e.qty_per_base or 0) == mix_qty
-        and e.eenheid_code.strip().upper() != (base or "").upper()
-    ]
-    pallet = [p for p in plains if p[0].upper().startswith("PALLET")]
-    if len(pallet) == 1:
-        return pallet[0]
-    if pallet:
-        exact = [p for p in pallet if p[0].upper() == "PALLET"]
-        return exact[0] if len(exact) == 1 else None
-    return plains[0] if len(plains) == 1 else None
-
-
-def _branch_a(regel: dict, art_repo: ArtikelkaartRepo) -> Optional[str]:
-    """E1/E2: een niet-mix-regel krijgt ALTIJD een expliciete eenheid + het
-    omgerekende aantal in `verkoop_uom_gekozen`/`verkoop_aantal`.
-
-    NAV default een nieuwe orderregel naar de VERKOOPEENHEID van de kaart, niet
-    naar de base-eenheid (faalgeval #716: quantity 66 zonder UoM-PATCH werd 66
-    PALLET33 = €45.738 i.p.v. 2 PALLET33). Op NAV's default vertrouwen kan dus
-    nooit. Een geldige NIET-base bestel-eenheid blijft staan (2-6-fix: "60
-    stuks blijft 60 stuks") — de composer PATCHt die al expliciet.
-
-    Returns een review-waarschuwing (str) als de kaart-verkoopeenheid niet
-    bruikbaar was (mix-staffelcode als Sales-UoM), anders None.
-    """
+def _branch_a_via_repo(regel: dict, art_repo: ArtikelkaartRepo) -> Optional[str]:
+    """Mirror-data ophalen en het eenheid-contract (branch_a) toepassen.
+    Alle beslislogica leeft in kwabo.utils.eenheid_resolve (F2.3)."""
     art = regel.get("artikelnummer_kwabo_matched")
     if not art:
         return None
     kaart = art_repo.get(art)
-    base = ((kaart.basis_eenheid if kaart else "") or "").strip()
-    if not kaart or not base:
-        return None  # geen mirror-data -> geen veilige keuze mogelijk
-    ordered = (regel.get("eenheid") or "").strip()
-    if ordered and ordered.upper() != base.upper():
-        # Klant koos expliciet een geldige alternatieve eenheid — die blijft
-        # staan (composer PATCHt hem al). Wel eventuele STALE afgeleiden uit
-        # een eerdere run wissen (B3-herverwerking, #819-rerun): anders pusht
-        # de composer de oude verkoop-keuze i.p.v. de gebrugde eenheid.
-        regel.pop("verkoop_uom_gekozen", None)
-        regel.pop("verkoop_aantal", None)
+    if not kaart or not (kaart.basis_eenheid or "").strip():
         return None
-    try:
-        qty = float(regel.get("hoeveelheid") or 0)
-    except (TypeError, ValueError):
-        return None
-    if qty <= 0:
-        return None
-
-    eenheden = art_repo.list_eenheden(art)
-    # match_articles viel bij een ONgeldige bestel-eenheid al terug op base;
-    # de hoeveelheid staat dan in de oorspronkelijke eenheid. Onbekende codes
-    # tellen als base (qty_per_base 1.0) — zelfde aanname als _to_rolls.
-    base_qty = qty * _qty_per_base(eenheden, regel.get("eenheid_origineel") or "")
-
-    # PPG #941: een MIX-staffelcode (M{n}PAL{n}, bv. M1PAL30 op artikel 23522)
-    # als Sales_Unit_of_Measure is een NAV-datafout — geen geldige
-    # verkoopeenheid op een niet-mix-order. Nooit stil als verkoopeenheid
-    # zetten: expliciete base + review (zo krijgen drie zusterartikelen niet
-    # STUK/M1PAL30/PALLET door een scheve kaart). Een gewone pallet-code
-    # (PALLET, PALLET33) is GEEN mix-code en blijft de normale Branch-A-keuze.
-    code = ((kaart.verkoop_eenheid or "")).strip()
-    if code and is_mix_code(code):
-        # Vertaal de mix-staffelcode naar de PLAIN pallet-eenheid (zelfde maat)
-        # zodat de regel consistent is met zuster-artikelen (23522 -> PALLET 2,
-        # net als 23523) en geen handmatige review vergt. Geen schone vertaling
-        # -> base + review-vlag (nooit stil de mix-code zelf gebruiken).
-        plain = _plain_pallet_equiv(code, eenheden, base)
-        if plain is not None:
-            pcode, per = plain
-            n = base_qty / per
-            if n >= 1 and abs(n - round(n)) <= _PALLET_TOL:
-                regel["verkoop_uom_gekozen"] = pcode
-                regel["verkoop_aantal"] = int(round(n))
-                return None
-        regel["verkoop_uom_gekozen"] = base
-        regel["verkoop_aantal"] = base_qty
-        return (
-            f"⚠ VERKOOPEENHEID CONTROLEREN (regel {regel.get('positie')}): artikel "
-            f"{art} heeft mix-staffelcode '{code}' als verkoopeenheid in NAV "
-            f"en geen eenduidige pallet-eenheid; teruggevallen op '{base}'."
-        )
-
-    keuze = _verkoop_keuze(kaart, eenheden, base, base_qty)
-    if keuze is not None:
-        code, per = keuze
-        regel["verkoop_uom_gekozen"] = code
-        regel["verkoop_aantal"] = int(round(base_qty / per))
-    else:
-        regel["verkoop_uom_gekozen"] = base
-        regel["verkoop_aantal"] = base_qty
-    return None
+    return branch_a(regel, kaart, art_repo.list_eenheden(art))
 
 
 def _evaluate(state: dict, klant_repo: KlantRepo, art_repo: ArtikelkaartRepo) -> dict:
@@ -287,7 +90,7 @@ def _evaluate(state: dict, klant_repo: KlantRepo, art_repo: ArtikelkaartRepo) ->
         warnings = list(state.get("validatie_warnings") or [])
         needs_review = list(state.get("needs_review_fields") or [])
         for r in regels_out:
-            w = _branch_a(r, art_repo)
+            w = _branch_a_via_repo(r, art_repo)
             if w:
                 warnings.append(w)
                 entry = f"verkoop_eenheid:{r.get('positie')}"
@@ -308,16 +111,21 @@ def _evaluate(state: dict, klant_repo: KlantRepo, art_repo: ArtikelkaartRepo) ->
         )
         return new_state
 
-    # ---- Phase 1: order-wide total pallets across mix-eligible lines ----
-    eligible: list[tuple[int, list, int, Optional[int]]] = []  # (idx, codes, rpp, line_pallets)
+    # ---- Phase 1: per regel pallets bepalen ----
+    # F2.2 (her-diagnose 10-7): ambiguïteit is een REGEL-eigenschap. De oude
+    # order-brede `ambiguous`-boolean liet één onresolveerbare regel (geen
+    # hele pallets, of onbesliste multi-familie) ÁLLE regels vergiftigen —
+    # bij echte mix-klanten (Veris #685, 8 regels) koos de mix-laag daardoor
+    # nooit iets (n_actief=0) en kreeg de reviewer alleen een vlag-muur.
+    eligible: list[tuple[int, list, Optional[int]]] = []  # (idx, codes, line_pallets)
     total_pallets = 0
-    ambiguous = False
+    uitgesloten: list = []  # posities buiten de staffelbasis (regel-ambigu)
     for idx, regel in enumerate(regels_in):
         art = regel.get("artikelnummer_kwabo_matched")
         if not art:
             continue
         eenheden = art_repo.list_eenheden(art)
-        codes = _mix_codes_for(eenheden)
+        codes = mix_tiers_for(eenheden)
         if not codes:
             continue  # normal-only article — not a mix line
         # Units-per-pallet is the physical pallet size. Use qty_per_base
@@ -325,6 +133,7 @@ def _evaluate(state: dict, klant_repo: KlantRepo, art_repo: ArtikelkaartRepo) ->
         # (live item 15450). Een artikel kan mixcodes in MEERDERE families
         # hebben (238601: M*PAL33/35/42) — dan kiest de verkoopeenheid van de
         # kaart de juiste familie (M4: "binnen de juiste PAL{Y}-familie").
+        line_ambiguous = False
         upps = {c.units_per_pallet for c in codes}
         if len(upps) > 1:
             kaart = art_repo.get(art)
@@ -336,33 +145,40 @@ def _evaluate(state: dict, klant_repo: KlantRepo, art_repo: ArtikelkaartRepo) ->
                 codes = familie
                 upps = {sales_per}
         if len(upps) > 1 or any(u <= 0 for u in upps):
-            ambiguous = True  # genuinely inconsistent/incomplete NAV data
-        rpp = min(upps)
-        rolls = _to_rolls(art, regel, eenheden)
+            line_ambiguous = True  # inconsistent/incomplete NAV data op DEZE regel
         line_pallets: Optional[int] = None
-        if rolls is None or rpp <= 0:
-            ambiguous = True
-        else:
-            lp = rolls / rpp
-            line_pallets = round(lp)
-            if line_pallets <= 0 or abs(lp - line_pallets) > _PALLET_TOL:
-                ambiguous = True
-                line_pallets = None
+        if not line_ambiguous:
+            rpp = min(upps)
+            rolls = to_base_qty(regel, eenheden)
+            if rolls is None or rpp <= 0:
+                line_ambiguous = True
             else:
-                total_pallets += line_pallets
-        eligible.append((idx, codes, rpp, line_pallets))
+                lp = rolls / rpp
+                line_pallets = round(lp)
+                if line_pallets <= 0 or abs(lp - line_pallets) > PALLET_TOL:
+                    line_pallets = None
+                else:
+                    total_pallets += line_pallets
+        if line_pallets is None:
+            uitgesloten.append(regel.get("positie"))
+        eligible.append((idx, codes, line_pallets))
 
     # ---- Phase 2: per-line tier pick + quantity in pallets ----
     needs_review = list(state.get("needs_review_fields") or [])
     n_actief = 0
     n_review = 0
-    for idx, codes, _rpp, line_pallets in eligible:
+    for idx, codes, line_pallets in eligible:
         r = regels_out[idx]
         ranked = sorted(codes, key=lambda c: c.m_threshold)
         r["mix_uom_kandidaat"] = [c.code for c in ranked]
-        if ambiguous or total_pallets <= 0 or line_pallets is None:
+        if line_pallets is None or total_pallets <= 0:
             r["mix_uom_gekozen"] = None
             r["mix_aantal"] = None
+            r["eenheid_bron"] = (
+                "mix-ambigu: geen hele pallets of onbesliste pallet-familie — "
+                "keuze aan de reviewer (kandidaten: "
+                + ", ".join(c.code for c in ranked) + ")"
+            )
             entry = f"mix_uom:{r.get('positie')}"
             if entry not in needs_review:
                 needs_review.append(entry)
@@ -372,6 +188,11 @@ def _evaluate(state: dict, klant_repo: KlantRepo, art_repo: ArtikelkaartRepo) ->
         pick = at_or_below[-1] if at_or_below else ranked[0]  # clamp up to lowest tier
         r["mix_uom_gekozen"] = pick.code
         r["mix_aantal"] = line_pallets
+        r["eenheid_bron"] = (
+            f"mix-staffel {pick.code}: {line_pallets} pallet(s) x "
+            f"{pick.units_per_pallet:g}/pallet, tier M{pick.m_threshold} bij "
+            f"staffelbasis M{total_pallets} (hoogste tier <= totaal)"
+        )
         n_actief += 1
 
     # Branch A (E1/E2) voor de niet-mix-regels van een mix-klant: ook die
@@ -379,9 +200,19 @@ def _evaluate(state: dict, klant_repo: KlantRepo, art_repo: ArtikelkaartRepo) ->
     # review-gevallen, herkenbaar aan mix_uom_kandidaat) blijven van de
     # mix-logica.
     warnings = list(state.get("validatie_warnings") or [])
+    # Versmalde staffelbasis nooit stil (grondwet): de tier van de gekozen
+    # regels is berekend zónder de uitgesloten regels — dat moet de reviewer
+    # kunnen zien en corrigeren.
+    if uitgesloten and n_actief:
+        warnings.append(
+            f"⚠ MIX-STAFFEL: staffelbasis M{total_pallets} telt alleen de "
+            f"resolveerbare regels; regel(s) "
+            f"{', '.join(str(p) for p in uitgesloten)} vallen erbuiten "
+            f"(geen hele pallets of ambigue pallet-familie) — controleer de tier."
+        )
     for r in regels_out:
         if "mix_uom_kandidaat" not in r:
-            w = _branch_a(r, art_repo)
+            w = _branch_a_via_repo(r, art_repo)
             if w:
                 warnings.append(w)
                 entry = f"verkoop_eenheid:{r.get('positie')}"

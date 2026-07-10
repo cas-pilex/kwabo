@@ -32,6 +32,7 @@ def regels_view(out: dict) -> list[dict]:
         "mix_aantal": r.get("mix_aantal"),
         "methode": r.get("match_methode"),
         "conf": r.get("match_confidence"),
+        "eenheid_bron": r.get("eenheid_bron"),
     } for r in (out.get("orderregels") or [])]
 
 

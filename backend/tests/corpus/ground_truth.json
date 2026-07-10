@@ -28,7 +28,8 @@
       {"pos": 3, "eenheid": "PALLET", "aantal": 2, "artikel": "23523"}
     ],
     "europallet_aantal": null,
-    "_notities": "Klant is GEEN mix-klant (mixprijzen=false) -> plain PALLET, geen M{X}PAL{Y}. Stored pos2 gaf M1PAL30 (mix-code als verkoopeenheid) = gemelde fout. Europallet-verwachting onbekend (2+2 pallets + 45 STUK 23559) -> pallet_plaatsen_basis-waarde nodig van Nico/OPS."
+    "_notities": "Klant is GEEN mix-klant (mixprijzen=false) -> plain PALLET, geen M{X}PAL{Y}. Stored pos2 gaf M1PAL30 (mix-code als verkoopeenheid) = gemelde fout. Europallet-verwachting onbekend (2+2 pallets + 45 STUK 23559) -> pallet_plaatsen_basis-waarde nodig van Nico/OPS.",
+    "_besluit_C_10_7": "ship_to 4814 RR bevestigd als enige bestaande Breda-ship-to van 61483 (4815 PN uit het extract bestaat niet als ship-to; gt_evidence.json). Open vraag Nico: moet 4815 PN als ship-to in NAV komen?"
   },
   "847": {
     "klant_nr": "61532",
@@ -38,7 +39,8 @@
       {"pos": 10, "eenheid": "PALLET", "aantal": 31, "artikel": "23730"},
       {"pos": 20, "eenheid": "PALLET", "aantal": 35, "artikel": "23733"}
     ],
-    "_conflict_met_oude_gt": "oude GT zei ship_to_code=31303; opdracht zegt afleveradres Straubing 94315 en noemt 31303 expliciet als de fout (stale ship-to) -> herlabeld naar 94315"
+    "_conflict_met_oude_gt": "oude GT zei ship_to_code=31303; opdracht zegt afleveradres Straubing 94315 en noemt 31303 expliciet als de fout (stale ship-to) -> herlabeld naar 94315",
+    "_besluit_B_10_7": "PALLET 31/35 blijft: conversies zijn exact en masterdata-uniek (930=31x30 via 23730-PALLET, 700=35x20 via 23733-PALLET); bestelde eenheid was ROL (ongeldig). 'STUK-blijft-STUK' geldt generiek voor verkoop_eenheid=STUK of niet-exacte deelbaarheid (bewijs: 816 pos2/3/9). Zie FASE2_BESLUITEN.md"
   },
   "819": {
     "klant_nr": "61969",
@@ -121,7 +123,8 @@
     "regels": [
       {"pos": 1, "eenheid": "STUK", "aantal": 66.0, "artikel": "238601"}
     ],
-    "_notities": "F3-anker: 66 STUK moet expliciet STUK blijven (238601 heeft PALLET42 als Sales-UoM-risico)."
+    "_notities": "F3-anker: 66 STUK moet expliciet STUK blijven (238601 heeft PALLET42 als Sales-UoM-risico).",
+    "_besluit_A_10_7": "Opdracht 4e ronde wil 2xPALLET33; FASE2_BESLUITEN.md besluit A: dat is een NAV-data-actie (verkoop_eenheid 238601 -> PALLET33, Kwabo's eigen voorkeursroute 07f3fe5). GT meet de pipeline op huidige data en blijft STUK 66; het conversie-mechanisme is bewezen met fixture-data (tests/test_fase2_resolver.py). Na de NAV-actie wordt dit label PALLET33/2."
   },
   "717": {
     "klant_nr": "61844",
