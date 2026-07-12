@@ -87,6 +87,10 @@ class OrderState(TypedDict, total=False):
     orderdatum: Optional[str]
     gewenste_leverdatum: Optional[str]
     afleveradres: Optional[Address]
+    # B1-rollen: adressen mét rol (besteller/factuur/aflever/eindontvanger)
+    # zoals extract ze levert; afleveradres wordt hieruit afgeleid.
+    # Her-diagnose 10-7: werd door LangGraph gedropt omdat de channel ontbrak.
+    adres_rollen: dict[str, Any]
     afleverinstructies: Optional[str]
     orderregels: list[OrderRegel]
     opmerkingen: Optional[str]

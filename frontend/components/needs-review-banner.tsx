@@ -5,10 +5,13 @@ const LABELS: Record<string, string> = {
   bestelnummer_klant: "Bestelnr klant",
   gewenste_leverdatum: "Leverdatum",
   afleveradres: "Afleveradres",
+  adressen: "Adres-rollen",
   ship_to_gekozen: "Afleverpunt (ship-to)",
   verzendwijze: "Verzendwijze",
   afleverinstructies: "Afleverinstructies",
   klantnaam_besteller: "Naam besteller",
+  europallet: "Europallet",
+  taal: "Taal",
 };
 
 // Leesbare labels voor regel-subvelden (anders toonde de chip de ruwe
@@ -27,11 +30,23 @@ function regelVeld(veld: string): string {
 
 function pretty(path: string): string {
   if (LABELS[path]) return LABELS[path];
-  // Eenheid-vlag heeft de vorm "verkoop_eenheid:<positie>".
+  // Eenheid-vlaggen hebben de vorm "verkoop_eenheid:<positie>" / "mix_uom:<positie>".
   const eh = path.match(/^verkoop_eenheid:(\d+)$/);
   if (eh) return `Regel ${eh[1]} · eenheid`;
+  const mx = path.match(/^mix_uom:(\d+)$/);
+  if (mx) return `Regel ${mx[1]} · mix-eenheid`;
   const m = path.match(/^orderregels\[(\d+)\]\.(.+)$/);
   if (m) return `Regel ${Number(m[1]) + 1} · ${regelVeld(m[2])}`;
+  return path;
+}
+
+// F2.5: elke chip hoort ergens heen te springen. Positie-vlaggen (1-based)
+// landen op het eenheid-veld van hun regel; meta-loze order-vlaggen op het
+// blok dat ze adresseert (ids gezet in order-review/EuropalletEditor).
+function anchorFor(path: string): string {
+  const pos = path.match(/^(?:verkoop_eenheid|mix_uom):(\d+)$/);
+  if (pos) return `orderregels[${Number(pos[1]) - 1}].eenheid`;
+  if (path === "adressen") return "afleveradres";
   return path;
 }
 
@@ -84,7 +99,7 @@ export function NeedsReviewBanner({
           <button
             key={f}
             onClick={() => {
-              const el = document.getElementById(f);
+              const el = document.getElementById(anchorFor(f));
               if (el) {
                 el.scrollIntoView({ behavior: "smooth", block: "center" });
                 (el as HTMLInputElement).focus?.();

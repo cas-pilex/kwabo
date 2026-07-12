@@ -14,10 +14,9 @@ from sqlmodel import Session
 
 from kwabo.db import session as db_session
 from kwabo.db.repository import ArtikelkaartRepo, KlantRepo, OrderLogRepo, ShipToRepo
-from kwabo.graph.nodes.apply_mixprijzen import _branch_a
 from kwabo.graph.nodes.select_ship_to import _decide as _decide_ship_to
 from kwabo.integrations.navision_steps import compose_navision_operations
-from kwabo.utils.eenheid_resolve import resolve_line_uom
+from kwabo.utils.eenheid_resolve import bepaal_eenheid, branch_a
 from kwabo.utils.logging import log
 
 router = APIRouter(prefix="/api/orders", tags=["orders-preview"])
@@ -120,6 +119,65 @@ def _all_needs_review_paths(state: dict) -> list[str]:
     return paths
 
 
+# F2.1 (her-diagnose 10-7): deze node-vlaggen hebben GEEN meta-provenance —
+# select_ship_to, compute_europallet en apply_mixprijzen schrijven alleen
+# needs_review_fields. Een pure meta-herleiding vaagde ze bij elke patch weg
+# (banner én approve-gate), waardoor gevlagde fouten alsnog stil werden.
+_META_LOZE_VLAG_RE = re.compile(
+    r"^(ship_to_gekozen|europallet|verkoop_eenheid:\d+|mix_uom:\d+)$"
+)
+
+
+def _vlag_opgelost_door_patch(vlag: str, patched_path: str | None) -> bool:
+    """Alleen de bewerking die een meta-loze vlag adresseert, lost hem op."""
+    if not patched_path:
+        return False
+    if vlag == "europallet":
+        return patched_path.startswith("europallet_regel")
+    m = re.fullmatch(r"mix_uom:(\d+)", vlag)
+    if m:
+        i = int(m.group(1)) - 1
+        return patched_path in (
+            f"orderregels[{i}].mix_uom_gekozen",
+            f"orderregels[{i}].artikelnummer_kwabo_matched",
+        )
+    m = re.fullmatch(r"verkoop_eenheid:(\d+)", vlag)
+    if m:
+        i = int(m.group(1)) - 1
+        return patched_path in (
+            f"orderregels[{i}].eenheid",
+            f"orderregels[{i}].verkoop_uom_gekozen",
+            f"orderregels[{i}].artikelnummer_kwabo_matched",
+        )
+    # ship_to_gekozen wordt via meta-provenance opgelost (patch van het veld
+    # zelf of _reresolve_ship_to schrijven beide _meta['ship_to_gekozen']).
+    return False
+
+
+def _herleid_needs_review(state: dict, patched_path: str | None = None) -> list[str]:
+    """Meta-herleiding + behoud van meta-loze node-vlaggen (F2.1).
+
+    Meta blijft de bron van waarheid waar meta bestaat (een provenance-dict
+    mét needs_review-sleutel wint altijd, dus opgeloste velden herflaggen
+    nooit). Meta-loze vlaggen overleven elke ongerelateerde patch en worden
+    alleen gewist door de bewerking die ze adresseert.
+    """
+    paths = _all_needs_review_paths(state)
+    meta = state.get("_meta") or {}
+    for f in state.get("needs_review_fields") or []:
+        if f in paths:
+            continue
+        if not _META_LOZE_VLAG_RE.fullmatch(f):
+            continue  # meta-gedekte key: meta is de baas
+        prov = meta.get(f)
+        if isinstance(prov, dict) and "needs_review" in prov:
+            continue  # echte provenance aanwezig (reresolve/handmatig) -> meta wint
+        if _vlag_opgelost_door_patch(f, patched_path):
+            continue
+        paths.append(f)
+    return paths
+
+
 def _load(order_id: int) -> tuple[dict, Any]:
     """Load order + parsed state. Returns (state, row)."""
     with Session(db_session.engine) as s:
@@ -189,7 +247,7 @@ def _reresolve_ship_to(state: dict, klant_nr: str) -> dict:
 def navision_preview(order_id: int) -> NavisionPreviewResponse:
     state, _ = _load(order_id)
     klant = (state.get("klant_match") or {}).get("navision_klantnr")
-    missing = _all_needs_review_paths(state)
+    missing = _herleid_needs_review(state)
     # Prefer state["nav_operations"] if compose_order populated it (post-T9).
     # Fall back to recomposing on the fly so older review rows still preview.
     operations: list = list(state.get("nav_operations") or [])
@@ -382,9 +440,11 @@ def patch_field(order_id: int, body: PatchFieldBody) -> dict:
                     base = kaart.basis_eenheid.strip()
                     regel.setdefault("eenheid_origineel", regel.get("eenheid"))
                     regel["eenheid_default"] = base
-                    regel["eenheid"], eenheid_vlag = resolve_line_uom(
+                    keuze = bepaal_eenheid(
                         regel, base, eenheden, verkoop_eenheid=kaart.verkoop_eenheid)
-                    _branch_a(regel, art_repo)
+                    regel["eenheid"], eenheid_vlag = keuze.code, keuze.vlag
+                    regel["eenheid_bron"] = keuze.bron
+                    branch_a(regel, kaart, eenheden)
                     meta = state.setdefault("_meta", {})
                     regels_meta = meta.setdefault("orderregels", [])
                     while len(regels_meta) <= i:
@@ -398,7 +458,7 @@ def patch_field(order_id: int, body: PatchFieldBody) -> dict:
                     }
                     regels_meta[i] = rm
 
-    needs = _all_needs_review_paths(state)
+    needs = _herleid_needs_review(state, body.path)
     state["needs_review_fields"] = needs
     state["needs_review_count"] = len(needs)
 
@@ -438,5 +498,5 @@ def patch_field(order_id: int, body: PatchFieldBody) -> dict:
 @router.get("/{order_id}/needs-review")
 def needs_review(order_id: int) -> dict:
     state, _ = _load(order_id)
-    paths = _all_needs_review_paths(state)
+    paths = _herleid_needs_review(state)
     return {"count": len(paths), "fields": paths}
